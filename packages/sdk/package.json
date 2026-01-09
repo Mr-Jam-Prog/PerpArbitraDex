@@ -1,0 +1,21 @@
+{
+  "name": "@perpdex/sdk",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "ethers": "^6.10.0"
+  },
+  "peerDependencies": {
+    "@perpdex/math": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "@types/node": "^20.0.0"
+  }
+}

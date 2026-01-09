@@ -1,0 +1,362 @@
+{
+    "dashboard": {
+      "id": null,
+      "uid": "perp-arbitra-dex-operations",
+      "title": "PerpArbitraDEX - Operations Dashboard",
+      "tags": ["perpetuals", "defi", "trading", "liquidation", "oracle"],
+      "timezone": "utc",
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "30s",
+      "panels": [
+        {
+          "id": 1,
+          "title": "Open Interest by Market",
+          "type": "stat",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "perp_dex_open_interest_usd",
+              "legendFormat": "{{market}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "currencyUSD",
+              "thresholds": {
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "orange", "value": 5000000 },
+                  { "color": "red", "value": 10000000 }
+                ]
+              }
+            }
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
+        },
+        {
+          "id": 2,
+          "title": "Liquidations / Hour",
+          "type": "graph",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "rate(perp_dex_liquidations_total[1h])",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": { "mode": "palette-classic" }
+            }
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
+        },
+        {
+          "id": 3,
+          "title": "Funding Rate (bps)",
+          "type": "graph",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "perp_dex_funding_rate_bps",
+              "legendFormat": "{{market}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bps",
+              "decimals": 0,
+              "thresholds": {
+                "steps": [
+                  { "color": "blue", "value": -100 },
+                  { "color": "green", "value": -50 },
+                  { "color": "green", "value": 50 },
+                  { "color": "red", "value": 100 }
+                ]
+              }
+            }
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 }
+        },
+        {
+          "id": 4,
+          "title": "Oracle Freshness",
+          "type": "stat",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "perp_dex_oracle_age_seconds",
+              "legendFormat": "{{market}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "thresholds": {
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 60 },
+                  { "color": "orange", "value": 90 },
+                  { "color": "red", "value": 120 }
+                ]
+              }
+            }
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 }
+        },
+        {
+          "id": 5,
+          "title": "RPC Latency (ms)",
+          "type": "graph",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "perp_dex_rpc_latency_ms",
+              "legendFormat": "{{endpoint}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "thresholds": {
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 100 },
+                  { "color": "orange", "value": 500 },
+                  { "color": "red", "value": 1000 }
+                ]
+              }
+            }
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 }
+        },
+        {
+          "id": 6,
+          "title": "Bot Uptime",
+          "type": "stat",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "perp_dex_bot_uptime_seconds",
+              "legendFormat": "{{bot}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "decimals": 0,
+              "color": { "mode": "thresholds" }
+            }
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 }
+        },
+        {
+          "id": 7,
+          "title": "Active Positions",
+          "type": "stat",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "perp_dex_active_positions_total",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": { "mode": "continuous-BlYlRd" }
+            }
+          },
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 24 }
+        },
+        {
+          "id": 8,
+          "title": "Health Factor Distribution",
+          "type": "piechart",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "perp_dex_health_factor_bucket",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": { "mode": "palette-classic" }
+            }
+          },
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 24 }
+        },
+        {
+          "id": 9,
+          "title": "Protocol Revenue (24h)",
+          "type": "stat",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "perp_dex_protocol_revenue_usd_total",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "currencyUSD",
+              "thresholds": {
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 10000 },
+                  { "color": "orange", "value": 50000 },
+                  { "color": "red", "value": 100000 }
+                ]
+              }
+            }
+          },
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 24 }
+        },
+        {
+          "id": 10,
+          "title": "Circuit Breaker Status",
+          "type": "gauge",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "perp_dex_circuit_breaker_active",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bool",
+              "thresholds": {
+                "steps": [
+                  { "color": "green", "value": 0 },
+                  { "color": "red", "value": 1 }
+                ]
+              }
+            }
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 }
+        },
+        {
+          "id": 11,
+          "title": "Oracle Deviation (bps)",
+          "type": "graph",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "perp_dex_oracle_deviation_bps",
+              "legendFormat": "{{market}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bps",
+              "thresholds": {
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 50 },
+                  { "color": "orange", "value": 100 },
+                  { "color": "red", "value": 200 }
+                ]
+              }
+            }
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 }
+        },
+        {
+          "id": 12,
+          "title": "System Alerts (Last 24h)",
+          "type": "alertlist",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "ALERTS{alertstate=\"firing\"}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "showBackground": true,
+                "sortOrder": 1,
+                "stateFilter": ["alerting", "pending"]
+              }
+            }
+          },
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 40 }
+        }
+      ],
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "timepicker": {
+        "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"],
+        "time_options": ["5m", "15m", "1h", "6h", "12h", "24h", "2d", "7d", "30d"]
+      },
+      "annotations": {
+        "list": [
+          {
+            "name": "Incidents",
+            "datasource": "Prometheus",
+            "enable": true,
+            "iconColor": "red",
+            "target": {
+              "expr": "perp_dex_incident_annotations",
+              "refId": "A"
+            }
+          }
+        ]
+      },
+      "links": [
+        {
+          "title": "Dune Analytics",
+          "url": "https://dune.com/perp-arbitra-dex",
+          "targetBlank": true
+        },
+        {
+          "title": "Protocol Documentation",
+          "url": "https://docs.perp-arbitra-dex.com",
+          "targetBlank": true
+        },
+        {
+          "title": "Emergency Procedures",
+          "url": "https://docs.perp-arbitra-dex.com/emergency",
+          "targetBlank": true
+        }
+      ],
+      "templating": {
+        "list": [
+          {
+            "name": "market",
+            "label": "Market",
+            "type": "query",
+            "datasource": "Prometheus",
+            "query": "label_values(perp_dex_open_interest_usd, market)",
+            "refresh": 1,
+            "multi": true,
+            "includeAll": true
+          },
+          {
+            "name": "time_range",
+            "label": "Time Range",
+            "type": "interval",
+            "query": "1m,5m,15m,30m,1h,2h,6h,12h,1d,7d,30d",
+            "current": {
+              "text": "6h",
+              "value": "6h"
+            }
+          }
+        ]
+      }
+    }
+  }

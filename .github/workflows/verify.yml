@@ -1,0 +1,39 @@
+# .github/workflows/verify.yml
+name: Verify Contracts
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Compile contracts
+        run: npx hardhat compile
+        
+      - name: Verify contracts on Arbitrum
+        run: |
+          npx hardhat run scripts/verification/verify_all.js --network arbitrum
+        env:
+          ARBISCAN_API_KEY: ${{ secrets.ARBISCAN_API_KEY }}
+          
+      - name: Upload verification results
+        uses: actions/upload-artifact@v3
+        with:
+          name: verification-reports
+          path: |
+            verification-results/
+            verification-status/

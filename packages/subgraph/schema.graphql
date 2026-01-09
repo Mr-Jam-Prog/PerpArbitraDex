@@ -1,0 +1,518 @@
+"""
+PerpArbitraDEX Subgraph Schema
+Version: 1.0.0
+"""
+
+type Position @entity {
+  "Unique identifier (positionId)"
+  id: ID!
+  
+  "User who owns the position"
+  user: Bytes!
+  
+  "Market where position is opened"
+  market: Market!
+  
+  "Position size (positive for long, negative for short)"
+  size: BigInt!
+  
+  "Collateral deposited"
+  collateral: BigInt!
+  
+  "Entry price"
+  entryPrice: BigInt!
+  
+  "Entry timestamp"
+  entryTime: BigInt!
+  
+  "Last updated timestamp"
+  lastUpdated: BigInt!
+  
+  "Current health factor (scaled by 1e6)"
+  healthFactor: BigInt!
+  
+  "Whether position is liquidated"
+  isLiquidated: Boolean!
+  
+  "Whether position is closed"
+  isClosed: Boolean!
+  
+  "Realized PnL (if closed)"
+  realizedPnl: BigInt
+  
+  "Total funding paid/received"
+  totalFunding: BigInt!
+  
+  "All trades for this position"
+  trades: [Trade!]! @derivedFrom(field: "position")
+  
+  "Liquidation event (if liquidated)"
+  liquidation: Liquidation @derivedFrom(field: "position")
+  
+  "Funding updates for this position"
+  fundingUpdates: [FundingUpdate!]! @derivedFrom(field: "position")
+}
+
+type Trade @entity {
+  "Unique identifier (transactionHash-logIndex)"
+  id: ID!
+  
+  "Position associated with trade"
+  position: Position!
+  
+  "User who executed trade"
+  user: Bytes!
+  
+  "Market where trade occurred"
+  market: Market!
+  
+  "Trade size (positive for long, negative for short)"
+  size: BigInt!
+  
+  "Trade price"
+  price: BigInt!
+  
+  "Collateral change"
+  collateralDelta: BigInt!
+  
+  "Whether trade opened or closed position"
+  isOpen: Boolean!
+  
+  "Trade timestamp"
+  timestamp: BigInt!
+  
+  "Transaction hash"
+  txHash: Bytes!
+  
+  "Fee paid"
+  fee: BigInt
+  
+  "PnL from this trade"
+  pnl: BigInt
+  
+  "Block number"
+  blockNumber: BigInt!
+}
+
+type Market @entity {
+  "Unique identifier (marketId)"
+  id: ID!
+  
+  "Market symbol (e.g., ETH-PERP)"
+  symbol: String!
+  
+  "Base asset"
+  baseAsset: Bytes!
+  
+  "Quote asset"
+  quoteAsset: Bytes!
+  
+  "Oracle address"
+  oracle: Bytes!
+  
+  "Whether market is active"
+  isActive: Boolean!
+  
+  "Whether market is paused"
+  isPaused: Boolean!
+  
+  "Maximum leverage"
+  maxLeverage: BigInt!
+  
+  "Initial margin requirement (%)"
+  initialMargin: BigInt!
+  
+  "Maintenance margin requirement (%)"
+  maintenanceMargin: BigInt!
+  
+  "Liquidation fee (%)"
+  liquidationFee: BigInt!
+  
+  "Total open interest"
+  openInterest: BigInt!
+  
+  "Long open interest"
+  longOpenInterest: BigInt!
+  
+  "Short open interest"
+  shortOpenInterest: BigInt!
+  
+  "Market skew (long - short)"
+  skew: BigInt!
+  
+  "Current funding rate (scaled by 1e6)"
+  fundingRate: BigInt!
+  
+  "Funding velocity"
+  fundingVelocity: BigInt!
+  
+  "Last funding timestamp"
+  lastFundingTime: BigInt!
+  
+  "All positions in this market"
+  positions: [Position!]! @derivedFrom(field: "market")
+  
+  "All trades in this market"
+  trades: [Trade!]! @derivedFrom(field: "market")
+  
+  "Oracle updates for this market"
+  oracleUpdates: [OracleUpdate!]! @derivedFrom(field: "market")
+  
+  "Funding updates for this market"
+  fundingUpdates: [FundingUpdate!]! @derivedFrom(field: "market")
+  
+  "Statistics"
+  stats: MarketStats!
+}
+
+type MarketStats @entity {
+  "Unique identifier (marketId)"
+  id: ID!
+  
+  "24h trading volume"
+  volume24h: BigInt!
+  
+  "24h number of trades"
+  trades24h: BigInt!
+  
+  "24h number of liquidations"
+  liquidations24h: BigInt!
+  
+  "Total protocol fees from this market"
+  totalProtocolFees: BigInt!
+  
+  "Total liquidation fees from this market"
+  totalLiquidationFees: BigInt!
+  
+  "Time of last update"
+  lastUpdated: BigInt!
+}
+
+type Liquidation @entity {
+  "Unique identifier (transactionHash-logIndex)"
+  id: ID!
+  
+  "Liquidated position"
+  position: Position!
+  
+  "Liquidator address"
+  liquidator: Bytes!
+  
+  "Size liquidated"
+  size: BigInt!
+  
+  "Collateral liquidated"
+  collateral: BigInt!
+  
+  "Liquidation fee"
+  fee: BigInt!
+  
+  "Health factor before liquidation"
+  healthFactorBefore: BigInt!
+  
+  "Liquidation timestamp"
+  timestamp: BigInt!
+  
+  "Transaction hash"
+  txHash: Bytes!
+  
+  "Block number"
+  blockNumber: BigInt!
+}
+
+type FundingUpdate @entity {
+  "Unique identifier (transactionHash-logIndex)"
+  id: ID!
+  
+  "Market where funding occurred"
+  market: Market!
+  
+  "Position affected (if applicable)"
+  position: Position
+  
+  "Funding rate (scaled by 1e6)"
+  fundingRate: BigInt!
+  
+  "Funding amount (positive = paid, negative = received)"
+  fundingAmount: BigInt!
+  
+  "Cumulative funding for position"
+  cumulativeFunding: BigInt!
+  
+  "Update timestamp"
+  timestamp: BigInt!
+  
+  "Transaction hash"
+  txHash: Bytes!
+  
+  "Block number"
+  blockNumber: BigInt!
+}
+
+type OracleUpdate @entity {
+  "Unique identifier (transactionHash-logIndex)"
+  id: ID!
+  
+  "Market for oracle update"
+  market: Market!
+  
+  "Oracle price"
+  price: BigInt!
+  
+  "Oracle timestamp"
+  timestamp: BigInt!
+  
+  "Oracle source"
+  source: String!
+  
+  "Price deviation (bps)"
+  deviation: BigInt
+  
+  "Whether using fallback"
+  isFallback: Boolean!
+  
+  "Transaction hash"
+  txHash: Bytes!
+  
+  "Block number"
+  blockNumber: BigInt!
+}
+
+type Protocol @entity {
+  "Unique identifier"
+  id: ID!
+  
+  "Total value locked"
+  totalValueLocked: BigInt!
+  
+  "Total open interest"
+  totalOpenInterest: BigInt!
+  
+  "24h trading volume"
+  volume24h: BigInt!
+  
+  "24h number of trades"
+  trades24h: BigInt!
+  
+  "24h number of liquidations"
+  liquidations24h: BigInt!
+  
+  "Total protocol fees"
+  totalProtocolFees: BigInt!
+  
+  "Total liquidation fees"
+  totalLiquidationFees: BigInt!
+  
+  "Number of active traders (24h)"
+  activeTraders24h: BigInt!
+  
+  "Number of active markets"
+  activeMarkets: BigInt!
+  
+  "Time of last update"
+  lastUpdated: BigInt!
+}
+
+type User @entity {
+  "Unique identifier (user address)"
+  id: ID!
+  
+  "Total trading volume"
+  totalVolume: BigInt!
+  
+  "Total number of trades"
+  totalTrades: BigInt!
+  
+  "Total PnL"
+  totalPnl: BigInt!
+  
+  "Total fees paid"
+  totalFees: BigInt!
+  
+  "Total funding paid/received"
+  totalFunding: BigInt!
+  
+  "Number of liquidations"
+  liquidations: BigInt!
+  
+  "Active positions"
+  activePositions: [Position!]! @derivedFrom(field: "user")
+  
+  "All trades"
+  trades: [Trade!]! @derivedFrom(field: "user")
+  
+  "Time of first interaction"
+  firstSeen: BigInt!
+  
+  "Time of last interaction"
+  lastSeen: BigInt!
+}
+
+type Liquidator @entity {
+  "Unique identifier (liquidator address)"
+  id: ID!
+  
+  "Number of liquidations"
+  liquidationCount: BigInt!
+  
+  "Total size liquidated"
+  totalSizeLiquidated: BigInt!
+  
+  "Total fees earned"
+  totalFeesEarned: BigInt!
+  
+  "Average liquidation size"
+  avgLiquidationSize: BigInt!
+  
+  "Last liquidation timestamp"
+  lastLiquidationTime: BigInt!
+  
+  "All liquidations by this liquidator"
+  liquidations: [Liquidation!]! @derivedFrom(field: "liquidator")
+}
+
+type GovernanceProposal @entity {
+  "Unique identifier (proposalId)"
+  id: ID!
+  
+  "Proposer address"
+  proposer: Bytes!
+  
+  "Target contracts"
+  targets: [Bytes!]!
+  
+  "Values to send"
+  values: [BigInt!]!
+  
+  "Function signatures"
+  signatures: [String!]!
+  
+  "Calldata"
+  calldatas: [Bytes!]!
+  
+  "Start block"
+  startBlock: BigInt!
+  
+  "End block"
+  endBlock: BigInt!
+  
+  "Description"
+  description: String!
+  
+  "Proposal state"
+  state: String!
+  
+  "For votes"
+  forVotes: BigInt!
+  
+  "Against votes"
+  againstVotes: BigInt!
+  
+  "Abstain votes"
+  abstainVotes: BigInt!
+  
+  "Time created"
+  createdAt: BigInt!
+  
+  "Time executed (if applicable)"
+  executedAt: BigInt
+  
+  "Time canceled (if applicable)"
+  canceledAt: BigInt
+}
+
+type Vote @entity {
+  "Unique identifier (proposalId-voter)"
+  id: ID!
+  
+  "Proposal"
+  proposal: GovernanceProposal!
+  
+  "Voter address"
+  voter: Bytes!
+  
+  "Vote weight"
+  weight: BigInt!
+  
+  "Vote choice (FOR, AGAINST, ABSTAIN)"
+  choice: String!
+  
+  "Reason (if provided)"
+  reason: String
+  
+  "Vote timestamp"
+  timestamp: BigInt!
+  
+  "Transaction hash"
+  txHash: Bytes!
+}
+
+type TokenBalance @entity {
+  "Unique identifier (user-token)"
+  id: ID!
+  
+  "User address"
+  user: Bytes!
+  
+  "Token address"
+  token: Bytes!
+  
+  "Balance"
+  balance: BigInt!
+  
+  "Last updated"
+  lastUpdated: BigInt!
+}
+
+# Helper types for aggregated data
+type DailyStat @entity {
+  "Unique identifier (date)"
+  id: ID!
+  
+  "Date (YYYY-MM-DD)"
+  date: String!
+  
+  "Trading volume"
+  volume: BigInt!
+  
+  "Number of trades"
+  trades: BigInt!
+  
+  "Number of liquidations"
+  liquidations: BigInt!
+  
+  "Protocol fees"
+  protocolFees: BigInt!
+  
+  "Liquidation fees"
+  liquidationFees: BigInt!
+  
+  "New users"
+  newUsers: BigInt!
+  
+  "Active users"
+  activeUsers: BigInt!
+}
+
+type HourlyStat @entity {
+  "Unique identifier (timestamp)"
+  id: ID!
+  
+  "Hour start timestamp"
+  hourStart: BigInt!
+  
+  "Trading volume"
+  volume: BigInt!
+  
+  "Number of trades"
+  trades: BigInt!
+  
+  "Number of liquidations"
+  liquidations: BigInt!
+  
+  "Open interest"
+  openInterest: BigInt!
+  
+  "Average funding rate"
+  avgFundingRate: BigInt!
+}

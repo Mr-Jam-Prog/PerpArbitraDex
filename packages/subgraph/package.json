@@ -1,0 +1,36 @@
+{
+    "name": "@perpdex/subgraph",
+    "version": "1.0.0",
+    "description": "The Graph subgraph for PerpArbitraDEX",
+    "scripts": {
+      "codegen": "graph codegen",
+      "build": "graph build",
+      "auth": "graph auth --product hosted-service <ACCESS_TOKEN>",
+      "deploy": "graph deploy --product hosted-service perp-arbitra-dex/perpetuals",
+      "deploy:studio": "graph deploy --studio perp-arbitra-dex",
+      "create-local": "graph create --node http://localhost:8020/ perp-arbitra-dex/perpetuals",
+      "remove-local": "graph remove --node http://localhost:8020/ perp-arbitra-dex/perpetuals",
+      "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 perp-arbitra-dex/perpetuals",
+      "test": "graph test",
+      "lint": "eslint src/**/*.ts"
+    },
+    "dependencies": {
+      "@graphprotocol/graph-cli": "^0.60.0",
+      "@graphprotocol/graph-ts": "^0.31.0"
+    },
+    "devDependencies": {
+      "@typescript-eslint/eslint-plugin": "^6.0.0",
+      "@typescript-eslint/parser": "^6.0.0",
+      "eslint": "^8.45.0",
+      "matchstick-as": "^0.5.0",
+      "typescript": "^5.0.0"
+    },
+    "engines": {
+      "node": ">=18.0.0"
+    },
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/perp-arbitra-dex/perp-arbitra-dex.git",
+      "directory": "packages/subgraph"
+    }
+  }

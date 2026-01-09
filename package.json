@@ -1,0 +1,27 @@
+{
+    "name": "perp-arbitra-dex",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "workspaces": [
+        "frontend",
+        "packages/*",
+        "bots/*",
+        "monitoring"
+    ],
+    "scripts": {
+        "install:clean": "rm -rf node_modules package-lock.json **/node_modules && npm install",
+        "build": "npm run build --workspaces",
+        "lint": "npm run lint --workspaces"
+    },
+    "description": "",
+    "main": ".eslintrc.js",
+    "directories": {
+        "doc": "docs",
+        "test": "test"
+    },
+    "devDependencies": {},
+    "keywords": [],
+    "author": "",
+    "license": "ISC"
+}

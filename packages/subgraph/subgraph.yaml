@@ -1,0 +1,139 @@
+# packages/subgraph/subgraph.yaml
+specVersion: 1.0.0
+description: PerpArbitraDEX Subgraph - Indexes perpetual trading protocol
+repository: https://github.com/perp-arbitra-dex/perp-arbitra-dex
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: PerpEngine
+    network: arbitrum-one
+    source:
+      address: "{{PerpEngineAddress}}"
+      abi: PerpEngine
+      startBlock: {{startBlock}}
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Position
+        - Trade
+        - Market
+      abis:
+        - name: PerpEngine
+          file: ../../contracts/artifacts/contracts/core/PerpEngine.sol/PerpEngine.json
+      eventHandlers:
+        - event: PositionOpened(uint256,address,uint256,bool,uint256,uint256,uint256,uint256,uint256)
+          handler: handlePositionOpened
+        - event: PositionIncreased(uint256,uint256,uint256,uint256,uint256)
+          handler: handlePositionIncreased
+        - event: PositionDecreased(uint256,uint256,uint256,int256,uint256)
+          handler: handlePositionDecreased
+        - event: PositionClosed(uint256,uint256,int256,uint256,uint256)
+          handler: handlePositionClosed
+        - event: PositionLiquidated(uint256,address,uint256,uint256,uint256)
+          handler: handlePositionLiquidated
+        - event: FundingAccrued(uint256,int256,uint256,uint256,uint256)
+          handler: handleFundingAccrued
+      file: ./src/mappings/perpetual.ts
+
+  - kind: ethereum
+    name: AMMPool
+    network: arbitrum-one
+    source:
+      address: "{{AMMPoolAddress}}"
+      abi: AMMPool
+      startBlock: {{startBlock}}
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - FundingState
+        - MarketConfig
+      abis:
+        - name: AMMPool
+          file: ../../contracts/artifacts/contracts/core/AMMPool.sol/AMMPool.json
+      eventHandlers:
+        - event: SkewUpdated(uint256,int256,uint256,uint256)
+          handler: handleSkewUpdated
+        - event: FundingUpdated(uint256,int256,uint256,uint256,uint256)
+          handler: handleFundingUpdated
+        - event: MarketParametersUpdated(uint256,uint256,uint256)
+          handler: handleMarketParametersUpdated
+      file: ./src/mappings/amm.ts
+
+  - kind: ethereum
+    name: LiquidationEngine
+    network: arbitrum-one
+    source:
+      address: "{{LiquidationEngineAddress}}"
+      abi: LiquidationEngine
+      startBlock: {{startBlock}}
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Liquidation
+        - Liquidator
+      abis:
+        - name: LiquidationEngine
+          file: ../../contracts/artifacts/contracts/liquidation/LiquidationEngine.sol/LiquidationEngine.json
+      eventHandlers:
+        - event: LiquidationQueued(uint256,address,uint256,uint256)
+          handler: handleLiquidationQueued
+        - event: LiquidationExecuted(uint256,address,uint256,uint256,bool)
+          handler: handleLiquidationExecuted
+        - event: LiquidationSkipped(uint256,address,uint8)
+          handler: handleLiquidationSkipped
+        - event: LiquidatorConfigUpdated(uint256,uint256,uint256,uint256,uint256,uint256)
+          handler: handleLiquidatorConfigUpdated
+      file: ./src/mappings/liquidation.ts
+
+  - kind: ethereum
+    name: OracleAggregator
+    network: arbitrum-one
+    source:
+      address: "{{OracleAggregatorAddress}}"
+      abi: OracleAggregator
+      startBlock: {{startBlock}}
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - OracleUpdate
+        - PriceFeed
+      abis:
+        - name: OracleAggregator
+          file: ../../contracts/artifacts/contracts/oracles/OracleAggregator.sol/OracleAggregator.json
+      eventHandlers:
+        - event: OracleUpdated(bytes32,uint256,uint256,uint8)
+          handler: handleOracleUpdated
+        - event: FeedAdded(bytes32,address)
+          handler: handleFeedAdded
+        - event: FeedRemoved(bytes32)
+          handler: handleFeedRemoved
+      file: ./src/mappings/oracle.ts
+
+templates:
+  - kind: ethereum
+    name: MarketTemplate
+    network: arbitrum-one
+    source:
+      abi: PerpEngine
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Market
+      abis:
+        - name: PerpEngine
+          file: ../../contracts/artifacts/contracts/core/PerpEngine.sol/PerpEngine.json
+      eventHandlers:
+        - event: MarketParametersUpdated(uint256,uint256,uint256,uint256,uint256,bytes32)
+          handler: handleMarketParametersUpdated
+      file: ./src/mappings/market.ts
