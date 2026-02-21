@@ -81,7 +81,9 @@ contract TWAPOracle is ITWAPOracle, Ownable {
         require(sourceOracle_ != address(0), "TWAPOracle: zero address");
         
         // Initialize observations array
-        _observations = new Observation[](granularity_);
+        for (uint256 i = 0; i < granularity_; i++) {
+            _observations.push(Observation(0, 0, 0, 0));
+        }
         
         _config = TWAPConfig({
             windowSize: windowSize_,
@@ -300,16 +302,15 @@ contract TWAPOracle is ITWAPOracle, Ownable {
         
         // Resize observations array if needed
         if (granularity != _observations.length) {
-            Observation[] memory newObservations = new Observation[](granularity);
-            
-            // Copy existing observations (if any)
-            uint256 copyCount = granularity < _observations.length ? 
-                granularity : _observations.length;
-            for (uint256 i = 0; i < copyCount; i++) {
-                newObservations[i] = _observations[i];
+            if (granularity > _observations.length) {
+                while (_observations.length < granularity) {
+                    _observations.push(Observation(0, 0, 0, 0));
+                }
+            } else {
+                while (_observations.length > granularity) {
+                    _observations.pop();
+                }
             }
-            
-            _observations = newObservations;
             _nextIndex = 0;
         }
         
@@ -446,5 +447,10 @@ contract TWAPOracle is ITWAPOracle, Ownable {
     function getWindowBoundaries() external view returns (uint256 start, uint256 end) {
         end = block.timestamp;
         start = end - _config.windowSize;
+    }
+
+    function getPrice(bytes32 /*feedId*/, uint256 /*period*/) external view override returns (uint256) {
+        (, uint256 price, , ) = this.getPriceData();
+        return price;
     }
 }

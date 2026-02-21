@@ -28,7 +28,7 @@ interface IEntryPoint {
 
 interface IPaymaster {
     function validatePaymasterUserOp(
-        UserOperation calldata op,
+        IEntryPoint.UserOperation calldata op,
         bytes32 requestId,
         uint256 maxCost
     ) external returns (bytes memory context, uint256 validationData);
@@ -380,7 +380,7 @@ contract AccountAbstractionAdapter is EIP712, ReentrancyGuard {
         bytes32 requestId
     ) internal view returns (bool) {
         bytes32 hash = _hashUserOp(op);
-        address recovered = hash.recover(op.signature);
+        address recovered = ECDSA.recover(hash, op.signature);
         return recovered == op.sender;
     }
     
@@ -424,11 +424,6 @@ contract AccountAbstractionAdapter is EIP712, ReentrancyGuard {
         // Check if call is to PerpEngine
         // This is a simplified example
         if (callData.length >= 4) {
-            bytes4 selector;
-            assembly {
-                selector := mload(add(callData, 0x20))
-            }
-            
             // Simulate execution
             // In production, would make actual calls
             success = true;
@@ -463,7 +458,6 @@ contract AccountAbstractionAdapter is EIP712, ReentrancyGuard {
         
         // Call paymaster postOp if present
         if (op.paymasterAndData.length > 20) {
-            bytes memory paymasterData = op.paymasterAndData[20:];
             // In production, would call paymaster.postOp
         }
     }

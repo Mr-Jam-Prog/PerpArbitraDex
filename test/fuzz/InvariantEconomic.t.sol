@@ -6,6 +6,7 @@ import {StdInvariant} from "forge-std/StdInvariant.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {PerpEngine} from "../../contracts/core/PerpEngine.sol";
+import {IPerpEngine} from "../../contracts/interfaces/IPerpEngine.sol";
 import {PositionManager} from "../../contracts/core/PositionManager.sol";
 import {AMMPool} from "../../contracts/core/AMMPool.sol";
 import {MarketRegistry} from "../../contracts/core/MarketRegistry.sol";
@@ -22,7 +23,7 @@ import {LiquidationEngine} from "../../contracts/liquidation/LiquidationEngine.s
  * 2. LP balance ≥ 0 - Les LPs ne peuvent jamais avoir de balance négative
  * 3. Funding neutrality - Le funding est neutre entre longs et shorts
  */
-contract InvariantEconomicTest is StdInvariant {
+contract InvariantEconomicTest is Test {
     // Contrats du protocole
     PerpEngine public perpEngine;
     PositionManager public positionManager;
@@ -55,12 +56,16 @@ contract InvariantEconomicTest is StdInvariant {
         uint256 protocolBalance;
     }
 
+    uint256 public initialSystemValue;
+
     function setUp() public {
         // Setup des contrats de base
         _deployProtocol();
         _setupMarkets();
         _createActors();
         _fundActors();
+
+        initialSystemValue = _calculateTotalSystemValue();
 
         // Cibler les contrats pour le fuzzing
         targetContract(address(perpEngine));
@@ -87,12 +92,12 @@ contract InvariantEconomicTest is StdInvariant {
         GlobalState memory state = _getGlobalState();
 
         // INVARIANT: Le protocole doit toujours être solvable
-        assert(state.totalCollateral >= state.totalPositionValue, "Protocol insolvent: collateral < position value");
+        assertTrue(state.totalCollateral >= state.totalPositionValue, "Protocol insolvent: collateral < position value");
 
         // INVARIANT: Le protocole doit avoir suffisamment de réserves
         // pour couvrir toutes les positions même en cas de pire scénario
         uint256 worstCaseValue = _calculateWorstCaseExposure();
-        assert(state.protocolBalance >= worstCaseValue, "Protocol insufficient reserves for worst case");
+        assertTrue(state.protocolBalance >= worstCaseValue, "Protocol insufficient reserves for worst case");
     }
 
     /**
@@ -107,7 +112,7 @@ contract InvariantEconomicTest is StdInvariant {
             uint256 lpBalance = ammPool.getLpBalance(lp);
 
             // INVARIANT: Balance LP doit être ≥ 0
-            assert(lpBalance >= 0, string(abi.encodePacked("LP ", _addressToString(lp), " has negative balance")));
+            assertTrue(lpBalance >= 0, string(abi.encodePacked("LP ", _addressToString(lp), " has negative balance")));
 
             // INVARIANT: La somme des parts LP doit correspondre au total du pool
             uint256 lpShares = ammPool.balanceOf(lp);
@@ -116,7 +121,7 @@ contract InvariantEconomicTest is StdInvariant {
             if (totalShares > 0) {
                 uint256 expectedBalance = lpShares * ammPool.totalLiquidity() / totalShares;
                 // Tolérance de 1 wei pour les arrondis
-                assert(
+                assertTrue(
                     lpBalance + 1 >= expectedBalance && lpBalance <= expectedBalance + 1,
                     "LP balance doesn't match share proportion"
                 );
@@ -128,7 +133,7 @@ contract InvariantEconomicTest is StdInvariant {
         uint256 totalLiquidity = ammPool.totalLiquidity();
 
         // Tolérance de 1 wei pour les arrondis
-        assert(
+        assertTrue(
             sumLpBalances + 1 >= totalLiquidity && sumLpBalances <= totalLiquidity + 1,
             "Sum of LP balances != total liquidity"
         );
@@ -149,7 +154,7 @@ contract InvariantEconomicTest is StdInvariant {
         // Calcul de la tolérance (arrondis + erreurs de précision)
         uint256 tolerance = _calculateFundingTolerance();
 
-        assert(
+        assertTrue(
             _abs(netFunding) <= int256(tolerance),
             string(
                 abi.encodePacked(
@@ -172,7 +177,6 @@ contract InvariantEconomicTest is StdInvariant {
      */
     function invariant_funds_conservation() public view {
         uint256 totalSystemValue = _calculateTotalSystemValue();
-        uint256 initialSystemValue = 1000000 ether; // Valeur initiale du setup
 
         // INVARIANT: La valeur totale du système doit rester constante
         // (hors frais qui vont au trésor)
@@ -181,7 +185,7 @@ contract InvariantEconomicTest is StdInvariant {
 
         // Tolérance pour les arrondis
         uint256 tolerance = 1000; // 1000 wei
-        assert(
+        assertTrue(
             totalSystemValue + tolerance >= expectedValue && totalSystemValue <= expectedValue + tolerance,
             "Funds not conserved"
         );
@@ -197,10 +201,10 @@ contract InvariantEconomicTest is StdInvariant {
 
         for (uint256 i = 1; i <= totalPositions; i++) {
             if (positionManager.ownerOf(i) != address(0)) {
-                (uint256 healthFactor,) = perpEngine.getPositionHealthFactor(i);
+                uint256 healthFactor = perpEngine.getHealthFactor(i);
 
                 // INVARIANT: Health factor doit être ≥ 1.0
-                assert(
+                assertTrue(
                     healthFactor >= 1e18,
                     string(
                         abi.encodePacked(
@@ -223,8 +227,8 @@ contract InvariantEconomicTest is StdInvariant {
 
         for (uint256 i = 1; i <= totalPositions; i++) {
             if (positionManager.ownerOf(i) != address(0)) {
-                (, uint256 collateral) = perpEngine.getPosition(i);
-                sumIndividualCollateral += collateral;
+                IPerpEngine.PositionView memory position = perpEngine.getPosition(i);
+                sumIndividualCollateral += position.margin;
             }
         }
 
@@ -232,7 +236,7 @@ contract InvariantEconomicTest is StdInvariant {
 
         // INVARIANT: La somme des collatéraux individuels doit égaler le total
         // Tolérance de 1 wei pour les arrondis
-        assert(
+        assertTrue(
             sumIndividualCollateral + 1 >= totalCollateral && sumIndividualCollateral <= totalCollateral + 1,
             "Double counting detected"
         );
@@ -292,8 +296,8 @@ contract InvariantEconomicTest is StdInvariant {
 
         for (uint256 i = 1; i <= totalPositions; i++) {
             if (positionManager.ownerOf(i) != address(0)) {
-                (, int256 accruedFunding) = perpEngine.getPositionFunding(i);
-                totalAccruedFunding += accruedFunding;
+                IPerpEngine.PositionView memory position = perpEngine.getPosition(i);
+                totalAccruedFunding += int256(position.fundingAccrued);
             }
         }
 
@@ -304,7 +308,7 @@ contract InvariantEconomicTest is StdInvariant {
 
         // Tolérance pour les arrondis
         uint256 tolerance = 1000;
-        assert(_abs(totalAccruedFunding - expectedAccrued) <= int256(tolerance), "Funding accrual mismatch");
+        assertTrue(_abs(totalAccruedFunding - expectedAccrued) <= int256(tolerance), "Funding accrual mismatch");
     }
 
     function _calculateTotalSystemValue() internal view returns (uint256) {
@@ -343,41 +347,55 @@ contract InvariantEconomicTest is StdInvariant {
 
     function _deployProtocol() internal {
         // Déploiement ProtocolConfig
-        protocolConfig = new ProtocolConfig();
+        protocolConfig = new ProtocolConfig(address(this), address(this));
 
         // Déploiement MarketRegistry
-        marketRegistry = new MarketRegistry(address(protocolConfig));
+        // marketRegistry = new MarketRegistry(address(protocolConfig));
 
         // Déploiement PositionManager
-        positionManager = new PositionManager("PerpArbitraDEX Positions", "PERP-POS", address(protocolConfig));
-
-        // Déploiement PerpEngine
-        perpEngine = new PerpEngine(address(protocolConfig), address(marketRegistry), address(positionManager));
+        positionManager = new PositionManager(address(this));
 
         // Déploiement AMMPool
-        ammPool = new AMMPool(address(protocolConfig), address(perpEngine));
+        ammPool = new AMMPool(address(this), address(this));
 
         // Déploiement LiquidationEngine
-        liquidationEngine = new LiquidationEngine(address(perpEngine), address(protocolConfig), address(ammPool));
+        liquidationEngine = new LiquidationEngine(
+            address(this),
+            address(protocolConfig),
+            address(this),
+            address(usdc),
+            address(0),
+            address(0)
+        );
+
+        // Déploiement PerpEngine
+        perpEngine = new PerpEngine(
+            address(positionManager),
+            address(ammPool),
+            address(this),
+            address(liquidationEngine),
+            address(this),
+            address(protocolConfig),
+            address(this),
+            address(this),
+            address(this)
+        );
 
         // Configuration des liens
-        protocolConfig.setPerpEngine(address(perpEngine));
-        protocolConfig.setRiskManager(address(0)); // Mock pour les tests
-        perpEngine.setAMMPool(address(ammPool));
-        perpEngine.setLiquidationEngine(address(liquidationEngine));
+        // protocolConfig.setPerpEngine(address(perpEngine));
+        // perpEngine.setAMMPool(address(ammPool));
     }
 
     function _setupMarkets() internal {
         // Ajout du marché ETH-USD
-        marketRegistry.addMarket(
-            "ETH-USD",
-            "Ethereum / USD",
-            address(0), // ETH
-            address(usdc),
-            1000000 ether, // max position size
+        perpEngine.initializeMarket(
+            1,
+            bytes32("ETH-USD"),
+            10e18, // 10x max leverage
+            1e16,  // 1% min margin ratio
             10 ether, // min position size
-            1e16, // tick size
-            new address[](0) // oracle sources
+            2e16,  // 2% liquidation fee
+            1e15   // 0.1% protocol fee
         );
     }
 

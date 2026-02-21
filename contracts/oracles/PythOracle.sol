@@ -421,6 +421,11 @@ contract PythOracle is IPythOracle, Ownable {
     function getBalance() external view returns (uint256) {
         return address(this).balance;
     }
+
+    function getPrice(bytes32 /*feedId*/) external view override returns (uint256) {
+        (, uint256 price, , ) = this.getPriceData();
+        return price;
+    }
 }
 
 struct PythPriceData {

@@ -120,7 +120,7 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
      * @inheritdoc ILiquidationEngine
      */
     function executeLiquidation(uint256 positionId, uint256 minReward)
-        external
+        public
         override
         nonReentrant
         whenNotPaused
@@ -392,6 +392,7 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         // Call PerpEngine to liquidate
         perpEngine.liquidatePosition(
             IPerpEngine.LiquidateParams({
+                positionId: positionId,
                 trader: positionBefore.trader,
                 marketId: positionBefore.marketId,
                 sizeToLiquidate: positionBefore.size,
@@ -498,11 +499,9 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         require(newConfig.gracePeriod <= 3600, "Grace period too long"); // Max 1 hour
         
         emit LiquidatorConfigUpdated(
-            liquidatorConfig.minReward,
             newConfig.minReward,
-            liquidatorConfig.penaltyRatio,
+            newConfig.maxReward,
             newConfig.penaltyRatio,
-            liquidatorConfig.gracePeriod,
             newConfig.gracePeriod
         );
         

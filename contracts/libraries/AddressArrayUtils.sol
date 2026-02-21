@@ -231,12 +231,12 @@ library AddressArrayUtils {
      * @notice Get intersection of two arrays
      * @param array1 First array
      * @param array2 Second array
-     * @return intersection Array of common elements
+     * @return result Array of common elements
      */
     function intersection(address[] memory array1, address[] memory array2)
         internal
         pure
-        returns (address[] memory intersection)
+        returns (address[] memory result)
     {
         // Count common elements
         uint256 count = 0;
@@ -246,12 +246,12 @@ library AddressArrayUtils {
             }
         }
         
-        intersection = new address[](count);
+        result = new address[](count);
         uint256 index = 0;
         
         for (uint256 i = 0; i < array1.length; i++) {
             if (contains(array2, array1[i])) {
-                intersection[index] = array1[i];
+                result[index] = array1[i];
                 index++;
             }
         }
@@ -261,12 +261,12 @@ library AddressArrayUtils {
      * @notice Get union of two arrays (unique elements from both)
      * @param array1 First array
      * @param array2 Second array
-     * @return union Array of all unique elements
+     * @return result Array of all unique elements
      */
     function union(address[] memory array1, address[] memory array2)
         internal
         pure
-        returns (address[] memory union)
+        returns (address[] memory result)
     {
         // Start with first array
         address[] memory temp = new address[](array1.length + array2.length);
@@ -287,9 +287,9 @@ library AddressArrayUtils {
         }
         
         // Trim to actual size
-        union = new address[](count);
+        result = new address[](count);
         for (uint256 i = 0; i < count; i++) {
-            union[i] = temp[i];
+            result[i] = temp[i];
         }
     }
 
@@ -297,12 +297,12 @@ library AddressArrayUtils {
      * @notice Get difference (array1 - array2)
      * @param array1 First array
      * @param array2 Second array
-     * @return difference Elements in array1 but not in array2
+     * @return result Elements in array1 but not in array2
      */
     function difference(address[] memory array1, address[] memory array2)
         internal
         pure
-        returns (address[] memory difference)
+        returns (address[] memory result)
     {
         // Count elements in array1 not in array2
         uint256 count = 0;
@@ -312,12 +312,12 @@ library AddressArrayUtils {
             }
         }
         
-        difference = new address[](count);
+        result = new address[](count);
         uint256 index = 0;
         
         for (uint256 i = 0; i < array1.length; i++) {
             if (!contains(array2, array1[i])) {
-                difference[index] = array1[i];
+                result[index] = array1[i];
                 index++;
             }
         }
@@ -414,19 +414,19 @@ library AddressArrayUtils {
      * @param array Original array
      * @param start Start index
      * @param end End index (exclusive)
-     * @return slice Array slice
+     * @return result Array slice
      */
     function slice(
         address[] memory array,
         uint256 start,
         uint256 end
-    ) internal pure returns (address[] memory slice) {
+    ) internal pure returns (address[] memory result) {
         require(start <= end, "AddressArrayUtils: invalid range");
         require(end <= array.length, "AddressArrayUtils: index out of bounds");
         
-        slice = new address[](end - start);
+        result = new address[](end - start);
         for (uint256 i = start; i < end; i++) {
-            slice[i - start] = array[i];
+            result[i - start] = array[i];
         }
     }
 

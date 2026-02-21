@@ -23,7 +23,8 @@ contract ProxyAdmin is Ownable {
     event ProxyOwnershipTransferred(address indexed proxy, address indexed newOwner);
     
     // ============ CONSTRUCTOR ============
-    constructor(address initialOwner) Ownable(initialOwner) {
+    constructor(address initialOwner) {
+        _transferOwnership(initialOwner);
         require(initialOwner != address(0), "Invalid owner");
     }
     

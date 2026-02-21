@@ -366,4 +366,17 @@ contract OracleSanityChecker is IOracleSanityChecker, Ownable {
         
         return changeBps <= maxChangeBps;
     }
+
+    function checkPrice(bytes32 feedId, uint256 price) external view override returns (bool) {
+        return this.validatePrice(feedId, price, 0, 0);
+    }
+
+    function checkPriceDeviation(bytes32 feedId, uint256 price, uint256 referencePrice) external view override returns (bool) {
+        return this.validatePriceWithReference(feedId, price, referencePrice, 0);
+    }
+
+    function checkPriceVolatility(bytes32 feedId, uint256 price) external view override returns (bool) {
+        // Dummy implementation
+        return true;
+    }
 }

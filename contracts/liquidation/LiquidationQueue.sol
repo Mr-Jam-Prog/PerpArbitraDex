@@ -373,10 +373,9 @@ contract LiquidationQueue {
         uint256[] memory positions = positionQueue.values();
         
         for (uint256 i = 0; i < positions.length; i++) {
-            delete queueItems[positions[i]];
+            _remove(positions[i]);
         }
         
-        positionQueue.clear();
         queueSize = 0;
         queueHead = 0;
         queueTail = 0;

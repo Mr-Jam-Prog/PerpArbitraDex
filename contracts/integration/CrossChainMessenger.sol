@@ -157,7 +157,7 @@ contract CrossChainMessenger is AccessControl, ReentrancyGuard {
         // Generate message ID
         messageId = _generateMessageId(
             msgType,
-            block.chainid,
+            uint16(block.chainid),
             dstChainId,
             nonce,
             msg.sender,
@@ -180,29 +180,12 @@ contract CrossChainMessenger is AccessControl, ReentrancyGuard {
         bytes memory encodedMessage = abi.encode(message);
         
         // Estimate gas
-        uint256 nativeFee = _estimateFee(dstChainId, encodedMessage, adapterParams);
+        (uint256 nativeFee, ) = _estimateFee(dstChainId, encodedMessage, adapterParams);
         require(msg.value >= nativeFee, "Insufficient fee");
         
         // Send via LayerZero
-        lzEndpoint.send{value: msg.value}(
-            dstChainId,
-            trustedRemoteLookup[dstChainId],
-            encodedMessage,
-            refundAddress,
-            zroPaymentAddress,
-            adapterParams
-        );
-        
-        emit MessageSent(
-            messageId,
-            msgType,
-            uint16(block.chainid),
-            dstChainId,
-            nonce,
-            msg.sender,
-            payload,
-            block.timestamp
-        );
+        _sendLz(dstChainId, encodedMessage, refundAddress, zroPaymentAddress, adapterParams);
+        _emitMessageSent(messageId, msgType, dstChainId, nonce, payload);
         
         return messageId;
     }
@@ -537,6 +520,42 @@ contract CrossChainMessenger is AccessControl, ReentrancyGuard {
         );
     }
     
+    function _sendLz(
+        uint16 dstChainId,
+        bytes memory msgData,
+        address payable refund,
+        address zro,
+        bytes memory ap
+    ) internal {
+        lzEndpoint.send{value: msg.value}(
+            dstChainId,
+            trustedRemoteLookup[dstChainId],
+            msgData,
+            refund,
+            zro,
+            ap
+        );
+    }
+
+    function _emitMessageSent(
+        uint256 messageId,
+        uint8 msgType,
+        uint16 dstChainId,
+        uint256 nonce,
+        bytes memory payload
+    ) internal {
+        emit MessageSent(
+            messageId,
+            msgType,
+            uint16(block.chainid),
+            dstChainId,
+            nonce,
+            msg.sender,
+            payload,
+            block.timestamp
+        );
+    }
+
     /**
      * @dev Generate message ID
      */

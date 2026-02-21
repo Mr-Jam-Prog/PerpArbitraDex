@@ -84,7 +84,8 @@ contract CollateralWrapper is ERC20, Ownable, ReentrancyGuard {
         address _oracle,
         bytes32 _feedId,
         address initialOwner
-    ) ERC20(name, symbol) Ownable(initialOwner) {
+    ) ERC20(name, symbol) {
+        _transferOwnership(initialOwner);
         require(_underlying != address(0), "Invalid underlying");
         require(_oracle != address(0), "Invalid oracle");
         

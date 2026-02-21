@@ -14,40 +14,13 @@ import {IConfigRegistry} from "../interfaces/IConfigRegistry.sol";
  * @dev Central registry for market parameters and oracle mappings
  */
 contract MarketRegistry is IMarketRegistry, Ownable, Pausable {
-    // ============ STRUCTS ============
-    
-    struct Market {
-        bool isActive;
-        string symbol;
-        bytes32 oracleFeedId;
-        address baseToken;
-        address quoteToken;
-        uint256 maxLeverage;
-        uint256 minMarginRatio;
-        uint256 liquidationFeeRatio;
-        uint256 protocolFeeRatio;
-        uint256 maxPositionSize;
-        uint256 maxOpenInterest;
-        uint256 createdAt;
-        uint256 updatedAt;
-        uint256 version;
-    }
-    
-    struct MarketUpdate {
-        uint256 marketId;
-        Market oldConfig;
-        Market newConfig;
-        uint256 timestamp;
-        address updatedBy;
-    }
-
     // ============ STATE VARIABLES ============
     
     // Market ID => Market configuration
-    mapping(uint256 => Market) private _markets;
+    mapping(uint256 => IMarketRegistry.Market) private _markets;
     
     // Market ID => version history
-    mapping(uint256 => MarketUpdate[]) private _marketHistory;
+    mapping(uint256 => IMarketRegistry.MarketUpdate[]) private _marketHistory;
     
     // Symbol => Market ID
     mapping(string => uint256) private _symbolToMarketId;
@@ -145,7 +118,7 @@ contract MarketRegistry is IMarketRegistry, Ownable, Pausable {
         
         marketId = _nextMarketId++;
         
-        Market memory market = Market({
+        IMarketRegistry.Market memory market = IMarketRegistry.Market({
             isActive: true,
             symbol: symbol,
             oracleFeedId: oracleFeedId,
@@ -167,9 +140,9 @@ contract MarketRegistry is IMarketRegistry, Ownable, Pausable {
         _allMarketIds.push(marketId);
         
         // Initialize history
-        _marketHistory[marketId].push(MarketUpdate({
+        _marketHistory[marketId].push(IMarketRegistry.MarketUpdate({
             marketId: marketId,
-            oldConfig: Market({
+            oldConfig: IMarketRegistry.Market({
                 isActive: false,
                 symbol: "",
                 oracleFeedId: bytes32(0),
@@ -213,10 +186,10 @@ contract MarketRegistry is IMarketRegistry, Ownable, Pausable {
         uint256 maxPositionSize,
         uint256 maxOpenInterest
     ) external override onlyGovernance marketExists(marketId) {
-        Market storage market = _markets[marketId];
+        IMarketRegistry.Market storage market = _markets[marketId];
         
         // Save old configuration
-        Market memory oldConfig = market;
+        IMarketRegistry.Market memory oldConfig = market;
         
         // Update parameters
         market.maxLeverage = maxLeverage;
@@ -229,7 +202,7 @@ contract MarketRegistry is IMarketRegistry, Ownable, Pausable {
         market.version++;
         
         // Save to history
-        _marketHistory[marketId].push(MarketUpdate({
+        _marketHistory[marketId].push(IMarketRegistry.MarketUpdate({
             marketId: marketId,
             oldConfig: oldConfig,
             newConfig: market,
@@ -249,7 +222,7 @@ contract MarketRegistry is IMarketRegistry, Ownable, Pausable {
         onlyGovernance 
         marketExists(marketId) 
     {
-        Market storage market = _markets[marketId];
+        IMarketRegistry.Market storage market = _markets[marketId];
         require(market.isActive != isActive, "MarketRegistry: same status");
         
         // Can't disable market with open positions (checked by PerpEngine)
@@ -274,7 +247,7 @@ contract MarketRegistry is IMarketRegistry, Ownable, Pausable {
     {
         require(newFeedId != bytes32(0), "MarketRegistry: invalid feed");
         
-        Market storage market = _markets[marketId];
+        IMarketRegistry.Market storage market = _markets[marketId];
         bytes32 oldFeedId = market.oracleFeedId;
         
         require(oldFeedId != newFeedId, "MarketRegistry: same feed");
@@ -298,7 +271,7 @@ contract MarketRegistry is IMarketRegistry, Ownable, Pausable {
         view 
         override 
         marketExists(marketId) 
-        returns (Market memory) 
+        returns (IMarketRegistry.Market memory)
     {
         return _markets[marketId];
     }
@@ -310,7 +283,7 @@ contract MarketRegistry is IMarketRegistry, Ownable, Pausable {
         external 
         view 
         override 
-        returns (uint256 marketId, Market memory market) 
+        returns (uint256 marketId, IMarketRegistry.Market memory market)
     {
         marketId = _symbolToMarketId[symbol];
         require(marketId > 0, "MarketRegistry: symbol not found");
@@ -327,7 +300,7 @@ contract MarketRegistry is IMarketRegistry, Ownable, Pausable {
         marketExists(marketId) 
         returns (bool isActive, uint256 version) 
     {
-        Market storage market = _markets[marketId];
+        IMarketRegistry.Market storage market = _markets[marketId];
         return (market.isActive, market.version);
     }
 
@@ -344,7 +317,7 @@ contract MarketRegistry is IMarketRegistry, Ownable, Pausable {
             return (false, "MarketRegistry: invalid market ID");
         }
         
-        Market storage market = _markets[marketId];
+        IMarketRegistry.Market storage market = _markets[marketId];
         
         if (!market.isActive) {
             return (false, "MarketRegistry: market inactive");
@@ -402,16 +375,16 @@ contract MarketRegistry is IMarketRegistry, Ownable, Pausable {
         view 
         override 
         marketExists(marketId) 
-        returns (MarketUpdate[] memory history) 
+        returns (IMarketRegistry.MarketUpdate[] memory history)
     {
-        MarketUpdate[] storage fullHistory = _marketHistory[marketId];
+        IMarketRegistry.MarketUpdate[] storage fullHistory = _marketHistory[marketId];
         uint256 historyLength = fullHistory.length;
         
         if (limit == 0 || limit > historyLength) {
             limit = historyLength;
         }
         
-        history = new MarketUpdate[](limit);
+        history = new IMarketRegistry.MarketUpdate[](limit);
         
         for (uint256 i = 0; i < limit; i++) {
             history[i] = fullHistory[historyLength - 1 - i];

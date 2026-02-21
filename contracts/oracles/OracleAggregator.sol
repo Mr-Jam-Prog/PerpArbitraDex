@@ -35,9 +35,12 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
         PriceStatus status;
         uint256 minPrice;
         uint256 maxPrice;
-        uint256[] sourcePrices;
-        uint256[] sourceTimestamps;
-        uint256[] sourceConfidences;
+    }
+
+    struct SourceData {
+        uint256[] prices;
+        uint256[] timestamps;
+        uint256[] confidences;
     }
 
     struct PriceCache {
@@ -60,6 +63,9 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
     
     // Feed ID => configuration
     mapping(bytes32 => FeedConfig) private _feedConfigs;
+
+    // feedId => timestamp => SourceData
+    mapping(bytes32 => mapping(uint256 => SourceData)) private _aggregatedSourceData;
     
     // Security module
     address public oracleSecurity;
@@ -224,6 +230,13 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
         
         // Update aggregated price
         _aggregatedPrices[feedId] = aggPrice;
+
+        // Store source data for audit
+        _aggregatedSourceData[feedId][aggPrice.timestamp] = SourceData({
+            prices: prices,
+            timestamps: timestamps,
+            confidences: confidences
+        });
         
         // Update cache
         _priceCache[feedId] = PriceCache({
@@ -493,10 +506,7 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
             confidence: avgConfidence,
             status: status,
             minPrice: minPrice,
-            maxPrice: maxPrice,
-            sourcePrices: prices,
-            sourceTimestamps: timestamps,
-            sourceConfidences: confidences
+            maxPrice: maxPrice
         });
     }
 
@@ -768,6 +778,42 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
      */
     function getEmergencyPrice(bytes32 feedId) external view returns (uint256) {
         return _emergencyPrices[feedId];
+    }
+
+    /**
+     * @notice Get aggregated source data for audit
+     */
+    function getAggregatedSourceData(bytes32 feedId, uint256 timestamp)
+        external
+        view
+        returns (uint256[] memory prices, uint256[] memory timestamps, uint256[] memory confidences)
+    {
+        SourceData storage data = _aggregatedSourceData[feedId][timestamp];
+        return (data.prices, data.timestamps, data.confidences);
+    }
+
+    /**
+     * @inheritdoc IOracleAggregator
+     */
+    function updatePrice(
+        bytes32 feedId,
+        uint256 price,
+        uint256 timestamp,
+        uint256 confidence
+    ) external override whenNotPaused {
+        // Only security module can push prices directly
+        require(msg.sender == oracleSecurity, "OracleAggregator: only security module");
+
+        _aggregatedPrices[feedId] = AggregatedPrice({
+            price: price,
+            timestamp: timestamp,
+            confidence: confidence,
+            status: PriceStatus.ACTIVE,
+            minPrice: price,
+            maxPrice: price
+        });
+
+        emit PriceUpdated(feedId, price, timestamp, confidence);
     }
 }
 

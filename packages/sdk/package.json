@@ -12,7 +12,7 @@
     "ethers": "^6.10.0"
   },
   "peerDependencies": {
-    "@perpdex/math": "*"
+    "@perpdex/math": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.9.3",

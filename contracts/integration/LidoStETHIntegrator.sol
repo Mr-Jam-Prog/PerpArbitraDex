@@ -12,6 +12,7 @@ interface IStETH {
     function getSharesByPooledEth(uint256 _ethAmount) external view returns (uint256);
     function sharesOf(address _account) external view returns (uint256);
     function transferShares(address _recipient, uint256 _sharesAmount) external returns (uint256);
+    function transfer(address recipient, uint256 amount) external returns (bool);
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
     function balanceOf(address account) external view returns (uint256);
     function allowance(address owner, address spender) external view returns (uint256);
@@ -128,7 +129,7 @@ contract LidoStETHIntegrator is ReentrancyGuard {
         
         if (useWstETH) {
             // Wrap to wstETH (non-rebasing)
-            uint256 stETHAmount = _submitToLido{value: ethAmount}(referral);
+            uint256 stETHAmount = _submitToLido(referral);
             uint256 wstETHAmount = _stETHToWstETH(stETHAmount);
             
             // Transfer wstETH to user
@@ -137,7 +138,7 @@ contract LidoStETHIntegrator is ReentrancyGuard {
             emit ETHWrapped(msg.sender, ethAmount, stETHAmount, 0, true);
         } else {
             // Direct stETH (rebasing)
-            uint256 shares = _submitToLido{value: ethAmount}(referral);
+            uint256 shares = _submitToLido(referral);
             
             // Get stETH amount from shares
             uint256 stETHAmount = stETH.getPooledEthByShares(shares);
@@ -273,7 +274,7 @@ contract LidoStETHIntegrator is ReentrancyGuard {
      * @param user User address
      * @return value Collateral value in ETH terms
      */
-    function getCollateralValue(address user) external view returns (uint256) {
+    function getCollateralValue(address user) public view returns (uint256) {
         uint256 shares = userShares[user];
         
         if (shares == 0) return 0;

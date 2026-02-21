@@ -171,7 +171,7 @@ contract PositionManager is
         exists = _exists(positionId);
         if (exists) {
             // Check with PerpEngine if position is still active
-            try IPerpEngine(perpEngine).getPosition(positionId) returns (
+            try IPerpEngine(perpEngine).getPositionInternal(positionId) returns (
                 IPerpEngine.Position memory position
             ) {
                 isActive = position.isActive;
@@ -209,7 +209,7 @@ contract PositionManager is
         // Count active positions by checking with PerpEngine
         for (uint256 i = 1; i <= total; i++) {
             if (_exists(i)) {
-                try IPerpEngine(perpEngine).getPosition(i) returns (
+                try IPerpEngine(perpEngine).getPositionInternal(i) returns (
                     IPerpEngine.Position memory position
                 ) {
                     if (position.isActive) {
@@ -237,7 +237,7 @@ contract PositionManager is
         
         // Only allow transfers if position is not active
         if (from != address(0) && to != address(0)) {
-            try IPerpEngine(perpEngine).getPosition(tokenId) returns (
+            try IPerpEngine(perpEngine).getPositionInternal(tokenId) returns (
                 IPerpEngine.Position memory position
             ) {
                 require(!position.isActive, "PositionManager: cannot transfer active position");

@@ -34,7 +34,8 @@ contract PerpDexLPToken is ERC20, ERC20Permit, Ownable {
         string memory symbol,
         address _liquidityPool,
         address initialOwner
-    ) ERC20(name, symbol) ERC20Permit(name) Ownable(initialOwner) {
+    ) ERC20(name, symbol) ERC20Permit(name) {
+        _transferOwnership(initialOwner);
         require(_liquidityPool != address(0), "Invalid liquidity pool");
         require(initialOwner != address(0), "Invalid owner");
         
@@ -95,7 +96,7 @@ contract PerpDexLPToken is ERC20, ERC20Permit, Ownable {
     /**
      * @dev Override transfer to respect transfersEnabled flag
      */
-    function _update(
+    function _beforeTokenTransfer(
         address from,
         address to,
         uint256 amount
@@ -104,7 +105,7 @@ contract PerpDexLPToken is ERC20, ERC20Permit, Ownable {
             require(transfersEnabled, "Transfers disabled");
         }
         
-        super._update(from, to, amount);
+        super._beforeTokenTransfer(from, to, amount);
     }
     
     // ============ VIEW FUNCTIONS ============
