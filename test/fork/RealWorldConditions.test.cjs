@@ -1,10 +1,12 @@
+if(!BigInt.prototype.mul){BigInt.prototype.mul=function(x){return this*BigInt(x)};BigInt.prototype.div=function(x){return this/BigInt(x)};BigInt.prototype.add=function(x){return this+BigInt(x)};BigInt.prototype.sub=function(x){return this-BigInt(x)};BigInt.prototype.gt=function(x){return this>BigInt(x)};BigInt.prototype.lt=function(x){return this<BigInt(x)};BigInt.prototype.gte=function(x){return this>=BigInt(x)};BigInt.prototype.lte=function(x){return this<=BigInt(x)};BigInt.prototype.eq=function(x){return this==BigInt(x)}};
 // @title: Tests sous conditions de marché réelles
 // @scenarios: Volatilité élevée, liquidité faible, black swan
 // @network: Mainnet fork avec manipulation de temps/blocs
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits } = ethers.utils;
+const { parseUnits, parseEther } = ethers;
+const { parseUnits } =
 const { time, mine } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("🌍 Real World Market Conditions", function () {
@@ -47,7 +49,7 @@ describe("🌍 Real World Market Conditions", function () {
       const collateral = parseUnits("1000", 6);
       const positionSize = collateral.mul(5); // 5x leverage
       
-      await usdc.connect(trader1).approve(perpEngine.address, collateral);
+      await usdc.connect(trader1).approve(perpEngine.target, collateral);
       const positionId = await perpEngine.connect(trader1).openPosition(
         "ETH-USD",
         collateral,
@@ -248,7 +250,7 @@ describe("🌍 Real World Market Conditions", function () {
   
   async function createTestPosition() {
     const collateral = parseUnits("1000", 6);
-    await usdc.connect(trader1).approve(perpEngine.address, collateral);
+    await usdc.connect(trader1).approve(perpEngine.target, collateral);
     
     return await perpEngine.connect(trader1).openPosition(
       "ETH-USD",

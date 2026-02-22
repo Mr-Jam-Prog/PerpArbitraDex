@@ -1,10 +1,12 @@
+if(!BigInt.prototype.mul){BigInt.prototype.mul=function(x){return this*BigInt(x)};BigInt.prototype.div=function(x){return this/BigInt(x)};BigInt.prototype.add=function(x){return this+BigInt(x)};BigInt.prototype.sub=function(x){return this-BigInt(x)};BigInt.prototype.gt=function(x){return this>BigInt(x)};BigInt.prototype.lt=function(x){return this<BigInt(x)};BigInt.prototype.gte=function(x){return this>=BigInt(x)};BigInt.prototype.lte=function(x){return this<=BigInt(x)};BigInt.prototype.eq=function(x){return this==BigInt(x)}};
 // @title: Simulations d'attaques économiques coordonnées
 // @scenarios: Manipulation de prix, attaques flash loan, griefing
 // @goal: Vérifier la résistance aux attaques économiques
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits } = ethers.utils;
+const { parseUnits, parseEther } = ethers;
+const { parseUnits } =
 
 describe("🦹 Economic Attack Simulations", function () {
   let deployer, attacker, victim;
@@ -20,8 +22,8 @@ describe("🦹 Economic Attack Simulations", function () {
     // ...
     
     // Funding de l'attaquant
-    await usdc.mint(attacker.address, ATTACK_BUDGET);
-    await weth.mint(attacker.address, parseUnits("100", 18));
+    await usdc.mint(attacker.target, ATTACK_BUDGET);
+    await weth.mint(attacker.target, parseUnits("100", 18));
   });
   
   describe("💰 Oracle Manipulation Attacks", function () {
@@ -42,7 +44,7 @@ describe("🦹 Economic Attack Simulations", function () {
       await manipulateOraclePrice("ETH-USD", -30); // Retour au prix initial
       
       // Vérification: L'attaquant ne devrait pas faire de profit excessif
-      const attackerProfit = await calculateAttackerProfit(attacker.address);
+      const attackerProfit = await calculateAttackerProfit(attacker.target);
       expect(attackerProfit).to.be.lt(parseUnits("10000", 6)); // < $10k profit
     });
     
@@ -91,11 +93,11 @@ describe("🦹 Economic Attack Simulations", function () {
     });
     
     it("Devrait limiter la taille des flash loans", async function () {
-      const maxFlashLoan = await perpEngine.getMaxFlashLoan(usdc.address);
+      const maxFlashLoan = await perpEngine.getMaxFlashLoan(usdc.target);
       const excessiveLoan = maxFlashLoan.add(1);
       
       await expect(
-        perpEngine.executeFlashLoan(usdc.address, excessiveLoan, "0x")
+        perpEngine.executeFlashLoan(usdc.target, excessiveLoan, "0x")
       ).to.be.revertedWith("Flash loan amount exceeds limit");
     });
   });
@@ -106,7 +108,7 @@ describe("🦹 Economic Attack Simulations", function () {
       // les liquidations non rentables
       
       const griefingCost = parseUnits("1000", 6);
-      await usdc.connect(attacker).approve(perpEngine.address, griefingCost);
+      await usdc.connect(attacker).approve(perpEngine.target, griefingCost);
       
       // Création de nombreuses petites positions
       for (let i = 0; i < 100; i++) {

@@ -1,3 +1,4 @@
+if(!BigInt.prototype.mul){BigInt.prototype.mul=function(x){return this*BigInt(x)};BigInt.prototype.div=function(x){return this/BigInt(x)};BigInt.prototype.add=function(x){return this+BigInt(x)};BigInt.prototype.sub=function(x){return this-BigInt(x)};BigInt.prototype.gt=function(x){return this>BigInt(x)};BigInt.prototype.lt=function(x){return this<BigInt(x)};BigInt.prototype.gte=function(x){return this>=BigInt(x)};BigInt.prototype.lte=function(x){return this<=BigInt(x)};BigInt.prototype.eq=function(x){return this==BigInt(x)}};
 // @title: Tests unitaires pour OracleAggregator
 // @coverage: >95% (multi-source, fallback, security)
 // @audit: Critical for price manipulation protection
@@ -5,6 +6,8 @@
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { parseUnits, parseEther } = ethers;
+const { parseUnits, parseEther } = ethers;
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("🔮 OracleAggregator - Unit Tests", function () {
@@ -37,7 +40,7 @@ describe("🔮 OracleAggregator - Unit Tests", function () {
     const OracleAggregator = await ethers.getContractFactory("OracleAggregator");
     oracleAggregator = await OracleAggregator.deploy();
     await oracleAggregator.waitForDeployment();
-    await oracleAggregator.initialize(oracleSanityChecker.address);
+    await oracleAggregator.initialize(oracleSanityChecker.target);
     
     // Déploiement des oracles mock
     const MockOracle = await ethers.getContractFactory("MockOracle");
@@ -55,9 +58,9 @@ describe("🔮 OracleAggregator - Unit Tests", function () {
     await twapOracle.setPrice(ETH_USD_MARKET, BASE_PRICE);
     
     // Configuration de l'agrégateur
-    await oracleAggregator.setOracleSource(0, chainlinkOracle.address); // Primary
-    await oracleAggregator.setOracleSource(1, pythOracle.address);     // Secondary
-    await oracleAggregator.setOracleSource(2, twapOracle.address);     // Tertiary
+    await oracleAggregator.setOracleSource(0, chainlinkOracle.target); // Primary
+    await oracleAggregator.setOracleSource(1, pythOracle.target);     // Secondary
+    await oracleAggregator.setOracleSource(2, twapOracle.target);     // Tertiary
   });
   
   describe("📊 Price Aggregation", function () {
@@ -155,8 +158,8 @@ describe("🔮 OracleAggregator - Unit Tests", function () {
       await oracle5.waitForDeployment();
       await oracle5.setPrice(ETH_USD_MARKET, BASE_PRICE);
       
-      await oracleAggregator.setOracleSource(3, oracle4.address);
-      await oracleAggregator.setOracleSource(4, oracle5.address);
+      await oracleAggregator.setOracleSource(3, oracle4.target);
+      await oracleAggregator.setOracleSource(4, oracle5.target);
       
       // 3 oracles à 2000, 2 oracles à 2100
       await chainlinkOracle.setPrice(ETH_USD_MARKET, ethers.parseUnits("2100", 18));
@@ -205,7 +208,7 @@ describe("🔮 OracleAggregator - Unit Tests", function () {
       await newOracle.waitForDeployment();
       await newOracle.setPrice(ETH_USD_MARKET, ethers.parseUnits("2100", 18));
       
-      await oracleAggregator.connect(owner).setOracleSource(0, newOracle.address);
+      await oracleAggregator.connect(owner).setOracleSource(0, newOracle.target);
       
       const price = await oracleAggregator.getPrice(ETH_USD_MARKET);
       expect(price).to.equal(ethers.parseUnits("2100", 18));
@@ -224,9 +227,9 @@ describe("🔮 OracleAggregator - Unit Tests", function () {
       const newSanityChecker = await (await ethers.getContractFactory("OracleSanityChecker")).deploy();
       await newSanityChecker.waitForDeployment();
       
-      await oracleAggregator.connect(owner).setSanityChecker(newSanityChecker.address);
+      await oracleAggregator.connect(owner).setSanityChecker(newSanityChecker.target);
       
-      expect(await oracleAggregator.sanityChecker()).to.equal(newSanityChecker.address);
+      expect(await oracleAggregator.sanityChecker()).to.equal(newSanityChecker.target);
     });
     
     it("Should allow emergency price override", async function () {

@@ -1,10 +1,12 @@
+if(!BigInt.prototype.mul){BigInt.prototype.mul=function(x){return this*BigInt(x)};BigInt.prototype.div=function(x){return this/BigInt(x)};BigInt.prototype.add=function(x){return this+BigInt(x)};BigInt.prototype.sub=function(x){return this-BigInt(x)};BigInt.prototype.gt=function(x){return this>BigInt(x)};BigInt.prototype.lt=function(x){return this<BigInt(x)};BigInt.prototype.gte=function(x){return this>=BigInt(x)};BigInt.prototype.lte=function(x){return this<=BigInt(x)};BigInt.prototype.eq=function(x){return this==BigInt(x)}};
 // @title: Tests avancés de manipulation d'oracles
 // @scenarios: Flash loan attacks, timestamp manipulation, multi-oracle attacks
 // @goal: Vérifier la résistance aux manipulations sophistiquées
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits } = ethers.utils;
+const { parseUnits, parseEther } = ethers;
+const { parseUnits } =
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("🎭 Advanced Oracle Manipulation Attacks", function () {
@@ -22,25 +24,25 @@ describe("🎭 Advanced Oracle Manipulation Attacks", function () {
     const ChainlinkOracle = await ethers.getContractFactory("ChainlinkOracle");
     chainlinkOracle = await ChainlinkOracle.deploy(
       "0x0000000000000000000000000000000000000000", // registry
-      oracleAggregator.address
+      oracleAggregator.target
     );
     
     const PythOracle = await ethers.getContractFactory("PythOracle");
     pythOracle = await PythOracle.deploy(
       "0x0000000000000000000000000000000000000000", // pyth address
-      oracleAggregator.address
+      oracleAggregator.target
     );
     
     const TWAPOracle = await ethers.getContractFactory("TWAPOracle");
     twapOracle = await TWAPOracle.deploy(
       "0x0000000000000000000000000000000000000000", // uniswap factory
-      oracleAggregator.address
+      oracleAggregator.target
     );
     
     // Configuration
-    await oracleAggregator.addOracleSource("ETH-USD", chainlinkOracle.address);
-    await oracleAggregator.addOracleSource("ETH-USD", pythOracle.address);
-    await oracleAggregator.addOracleSource("ETH-USD", twapOracle.address);
+    await oracleAggregator.addOracleSource("ETH-USD", chainlinkOracle.target);
+    await oracleAggregator.addOracleSource("ETH-USD", pythOracle.target);
+    await oracleAggregator.addOracleSource("ETH-USD", twapOracle.target);
   });
   
   describe("⏱️ Timestamp Manipulation", function () {
@@ -164,7 +166,7 @@ describe("🎭 Advanced Oracle Manipulation Attacks", function () {
       expect(price).to.be.gt(0);
       
       // Vérification que l'oracle down est signalé
-      const isChainlinkActive = await oracleAggregator.isOracleActive(chainlinkOracle.address);
+      const isChainlinkActive = await oracleAggregator.isOracleActive(chainlinkOracle.target);
       expect(isChainlinkActive).to.be.false;
     });
     
@@ -198,9 +200,9 @@ describe("🎭 Advanced Oracle Manipulation Attacks", function () {
       await chainlinkOracle.setPrice("ETH-USD", parseUnits("1000000", 8)); // $1M (impossible)
       
       // Le système devrait bannir cet oracle
-      await oracleAggregator.reportMaliciousOracle(chainlinkOracle.address);
+      await oracleAggregator.reportMaliciousOracle(chainlinkOracle.target);
       
-      const isBanned = await oracleAggregator.isOracleBanned(chainlinkOracle.address);
+      const isBanned = await oracleAggregator.isOracleBanned(chainlinkOracle.target);
       expect(isBanned).to.be.true;
     });
     

@@ -1,5 +1,7 @@
+if(!BigInt.prototype.mul){BigInt.prototype.mul=function(x){return this*BigInt(x)};BigInt.prototype.div=function(x){return this/BigInt(x)};BigInt.prototype.add=function(x){return this+BigInt(x)};BigInt.prototype.sub=function(x){return this-BigInt(x)};BigInt.prototype.gt=function(x){return this>BigInt(x)};BigInt.prototype.lt=function(x){return this<BigInt(x)};BigInt.prototype.gte=function(x){return this>=BigInt(x)};BigInt.prototype.lte=function(x){return this<=BigInt(x)};BigInt.prototype.eq=function(x){return this==BigInt(x)}};
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { parseUnits, parseEther } = ethers;
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("🏁 Protocol Core Validation", function () {
@@ -20,83 +22,75 @@ describe("🏁 Protocol Core Validation", function () {
         quoteToken = await MockERC20.deploy("USD Stable", "USDC");
         await quoteToken.waitForDeployment();
 
-        // Deploy Mock Oracle
-        const MockOracle = await ethers.getContractFactory("MockOracle");
-        const mockOracle = await MockOracle.deploy();
-        await mockOracle.waitForDeployment();
-        await mockOracle.setPrice(INITIAL_PRICE);
-
         // Deploy Infrastructure
         const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
-        protocolConfig = await ProtocolConfig.deploy(await owner.getAddress(), await owner.getAddress());
+        protocolConfig = await ProtocolConfig.deploy(owner.address, owner.address);
         await protocolConfig.waitForDeployment();
 
         const OracleAggregator = await ethers.getContractFactory("OracleAggregator");
-        oracleAggregator = await OracleAggregator.deploy(await owner.getAddress(), await owner.getAddress());
+        oracleAggregator = await OracleAggregator.deploy(owner.address, owner.address);
         await oracleAggregator.waitForDeployment();
 
+        // Predicted addresses for circular dependencies
+        const deployerAddr = owner.address;
+        const nonce = await ethers.provider.getTransactionCount(deployerAddr);
+
+        // Nonce prediction in Hardhat
+        const posMgrAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 2 });
+        const ammAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 3 });
+        const liqAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 4 });
+        const perpAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 5 });
+
         const PositionManager = await ethers.getContractFactory("PositionManager");
-        // Need an address that is not the contract itself for constructor if it checks
-        positionManager = await PositionManager.deploy(await owner.getAddress());
+        const positionManager = await PositionManager.deploy(perpAddr);
         await positionManager.waitForDeployment();
 
+        const AMMPool = await ethers.getContractFactory("AMMPool");
+        ammPool = await AMMPool.deploy(perpAddr, owner.address);
+        await ammPool.waitForDeployment();
+
         const LiquidationQueue = await ethers.getContractFactory("LiquidationQueue");
-        const liquidationQueue = await LiquidationQueue.deploy(await owner.getAddress());
+        const liquidationQueue = await LiquidationQueue.deploy(liqAddr);
+        await liquidationQueue.waitForDeployment();
 
         const IncentiveDistributor = await ethers.getContractFactory("IncentiveDistributor");
-        const incentiveDistributor = await IncentiveDistributor.deploy(await owner.getAddress());
+        const incentiveDistributor = await IncentiveDistributor.deploy(
+            quoteToken.target,
+            perpAddr,
+            protocolConfig.target,
+            owner.address,
+            insuranceFund.address,
+            owner.address
+        );
+        await incentiveDistributor.waitForDeployment();
 
         const LiquidationEngine = await ethers.getContractFactory("LiquidationEngine");
         liquidationEngine = await LiquidationEngine.deploy(
-            await owner.getAddress(), // temp engine
-            await protocolConfig.getAddress(),
-            await oracleAggregator.getAddress(),
-            await quoteToken.getAddress(),
-            await liquidationQueue.getAddress(),
-            await incentiveDistributor.getAddress()
+            perpAddr,
+            protocolConfig.target,
+            oracleAggregator.target,
+            quoteToken.target,
+            liquidationQueue.target,
+            incentiveDistributor.target
         );
+        await liquidationEngine.waitForDeployment();
 
-        // Deploy PerpEngine
         const PerpEngine = await ethers.getContractFactory("PerpEngine");
         perpEngine = await PerpEngine.deploy(
-            await positionManager.getAddress(),
-            await owner.getAddress(), // temp AMM
-            await oracleAggregator.getAddress(),
-            await liquidationEngine.getAddress(),
-            await owner.getAddress(), // temp Risk
-            await protocolConfig.getAddress(),
-            await insuranceFund.getAddress(),
-            await quoteToken.getAddress(),
-            await quoteToken.getAddress()
+            positionManager.target,
+            ammPool.target,
+            oracleAggregator.target,
+            liquidationEngine.target,
+            owner.address, // riskManager mock
+            protocolConfig.target,
+            insuranceFund.address,
+            quoteToken.target,
+            quoteToken.target
         );
         await perpEngine.waitForDeployment();
-
-        // Deploy actual AMMPool
-        const AMMPool = await ethers.getContractFactory("AMMPool");
-        ammPool = await AMMPool.deploy(await perpEngine.getAddress(), await oracleAggregator.getAddress());
-        await ammPool.waitForDeployment();
-
-        // Re-deploy PerpEngine with correct AMM
-        perpEngine = await PerpEngine.deploy(
-            await positionManager.getAddress(),
-            await ammPool.getAddress(),
-            await oracleAggregator.getAddress(),
-            await liquidationEngine.getAddress(),
-            await owner.getAddress(), // Risk
-            await protocolConfig.getAddress(),
-            await insuranceFund.getAddress(),
-            await quoteToken.getAddress(),
-            await quoteToken.getAddress()
-        );
-        await perpEngine.waitForDeployment();
-
-        // Connect components
-        // In a real setup, we'd use governance but here we just prank or use owner
-        // ... (skipping some complex setup, focusing on math)
     });
 
     it("1. PnL Correctness: should calculate profit for long position", async function () {
-        // We'll use the PositionMathWrapper for pure logic verification
         const PositionMathWrapper = await ethers.getContractFactory("PositionMathWrapper");
         const wrapper = await PositionMathWrapper.deploy();
 
@@ -105,7 +99,7 @@ describe("🏁 Protocol Core Validation", function () {
         const size = 100n * PRECISION;
 
         const pnl = await wrapper.calculatePnL(entryPrice, exitPrice, size, true);
-        expect(pnl).to.equal(10n * PRECISION); // (2200-2000)/2000 * 100 = 10
+        expect(pnl).to.equal(10n * PRECISION);
     });
 
     it("2. PnL Correctness: should calculate loss for short position", async function () {
@@ -117,11 +111,6 @@ describe("🏁 Protocol Core Validation", function () {
         const size = 100n * PRECISION;
 
         const pnl = await wrapper.calculatePnL(entryPrice, exitPrice, size, false);
-        expect(pnl).to.equal(-10n * PRECISION); // -(2200-2000)/2000 * 100 = -10
-    });
-
-    it("3. Fee Accounting: protocol fee deduction", async function () {
-        // This requires a working PerpEngine setup
-        // For now, verified via code audit and PositionMath tests
+        expect(pnl).to.equal(-10n * PRECISION);
     });
 });

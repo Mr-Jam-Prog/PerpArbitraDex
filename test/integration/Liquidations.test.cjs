@@ -1,3 +1,4 @@
+if(!BigInt.prototype.mul){BigInt.prototype.mul=function(x){return this*BigInt(x)};BigInt.prototype.div=function(x){return this/BigInt(x)};BigInt.prototype.add=function(x){return this+BigInt(x)};BigInt.prototype.sub=function(x){return this-BigInt(x)};BigInt.prototype.gt=function(x){return this>BigInt(x)};BigInt.prototype.lt=function(x){return this<BigInt(x)};BigInt.prototype.gte=function(x){return this>=BigInt(x)};BigInt.prototype.lte=function(x){return this<=BigInt(x)};BigInt.prototype.eq=function(x){return this==BigInt(x)}};
 // @title: Tests d'intégration pour le système de liquidation
 // @coverage: Multi-position, queue, incentives
 // @audit: Critical for protocol solvency
@@ -5,6 +6,8 @@
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { parseUnits, parseEther } = ethers;
+const { parseUnits, parseEther } = ethers;
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("⚡ Liquidations - Integration Tests", function () {
@@ -19,9 +22,9 @@ describe("⚡ Liquidations - Integration Tests", function () {
   let owner, liquidator1, liquidator2, trader1, trader2;
   
   const ETH_USD_MARKET = "ETH-USD";
-  const INITIAL_PRICE = ethers.utils.parseUnits("2000", 18);
-  const COLLATERAL_AMOUNT = ethers.utils.parseUnits("10000", 18);
-  const HIGH_LEVERAGE = ethers.utils.parseUnits("8", 18); // 8x pour être proche de la liquidation
+  const INITIAL_PRICE = parseUnits("2000", 18);
+  const COLLATERAL_AMOUNT = parseUnits("10000", 18);
+  const HIGH_LEVERAGE = parseUnits("8", 18); // 8x pour être proche de la liquidation
   
   beforeEach(async function () {
     [owner, liquidator1, liquidator2, trader1, trader2] = await ethers.getSigners();
@@ -29,111 +32,111 @@ describe("⚡ Liquidations - Integration Tests", function () {
     // Déploiement complet du système
     const MockERC20 = await ethers.getContractFactory("MockERC20");
     collateralToken = await MockERC20.deploy("USD Stable", "USD", 18);
-    await collateralToken.deployed();
+    await collateralToken.waitForDeployment();
     
     const MockOracle = await ethers.getContractFactory("MockOracle");
     oracle = await MockOracle.deploy();
-    await oracle.deployed();
+    await oracle.waitForDeployment();
     await oracle.setPrice(ETH_USD_MARKET, INITIAL_PRICE);
     
     const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
     protocolConfig = await ProtocolConfig.deploy();
-    await protocolConfig.deployed();
+    await protocolConfig.waitForDeployment();
     await protocolConfig.initialize();
     
     const MarketRegistry = await ethers.getContractFactory("MarketRegistry");
-    const marketRegistry = await MarketRegistry.deploy(protocolConfig.address);
-    await marketRegistry.deployed();
+    const marketRegistry = await MarketRegistry.deploy(protocolConfig.target);
+    await marketRegistry.waitForDeployment();
     
     const PositionManager = await ethers.getContractFactory("PositionManager");
     positionManager = await PositionManager.deploy(
       "PerpArbitraDEX Positions",
       "PERP-POS",
-      protocolConfig.address
+      protocolConfig.target
     );
-    await positionManager.deployed();
+    await positionManager.waitForDeployment();
     
     const RiskManager = await ethers.getContractFactory("RiskManager");
-    const riskManager = await RiskManager.deploy(protocolConfig.address, ethers.constants.AddressZero);
-    await riskManager.deployed();
+    const riskManager = await RiskManager.deploy(protocolConfig.target, ethers.ZeroAddress);
+    await riskManager.waitForDeployment();
     
     const PerpEngine = await ethers.getContractFactory("PerpEngine");
     perpEngine = await PerpEngine.deploy(
-      protocolConfig.address,
-      marketRegistry.address,
-      positionManager.address
+      protocolConfig.target,
+      marketRegistry.target,
+      positionManager.target
     );
-    await perpEngine.deployed();
+    await perpEngine.waitForDeployment();
     
     const AMMPool = await ethers.getContractFactory("AMMPool");
-    const ammPool = await AMMPool.deploy(protocolConfig.address, perpEngine.address);
-    await ammPool.deployed();
+    const ammPool = await AMMPool.deploy(protocolConfig.target, perpEngine.target);
+    await ammPool.waitForDeployment();
     
     const LiquidationQueue = await ethers.getContractFactory("LiquidationQueue");
-    liquidationQueue = await LiquidationQueue.deploy(ethers.constants.AddressZero, protocolConfig.address);
-    await liquidationQueue.deployed();
+    liquidationQueue = await LiquidationQueue.deploy(ethers.ZeroAddress, protocolConfig.target);
+    await liquidationQueue.waitForDeployment();
     
     const IncentiveDistributor = await ethers.getContractFactory("IncentiveDistributor");
-    incentiveDistributor = await IncentiveDistributor.deploy(protocolConfig.address, ethers.constants.AddressZero);
-    await incentiveDistributor.deployed();
+    incentiveDistributor = await IncentiveDistributor.deploy(protocolConfig.target, ethers.ZeroAddress);
+    await incentiveDistributor.waitForDeployment();
     
     const LiquidationEngine = await ethers.getContractFactory("LiquidationEngine");
     liquidationEngine = await LiquidationEngine.deploy(
-      perpEngine.address,
-      riskManager.address,
-      protocolConfig.address
+      perpEngine.target,
+      riskManager.target,
+      protocolConfig.target
     );
-    await liquidationEngine.deployed();
+    await liquidationEngine.waitForDeployment();
     
     // Configuration complète
     await protocolConfig.setGlobalParameters(
-      ethers.utils.parseUnits("0.1", 18), // 10% initial
-      ethers.utils.parseUnits("0.08", 18), // 8% maintenance
-      ethers.utils.parseUnits("0.02", 18), // 2% liquidation fee
-      ethers.utils.parseUnits("0.001", 18), // 0.1% protocol fee
-      ethers.utils.parseUnits("10", 18), // 10x max leverage
+      parseUnits("0.1", 18), // 10% initial
+      parseUnits("0.08", 18), // 8% maintenance
+      parseUnits("0.02", 18), // 2% liquidation fee
+      parseUnits("0.001", 18), // 0.1% protocol fee
+      parseUnits("10", 18), // 10x max leverage
       3600
     );
     
-    await protocolConfig.setPerpEngine(perpEngine.address);
-    await protocolConfig.setRiskManager(riskManager.address);
-    await protocolConfig.setAMMPool(ammPool.address);
-    await protocolConfig.setLiquidationEngine(liquidationEngine.address);
+    await protocolConfig.setPerpEngine(perpEngine.target);
+    await protocolConfig.setRiskManager(riskManager.target);
+    await protocolConfig.setAMMPool(ammPool.target);
+    await protocolConfig.setLiquidationEngine(liquidationEngine.target);
     
-    await positionManager.setPerpEngine(perpEngine.address);
-    await marketRegistry.setPerpEngine(perpEngine.address);
-    await riskManager.setPerpEngine(perpEngine.address);
-    await ammPool.setPerpEngine(perpEngine.address);
+    await positionManager.setPerpEngine(perpEngine.target);
+    await marketRegistry.setPerpEngine(perpEngine.target);
+    await riskManager.setPerpEngine(perpEngine.target);
+    await ammPool.setPerpEngine(perpEngine.target);
     
-    await liquidationEngine.setLiquidationQueue(liquidationQueue.address);
-    await liquidationEngine.setIncentiveDistributor(incentiveDistributor.address);
-    await liquidationQueue.setLiquidationEngine(liquidationEngine.address);
+    await liquidationEngine.setLiquidationQueue(liquidationQueue.target);
+    await liquidationEngine.setIncentiveDistributor(incentiveDistributor.target);
+    await liquidationQueue.setLiquidationEngine(liquidationEngine.target);
     
     // Ajout du marché
     await marketRegistry.addMarket(
       ETH_USD_MARKET,
       "Ethereum / USD",
-      ethers.constants.AddressZero,
-      collateralToken.address,
-      ethers.utils.parseUnits("1000000", 18),
-      ethers.utils.parseUnits("100", 18),
-      ethers.utils.parseUnits("0.01", 18),
+      ethers.ZeroAddress,
+      collateralToken.target,
+      parseUnits("1000000", 18),
+      parseUnits("100", 18),
+      parseUnits("0.01", 18),
       ["mock"]
     );
     
-    await marketRegistry.setOracle(ETH_USD_MARKET, oracle.address);
+    await marketRegistry.setOracle(ETH_USD_MARKET, oracle.target);
     
     // Funding pour les tests
     await collateralToken.mint(trader1.address, COLLATERAL_AMOUNT.mul(10));
     await collateralToken.mint(trader2.address, COLLATERAL_AMOUNT.mul(10));
-    await collateralToken.mint(liquidator1.address, ethers.utils.parseEther("100"));
-    await collateralToken.mint(liquidator2.address, ethers.utils.parseEther("100"));
+    await collateralToken.mint(liquidator1.address, parseEther("100"));
+    await collateralToken.mint(liquidator2.address, parseEther("100"));
   });
   
   describe("🔍 Single Position Liquidation", function () {
     it("Should liquidate undercollateralized long position", async function () {
       // Trader ouvre une position long avec haut levier
-      await collateralToken.connect(trader1).approve(perpEngine.address, COLLATERAL_AMOUNT);
+      await collateralToken.connect(trader1).approve(perpEngine.target, COLLATERAL_AMOUNT);
       
       await perpEngine.connect(trader1).openPosition(
         ETH_USD_MARKET,
@@ -152,7 +155,7 @@ describe("⚡ Liquidations - Integration Tests", function () {
       
       // Vérifie que la position est liquidatable
       const healthFactor = await perpEngine.getHealthFactor(positionId);
-      expect(healthFactor).to.be.lt(ethers.utils.parseUnits("1", 18));
+      expect(healthFactor).to.be.lt(parseUnits("1", 18));
       
       const isLiquidatable = await liquidationEngine.isLiquidatable(positionId);
       expect(isLiquidatable).to.be.true;
@@ -169,11 +172,11 @@ describe("⚡ Liquidations - Integration Tests", function () {
       
       // Vérifie la distribution des récompenses
       const liquidatorBalance = await collateralToken.balanceOf(liquidator1.address);
-      expect(liquidatorBalance).to.be.gt(ethers.utils.parseEther("100")); // A reçu une récompense
+      expect(liquidatorBalance).to.be.gt(parseEther("100")); // A reçu une récompense
     });
     
     it("Should liquidate undercollateralized short position", async function () {
-      await collateralToken.connect(trader2).approve(perpEngine.address, COLLATERAL_AMOUNT);
+      await collateralToken.connect(trader2).approve(perpEngine.target, COLLATERAL_AMOUNT);
       
       await perpEngine.connect(trader2).openPosition(
         ETH_USD_MARKET,
@@ -197,13 +200,13 @@ describe("⚡ Liquidations - Integration Tests", function () {
     });
     
     it("Should not liquidate healthy position", async function () {
-      await collateralToken.connect(trader1).approve(perpEngine.address, COLLATERAL_AMOUNT);
+      await collateralToken.connect(trader1).approve(perpEngine.target, COLLATERAL_AMOUNT);
       
       await perpEngine.connect(trader1).openPosition(
         ETH_USD_MARKET,
         true,
         COLLATERAL_AMOUNT,
-        ethers.utils.parseUnits("3", 18), // Levier modéré
+        parseUnits("3", 18), // Levier modéré
         INITIAL_PRICE.mul(101).div(100)
       );
       
@@ -221,7 +224,7 @@ describe("⚡ Liquidations - Integration Tests", function () {
     });
     
     it("Should handle partial liquidation", async function () {
-      await collateralToken.connect(trader1).approve(perpEngine.address, COLLATERAL_AMOUNT);
+      await collateralToken.connect(trader1).approve(perpEngine.target, COLLATERAL_AMOUNT);
       
       await perpEngine.connect(trader1).openPosition(
         ETH_USD_MARKET,
@@ -235,7 +238,7 @@ describe("⚡ Liquidations - Integration Tests", function () {
       const initialSize = (await perpEngine.getPosition(positionId)).size;
       
       // Configure la liquidation partielle (50%)
-      await liquidationEngine.setPartialLiquidationRatio(ethers.utils.parseUnits("0.5", 18));
+      await liquidationEngine.setPartialLiquidationRatio(parseUnits("0.5", 18));
       
       await oracle.setPrice(ETH_USD_MARKET, INITIAL_PRICE.mul(92).div(100));
       await liquidationEngine.connect(liquidator1).liquidatePosition(positionId);
@@ -253,7 +256,7 @@ describe("⚡ Liquidations - Integration Tests", function () {
       
       for (let i = 0; i < 3; i++) {
         const trader = i === 0 ? trader1 : trader2;
-        await collateralToken.connect(trader).approve(perpEngine.address, COLLATERAL_AMOUNT);
+        await collateralToken.connect(trader).approve(perpEngine.target, COLLATERAL_AMOUNT);
         
         await perpEngine.connect(trader).openPosition(
           ETH_USD_MARKET,
@@ -290,13 +293,13 @@ describe("⚡ Liquidations - Integration Tests", function () {
     it("Should prioritize most undercollateralized positions", async function () {
       // Crée des positions avec différents niveaux de sous-marge
       const positionData = [
-        { collateral: COLLATERAL_AMOUNT, leverage: ethers.utils.parseUnits("7", 18) },
-        { collateral: COLLATERAL_AMOUNT, leverage: ethers.utils.parseUnits("8", 18) },
-        { collateral: COLLATERAL_AMOUNT, leverage: ethers.utils.parseUnits("9", 18) }
+        { collateral: COLLATERAL_AMOUNT, leverage: parseUnits("7", 18) },
+        { collateral: COLLATERAL_AMOUNT, leverage: parseUnits("8", 18) },
+        { collateral: COLLATERAL_AMOUNT, leverage: parseUnits("9", 18) }
       ];
       
       for (const data of positionData) {
-        await collateralToken.connect(trader1).approve(perpEngine.address, data.collateral);
+        await collateralToken.connect(trader1).approve(perpEngine.target, data.collateral);
         
         await perpEngine.connect(trader1).openPosition(
           ETH_USD_MARKET,
@@ -328,7 +331,7 @@ describe("⚡ Liquidations - Integration Tests", function () {
     
     it("Should handle liquidation cascades", async function () {
       // Crée un réseau de positions interconnectées
-      await collateralToken.connect(trader1).approve(perpEngine.address, COLLATERAL_AMOUNT.mul(3));
+      await collateralToken.connect(trader1).approve(perpEngine.target, COLLATERAL_AMOUNT.mul(3));
       
       for (let i = 0; i < 3; i++) {
         await perpEngine.connect(trader1).openPosition(
@@ -368,7 +371,7 @@ describe("⚡ Liquidations - Integration Tests", function () {
   
   describe("💰 Liquidation Incentives", function () {
     it("Should distribute correct liquidation rewards", async function () {
-      await collateralToken.connect(trader1).approve(perpEngine.address, COLLATERAL_AMOUNT);
+      await collateralToken.connect(trader1).approve(perpEngine.target, COLLATERAL_AMOUNT);
       
       await perpEngine.connect(trader1).openPosition(
         ETH_USD_MARKET,
@@ -383,7 +386,7 @@ describe("⚡ Liquidations - Integration Tests", function () {
       
       // Calcule la récompense attendue
       const liquidationFee = await protocolConfig.liquidationFee();
-      const expectedReward = position.size.mul(liquidationFee).div(ethers.utils.parseUnits("1", 18));
+      const expectedReward = position.size.mul(liquidationFee).div(parseUnits("1", 18));
       
       await oracle.setPrice(ETH_USD_MARKET, INITIAL_PRICE.mul(92).div(100));
       
@@ -404,7 +407,7 @@ describe("⚡ Liquidations - Integration Tests", function () {
       // Crée plusieurs positions
       for (let i = 0; i < 2; i++) {
         const trader = i === 0 ? trader1 : trader2;
-        await collateralToken.connect(trader).approve(perpEngine.address, COLLATERAL_AMOUNT);
+        await collateralToken.connect(trader).approve(perpEngine.target, COLLATERAL_AMOUNT);
         
         await perpEngine.connect(trader).openPosition(
           ETH_USD_MARKET,
@@ -436,9 +439,9 @@ describe("⚡ Liquidations - Integration Tests", function () {
     
     it("Should cap maximum liquidation reward", async function () {
       // Crée une très grande position
-      const hugeCollateral = ethers.utils.parseUnits("1000000", 18); // $1M
+      const hugeCollateral = parseUnits("1000000", 18); // $1M
       await collateralToken.mint(trader1.address, hugeCollateral);
-      await collateralToken.connect(trader1).approve(perpEngine.address, hugeCollateral);
+      await collateralToken.connect(trader1).approve(perpEngine.target, hugeCollateral);
       
       await perpEngine.connect(trader1).openPosition(
         ETH_USD_MARKET,
@@ -468,7 +471,7 @@ describe("⚡ Liquidations - Integration Tests", function () {
       // Note: Ce test nécessite un environnement avec flash loans
       // Pour l'instant, nous testons juste que le chemin ne revert pas
       
-      await collateralToken.connect(trader1).approve(perpEngine.address, COLLATERAL_AMOUNT);
+      await collateralToken.connect(trader1).approve(perpEngine.target, COLLATERAL_AMOUNT);
       
       await perpEngine.connect(trader1).openPosition(
         ETH_USD_MARKET,
@@ -503,7 +506,7 @@ describe("⚡ Liquidations - Integration Tests", function () {
   
   describe("🛡️ Security & MEV Protection", function () {
     it("Should prevent front-running via liquidation queue", async function () {
-      await collateralToken.connect(trader1).approve(perpEngine.address, COLLATERAL_AMOUNT);
+      await collateralToken.connect(trader1).approve(perpEngine.target, COLLATERAL_AMOUNT);
       
       await perpEngine.connect(trader1).openPosition(
         ETH_USD_MARKET,
@@ -533,7 +536,7 @@ describe("⚡ Liquidations - Integration Tests", function () {
     });
     
     it("Should enforce liquidation delay", async function () {
-      await collateralToken.connect(trader1).approve(perpEngine.address, COLLATERAL_AMOUNT);
+      await collateralToken.connect(trader1).approve(perpEngine.target, COLLATERAL_AMOUNT);
       
       await perpEngine.connect(trader1).openPosition(
         ETH_USD_MARKET,
@@ -549,8 +552,8 @@ describe("⚡ Liquidations - Integration Tests", function () {
       
       // Configure un délai de liquidation
       await liquidationEngine.setLiquidationParameters(
-        ethers.utils.parseUnits("0.05", 18),
-        ethers.utils.parseUnits("1000000", 18),
+        parseUnits("0.05", 18),
+        parseUnits("1000000", 18),
         300 // 5 minutes delay
       );
       
@@ -569,7 +572,7 @@ describe("⚡ Liquidations - Integration Tests", function () {
     });
     
     it("Should prevent double liquidation", async function () {
-      await collateralToken.connect(trader1).approve(perpEngine.address, COLLATERAL_AMOUNT);
+      await collateralToken.connect(trader1).approve(perpEngine.target, COLLATERAL_AMOUNT);
       
       await perpEngine.connect(trader1).openPosition(
         ETH_USD_MARKET,
@@ -594,7 +597,7 @@ describe("⚡ Liquidations - Integration Tests", function () {
     
     it("Should handle oracle manipulation attempts", async function () {
       // Test de résistance à la manipulation d'oracle
-      await collateralToken.connect(trader1).approve(perpEngine.address, COLLATERAL_AMOUNT);
+      await collateralToken.connect(trader1).approve(perpEngine.target, COLLATERAL_AMOUNT);
       
       await perpEngine.connect(trader1).openPosition(
         ETH_USD_MARKET,
@@ -627,7 +630,7 @@ describe("⚡ Liquidations - Integration Tests", function () {
   
   describe("📈 Performance & Gas Optimization", function () {
     it("Should have reasonable gas costs for liquidation", async function () {
-      await collateralToken.connect(trader1).approve(perpEngine.address, COLLATERAL_AMOUNT);
+      await collateralToken.connect(trader1).approve(perpEngine.target, COLLATERAL_AMOUNT);
       
       await perpEngine.connect(trader1).openPosition(
         ETH_USD_MARKET,
@@ -651,7 +654,7 @@ describe("⚡ Liquidations - Integration Tests", function () {
     it("Should handle batch liquidations efficiently", async function () {
       // Crée plusieurs positions
       for (let i = 0; i < 5; i++) {
-        await collateralToken.connect(trader1).approve(perpEngine.address, COLLATERAL_AMOUNT);
+        await collateralToken.connect(trader1).approve(perpEngine.target, COLLATERAL_AMOUNT);
         
         await perpEngine.connect(trader1).openPosition(
           ETH_USD_MARKET,
