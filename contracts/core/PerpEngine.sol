@@ -578,11 +578,26 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             position.isLong
         );
         
-        // Calculate liquidation penalty
+        // Calculate maximum possible margin deduction for PnL
+        uint256 pnlDeduction = 0;
+        if (pnl < 0) {
+            pnlDeduction = uint256(-pnl);
+        }
+
+        // Remaining margin after PnL
+        uint256 remainingAfterPnl = 0;
+        if (pnlDeduction < position.margin) {
+            remainingAfterPnl = position.margin - pnlDeduction;
+        }
+
+        // Calculate liquidation penalty, capped by remaining margin
         uint256 penalty = liquidatedSize.mulDiv(
             _markets[position.marketId].liquidationFeeRatio,
             PRECISION
         );
+        if (penalty > remainingAfterPnl) {
+            penalty = remainingAfterPnl;
+        }
         
         // Calculate liquidation reward
         liquidationReward = penalty / 2; // 50% to liquidator, 50% to insurance fund
@@ -590,14 +605,11 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         // Update global metrics
         totalPositionValue -= liquidatedSize;
 
-        // Update position
-        uint256 marginDeduction = _calculateLiquidationMarginDeduction(
-            position.margin,
-            position.size,
-            liquidatedSize,
-            pnl,
-            penalty
-        );
+        // Total margin deduction
+        uint256 marginDeduction = pnlDeduction + penalty;
+        if (marginDeduction > position.margin) {
+            marginDeduction = position.margin;
+        }
 
         totalCollateral -= marginDeduction;
 
