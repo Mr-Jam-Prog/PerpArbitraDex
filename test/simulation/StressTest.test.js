@@ -1,12 +1,10 @@
-if(!BigInt.prototype.mul){BigInt.prototype.mul=function(x){return this*BigInt(x)};BigInt.prototype.div=function(x){return this/BigInt(x)};BigInt.prototype.add=function(x){return this+BigInt(x)};BigInt.prototype.sub=function(x){return this-BigInt(x)};BigInt.prototype.gt=function(x){return this>BigInt(x)};BigInt.prototype.lt=function(x){return this<BigInt(x)};BigInt.prototype.gte=function(x){return this>=BigInt(x)};BigInt.prototype.lte=function(x){return this<=BigInt(x)};BigInt.prototype.eq=function(x){return this==BigInt(x)}};
 // @title: Stress testing avec 10k+ positions simultanées
 // @scenarios: Charge extrême, gas optimization, memory limits
 // @goal: Vérifier la scalabilité du protocole
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits, parseEther } = ethers;
-const { parseUnits } =
+const { parseUnits } = ethers.utils;
 const { mine } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("🔥 Massif Stress Testing", function () {
@@ -40,7 +38,7 @@ describe("🔥 Massif Stress Testing", function () {
       const collateral = parseUnits("100", 6); // $100 par position
       const positionSize = parseUnits("500", 6); // $500 (5x)
       
-      await usdc.approve(perpEngine.target, collateral.mul(NUM_POSITIONS));
+      await usdc.approve(perpEngine.address, collateral.mul(NUM_POSITIONS));
       
       console.log(`🎯 Création de ${NUM_POSITIONS} positions...`);
       

@@ -1,4 +1,3 @@
-if(!BigInt.prototype.mul){BigInt.prototype.mul=function(x){return this*BigInt(x)};BigInt.prototype.div=function(x){return this/BigInt(x)};BigInt.prototype.add=function(x){return this+BigInt(x)};BigInt.prototype.sub=function(x){return this-BigInt(x)};BigInt.prototype.gt=function(x){return this>BigInt(x)};BigInt.prototype.lt=function(x){return this<BigInt(x)};BigInt.prototype.gte=function(x){return this>=BigInt(x)};BigInt.prototype.lte=function(x){return this<=BigInt(x)};BigInt.prototype.eq=function(x){return this==BigInt(x)}};
 // @title: Tests unitaires pour FundingRateCalculator
 // @coverage: >95% (funding rate logic)
 // @audit: Critical for protocol economics
@@ -6,8 +5,6 @@ if(!BigInt.prototype.mul){BigInt.prototype.mul=function(x){return this*BigInt(x)
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits, parseEther } = ethers;
-const { parseUnits, parseEther } = ethers;
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("📊 FundingRateCalculator - Unit Tests", function () {

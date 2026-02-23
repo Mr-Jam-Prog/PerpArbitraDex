@@ -85,7 +85,7 @@ contract InvariantTestsTest is Test {
 
     // Mock functions for oracle and risk manager
     function getPrice(bytes32) external pure returns (uint256) {
-        return 2000e18;
+        return 2000e8;
     }
     function isPriceStale(bytes32) external pure returns (bool) {
         return false;

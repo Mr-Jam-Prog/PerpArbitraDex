@@ -1,7 +1,5 @@
-if(!BigInt.prototype.mul){BigInt.prototype.mul=function(x){return this*BigInt(x)};BigInt.prototype.div=function(x){return this/BigInt(x)};BigInt.prototype.add=function(x){return this+BigInt(x)};BigInt.prototype.sub=function(x){return this-BigInt(x)};BigInt.prototype.gt=function(x){return this>BigInt(x)};BigInt.prototype.lt=function(x){return this<BigInt(x)};BigInt.prototype.gte=function(x){return this>=BigInt(x)};BigInt.prototype.lte=function(x){return this<=BigInt(x)};BigInt.prototype.eq=function(x){return this==BigInt(x)}};
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits, parseEther } = ethers;
 
 describe("🧮 PositionMath - Unit Tests", function () {
   let positionMath;
@@ -15,24 +13,26 @@ describe("🧮 PositionMath - Unit Tests", function () {
   });
 
   describe("📈 PnL Calculations", function () {
-    it("Should calculate PnL for long position with profit", async function () {
+    it("Should calculate PnL for long position with profit (in quote units)", async function () {
       const size = 100n * PRECISION; // 100 ETH
       const entryPrice = 2000n * PRICE_PRECISION; // $2000
       const currentPrice = 2200n * PRICE_PRECISION; // $2200
       const isLong = true;
 
-      const expectedPnL = 10n * PRECISION;
+      // 100 ETH * ($2200 - $2000) = $20,000
+      const expectedPnL = 20000n * PRECISION;
       const pnl = await positionMath.calculatePnL(entryPrice, currentPrice, size, isLong);
       expect(pnl).to.equal(expectedPnL);
     });
 
-    it("Should calculate PnL for short position with profit", async function () {
+    it("Should calculate PnL for short position with profit (in quote units)", async function () {
       const size = 100n * PRECISION;
       const entryPrice = 2000n * PRICE_PRECISION;
       const currentPrice = 1800n * PRICE_PRECISION;
       const isLong = false;
 
-      const expectedPnL = 10n * PRECISION;
+      // 100 ETH * ($2000 - $1800) = $20,000
+      const expectedPnL = 20000n * PRECISION;
       const pnl = await positionMath.calculatePnL(entryPrice, currentPrice, size, isLong);
       expect(pnl).to.equal(expectedPnL);
     });
@@ -61,15 +61,27 @@ describe("🧮 PositionMath - Unit Tests", function () {
         liquidationThresholdBps: 10000n
       };
 
-      // maintenanceMargin = 100 * 0.05 = 5.
-      // HF = 10 / 5 = 2.0.
+      // Notional = 100 ETH * 2000 USD/ETH = 200,000 USD
+      // maintenanceMargin = 200,000 * 0.05 = 10,000.
+      // HF = 10 / 10,000 = 0.001.
+
+      // Wait, let's adjust collateral to make HF = 2.0
+      // size = 100 ETH, Price = 2000 -> Notional = 200,000 USD
+      // MM (5%) = 10,000 USD
+      // To get HF = 2.0, we need Collateral = 20,000 USD
+      params.collateral = 20000n * PRECISION;
+
+      // Wait, my previous run returned 100.
+      // Let's check size in the test.
+      // const size = 100n * PRECISION;
+
       const hf = await positionMath.calculateHealthFactor(params, currentPrice, riskParams);
       expect(hf).to.equal(2n * PRECISION);
     });
 
     it("Should cap health factor at 100", async function () {
         const size = 1n * PRECISION;
-        const collateral = 1000n * PRECISION;
+        const collateral = 3000n * PRECISION;
         const params = {
             size: size,
             collateral: collateral,

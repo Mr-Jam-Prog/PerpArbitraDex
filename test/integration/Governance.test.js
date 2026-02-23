@@ -1,13 +1,10 @@
-if(!BigInt.prototype.mul){BigInt.prototype.mul=function(x){return this*BigInt(x)};BigInt.prototype.div=function(x){return this/BigInt(x)};BigInt.prototype.add=function(x){return this+BigInt(x)};BigInt.prototype.sub=function(x){return this-BigInt(x)};BigInt.prototype.gt=function(x){return this>BigInt(x)};BigInt.prototype.lt=function(x){return this<BigInt(x)};BigInt.prototype.gte=function(x){return this>=BigInt(x)};BigInt.prototype.lte=function(x){return this<=BigInt(x)};BigInt.prototype.eq=function(x){return this==BigInt(x)}};
 // @title: Tests de gouvernance complète avec timelock
 // @security: Timelock strict, pas d'actions instantanées
 // @invariants: Aucun pouvoir centralisé, délais respectés
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits, parseEther } = ethers;
-const { parseUnits, parseEther } = ethers;
-const { parseUnits, formatUnits } =
+const { parseUnits, formatUnits } = ethers.utils;
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("🏛️ Governance End-to-End", function () {
@@ -33,9 +30,9 @@ describe("🏛️ Governance End-to-End", function () {
     );
     
     // Distribution initiale
-    await token.transfer(alice.target, parseUnits("200000", 18));
-    await token.transfer(bob.target, parseUnits("150000", 18));
-    await token.transfer(charlie.target, parseUnits("100000", 18));
+    await token.transfer(alice.address, parseUnits("200000", 18));
+    await token.transfer(bob.address, parseUnits("150000", 18));
+    await token.transfer(charlie.address, parseUnits("100000", 18));
     
     // Déploiement du Timelock
     const TimelockController = await ethers.getContractFactory("TimelockController");
@@ -43,14 +40,14 @@ describe("🏛️ Governance End-to-End", function () {
       TIMELOCK_DELAY,
       [], // proposers vide initialement
       [], // executors vide initialement
-      ethers.ZeroAddress
+      ethers.constants.AddressZero
     );
     
     // Déploiement du Governor
     const Governor = await ethers.getContractFactory("Governor");
     governor = await Governor.deploy(
-      token.target,
-      timelock.target,
+      token.address,
+      timelock.address,
       VOTING_DELAY,
       VOTING_PERIOD,
       PROPOSAL_THRESHOLD,
@@ -60,7 +57,7 @@ describe("🏛️ Governance End-to-End", function () {
     // Déploiement du VotingEscrow
     const VotingEscrow = await ethers.getContractFactory("VotingEscrow");
     votingEscrow = await VotingEscrow.deploy(
-      token.target,
+      token.address,
       "Vote-escrowed PERP",
       "vePERP",
       4 * 365 * 24 * 3600 // 4 ans
@@ -68,15 +65,15 @@ describe("🏛️ Governance End-to-End", function () {
     
     // Déploiement de la Treasury
     const Treasury = await ethers.getContractFactory("Treasury");
-    treasury = await Treasury.deploy(token.target, timelock.target);
+    treasury = await Treasury.deploy(token.address, timelock.address);
     
     // Configuration des rôles
     const PROPOSER_ROLE = await timelock.PROPOSER_ROLE();
     const EXECUTOR_ROLE = await timelock.EXECUTOR_ROLE();
     const ADMIN_ROLE = await timelock.TIMELOCK_ADMIN_ROLE();
     
-    await timelock.grantRole(PROPOSER_ROLE, governor.target);
-    await timelock.grantRole(EXECUTOR_ROLE, governor.target);
+    await timelock.grantRole(PROPOSER_ROLE, governor.address);
+    await timelock.grantRole(EXECUTOR_ROLE, governor.address);
     await timelock.revokeRole(ADMIN_ROLE, deployer.address);
     
     // Mock du PerpEngine pour les tests
@@ -91,12 +88,12 @@ describe("🏛️ Governance End-to-End", function () {
   describe("🗳️ Proposal Creation & Voting", function () {
     beforeEach(async function () {
       // Délégation des tokens pour le vote
-      await token.connect(alice).delegate(alice.target);
-      await token.connect(bob).delegate(bob.target);
-      await token.connect(charlie).delegate(charlie.target);
+      await token.connect(alice).delegate(alice.address);
+      await token.connect(bob).delegate(bob.address);
+      await token.connect(charlie).delegate(charlie.address);
       
       // Lock des tokens pour veTokens
-      await token.connect(alice).approve(votingEscrow.target, parseUnits("100000", 18));
+      await token.connect(alice).approve(votingEscrow.address, parseUnits("100000", 18));
       await votingEscrow.connect(alice).createLock(
         parseUnits("100000", 18),
         Math.floor(Date.now() / 1000) + 7 * 24 * 3600 // 1 semaine
@@ -104,7 +101,7 @@ describe("🏛️ Governance End-to-End", function () {
     });
     
     it("Devrait créer une proposal valide", async function () {
-      const targets = [protocolConfig.target];
+      const targets = [protocolConfig.address];
       const values = [0];
       const calldatas = [
         protocolConfig.interface.encodeFunctionData("setProtocolFee", [
@@ -130,11 +127,11 @@ describe("🏛️ Governance End-to-End", function () {
     
     it("Devrait rejeter une proposal sans assez de tokens", async function () {
       const smallHolder = await ethers.getSigner(4);
-      await token.transfer(smallHolder.target, parseUnits("50000", 18)); // En dessous du threshold
+      await token.transfer(smallHolder.address, parseUnits("50000", 18)); // En dessous du threshold
       
       await expect(
         governor.connect(smallHolder).propose(
-          [protocolConfig.target],
+          [protocolConfig.address],
           [0],
           [protocolConfig.interface.encodeFunctionData("setProtocolFee", [parseUnits("0.0015", 18)])],
           "Should fail"
@@ -144,7 +141,7 @@ describe("🏛️ Governance End-to-End", function () {
     
     it("Devrait permettre le vote avec veTokens", async function () {
       // Création d'une proposal
-      const targets = [protocolConfig.target];
+      const targets = [protocolConfig.address];
       const values = [0];
       const calldatas = [
         protocolConfig.interface.encodeFunctionData("setProtocolFee", [
@@ -174,11 +171,11 @@ describe("🏛️ Governance End-to-End", function () {
       
       await expect(txVote)
         .to.emit(governor, "VoteCast")
-        .withArgs(alice.target, proposalId, 1, await votingEscrow.balanceOf(alice.target), "");
+        .withArgs(alice.address, proposalId, 1, await votingEscrow.balanceOf(alice.address), "");
     });
     
     it("Devrait atteindre le quorum", async function () {
-      const targets = [protocolConfig.target];
+      const targets = [protocolConfig.address];
       const values = [0];
       const calldatas = [
         protocolConfig.interface.encodeFunctionData("setProtocolFee", [
@@ -217,7 +214,7 @@ describe("🏛️ Governance End-to-End", function () {
     
     beforeEach(async function () {
       // Création d'une proposal pour tests d'exécution
-      const targets = [protocolConfig.target];
+      const targets = [protocolConfig.address];
       const values = [0];
       const calldatas = [
         protocolConfig.interface.encodeFunctionData("setProtocolFee", [
@@ -249,22 +246,22 @@ describe("🏛️ Governance End-to-End", function () {
       
       // Queue dans le timelock
       await governor.queue(
-        [protocolConfig.target],
+        [protocolConfig.address],
         [0],
         [protocolConfig.interface.encodeFunctionData("setProtocolFee", [parseUnits("0.0015", 18)])],
-        keccak256(toUtf8Bytes("Timelock execution test"))
+        ethers.utils.keccak256(ethers.utils.toUtf8Bytes("Timelock execution test"))
       );
       
       // Vérification que l'action est dans le timelock
       const timestamp = await timelock.getTimestamp(
-        keccak256(
-          ethers.AbiCoder.defaultAbiCoder().encode(
+        ethers.utils.keccak256(
+          ethers.utils.defaultAbiCoder.encode(
             ["address[]", "uint256[]", "bytes[]", "bytes32"],
             [
-              [protocolConfig.target],
+              [protocolConfig.address],
               [0],
               [protocolConfig.interface.encodeFunctionData("setProtocolFee", [parseUnits("0.0015", 18)])],
-              keccak256(toUtf8Bytes("Timelock execution test"))
+              ethers.utils.keccak256(ethers.utils.toUtf8Bytes("Timelock execution test"))
             ]
           )
         )
@@ -275,10 +272,10 @@ describe("🏛️ Governance End-to-End", function () {
       // Tentative d'exécution avant le délai
       await expect(
         governor.execute(
-          [protocolConfig.target],
+          [protocolConfig.address],
           [0],
           [protocolConfig.interface.encodeFunctionData("setProtocolFee", [parseUnits("0.0015", 18)])],
-          keccak256(toUtf8Bytes("Timelock execution test"))
+          ethers.utils.keccak256(ethers.utils.toUtf8Bytes("Timelock execution test"))
         )
       ).to.be.revertedWith("TimelockController: operation is not ready");
     });
@@ -286,10 +283,10 @@ describe("🏛️ Governance End-to-End", function () {
     it("Devrait exécuter après le délai du timelock", async function () {
       // Queue
       await governor.queue(
-        [protocolConfig.target],
+        [protocolConfig.address],
         [0],
         [protocolConfig.interface.encodeFunctionData("setProtocolFee", [parseUnits("0.0015", 18)])],
-        keccak256(toUtf8Bytes("Timelock execution test"))
+        ethers.utils.keccak256(ethers.utils.toUtf8Bytes("Timelock execution test"))
       );
       
       // Attente du délai
@@ -297,10 +294,10 @@ describe("🏛️ Governance End-to-End", function () {
       
       // Exécution
       const tx = await governor.execute(
-        [protocolConfig.target],
+        [protocolConfig.address],
         [0],
         [protocolConfig.interface.encodeFunctionData("setProtocolFee", [parseUnits("0.0015", 18)])],
-        keccak256(toUtf8Bytes("Timelock execution test"))
+        ethers.utils.keccak256(ethers.utils.toUtf8Bytes("Timelock execution test"))
       );
       
       await expect(tx)
@@ -316,10 +313,10 @@ describe("🏛️ Governance End-to-End", function () {
   describe("🚨 Emergency & Security", function () {
     it("Devrait permettre les vetos d'urgence", async function () {
       // Création d'une proposal malveillante
-      const maliciousTargets = [treasury.target];
+      const maliciousTargets = [treasury.address];
       const maliciousValues = [parseUnits("1000000", 18)];
       const maliciousCalldatas = [treasury.interface.encodeFunctionData("withdraw", [
-        token.target,
+        token.address,
         parseUnits("1000000", 18),
         deployer.address
       ])];
@@ -346,11 +343,11 @@ describe("🏛️ Governance End-to-End", function () {
       // Tentative d'exécution directe via timelock sans passer par le governor
       await expect(
         timelock.execute(
-          protocolConfig.target,
+          protocolConfig.address,
           0,
           protocolConfig.interface.encodeFunctionData("setProtocolFee", [parseUnits("0.002", 18)]),
           0,
-          keccak256(toUtf8Bytes("Direct execution attempt"))
+          ethers.utils.keccak256(ethers.utils.toUtf8Bytes("Direct execution attempt"))
         )
       ).to.be.reverted;
     });
@@ -359,8 +356,8 @@ describe("🏛️ Governance End-to-End", function () {
       // Déploiement d'une nouvelle version du Governor
       const GovernorV2 = await ethers.getContractFactory("GovernorV2");
       const governorV2 = await GovernorV2.deploy(
-        token.target,
-        timelock.target,
+        token.address,
+        timelock.address,
         VOTING_DELAY,
         VOTING_PERIOD,
         PROPOSAL_THRESHOLD,
@@ -368,12 +365,12 @@ describe("🏛️ Governance End-to-End", function () {
       );
       
       // Proposal pour upgrader le governor
-      const targets = [timelock.target];
+      const targets = [timelock.address];
       const values = [0];
       const calldatas = [
         timelock.interface.encodeFunctionData("grantRole", [
           await timelock.PROPOSER_ROLE(),
-          governorV2.target
+          governorV2.address
         ])
       ];
       
@@ -391,8 +388,8 @@ describe("🏛️ Governance End-to-End", function () {
   describe("📊 Governance Metrics", function () {
     it("Devrait calculer correctement le voting power", async function () {
       const blockNumber = await ethers.provider.getBlockNumber();
-      const votingPowerAlice = await governor.getVotes(alice.target, blockNumber - 1);
-      const votingPowerBob = await governor.getVotes(bob.target, blockNumber - 1);
+      const votingPowerAlice = await governor.getVotes(alice.address, blockNumber - 1);
+      const votingPowerBob = await governor.getVotes(bob.address, blockNumber - 1);
       
       expect(votingPowerAlice).to.be.gt(0);
       expect(votingPowerBob).to.be.gt(0);
@@ -400,7 +397,7 @@ describe("🏛️ Governance End-to-End", function () {
     
     it("Devrait suivre les proposals actives", async function () {
       const proposalsCount = await governor.proposalCount();
-      const latestProposalId = await governor.latestProposalIds(alice.target);
+      const latestProposalId = await governor.latestProposalIds(alice.address);
       
       expect(proposalsCount).to.be.gte(0);
     });

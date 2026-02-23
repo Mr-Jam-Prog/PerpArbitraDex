@@ -1,4 +1,3 @@
-if(!BigInt.prototype.mul){BigInt.prototype.mul=function(x){return this*BigInt(x)};BigInt.prototype.div=function(x){return this/BigInt(x)};BigInt.prototype.add=function(x){return this+BigInt(x)};BigInt.prototype.sub=function(x){return this-BigInt(x)};BigInt.prototype.gt=function(x){return this>BigInt(x)};BigInt.prototype.lt=function(x){return this<BigInt(x)};BigInt.prototype.gte=function(x){return this>=BigInt(x)};BigInt.prototype.lte=function(x){return this<=BigInt(x)};BigInt.prototype.eq=function(x){return this==BigInt(x)}};
 // @title: Tests unitaires exhaustifs du PerpEngine
 // @coverage: >98% (core logic)
 // @audit: Critical path - position management, PnL, margins
@@ -6,8 +5,6 @@ if(!BigInt.prototype.mul){BigInt.prototype.mul=function(x){return this*BigInt(x)
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits, parseEther } = ethers;
-const { parseUnits, parseEther } = ethers;
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("🚀 PerpEngine - Unit Tests", function () {
@@ -40,9 +37,8 @@ describe("🚀 PerpEngine - Unit Tests", function () {
     
     // Déploiement ProtocolConfig
     const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
-    protocolConfig = await ProtocolConfig.deploy();
+    protocolConfig = await ProtocolConfig.deploy(owner.address, owner.address);
     await protocolConfig.waitForDeployment();
-    await protocolConfig.initialize();
     
     // Configuration des paramètres
     await protocolConfig.setGlobalParameters(
@@ -56,7 +52,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
     
     // Déploiement MarketRegistry
     const MarketRegistry = await ethers.getContractFactory("MarketRegistry");
-    marketRegistry = await MarketRegistry.deploy(protocolConfig.target);
+    marketRegistry = await MarketRegistry.deploy(protocolConfig.address);
     await marketRegistry.waitForDeployment();
     
     // Ajout d'un marché
@@ -64,7 +60,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
       ETH_USD_MARKET,
       "Ethereum / USD",
       ethers.ZeroAddress, // ETH
-      mockUSD.target, // USD
+      mockUSD.address, // USD
       ethers.parseUnits("100000", 18), // max position
       ethers.parseUnits("10", 18), // min position
       ethers.parseUnits("0.01", 18), // tick size
@@ -76,33 +72,33 @@ describe("🚀 PerpEngine - Unit Tests", function () {
     positionManager = await PositionManager.deploy(
       "PerpArbitraDEX Positions",
       "PERP-POS",
-      protocolConfig.target
+      protocolConfig.address
     );
     await positionManager.waitForDeployment();
     
     // Déploiement RiskManager
     const RiskManager = await ethers.getContractFactory("RiskManager");
-    riskManager = await RiskManager.deploy(protocolConfig.target, ethers.ZeroAddress);
+    riskManager = await RiskManager.deploy(protocolConfig.address, ethers.ZeroAddress);
     await riskManager.waitForDeployment();
     
     // Déploiement PerpEngine
     const PerpEngine = await ethers.getContractFactory("PerpEngine");
     perpEngine = await PerpEngine.deploy(
-      protocolConfig.target,
-      marketRegistry.target,
-      positionManager.target
+      protocolConfig.address,
+      marketRegistry.address,
+      positionManager.address
     );
     await perpEngine.waitForDeployment();
     
     // Configuration des liens
-    await protocolConfig.setPerpEngine(perpEngine.target);
-    await protocolConfig.setRiskManager(riskManager.target);
-    await positionManager.setPerpEngine(perpEngine.target);
-    await marketRegistry.setPerpEngine(perpEngine.target);
-    await riskManager.setPerpEngine(perpEngine.target);
+    await protocolConfig.setPerpEngine(perpEngine.address);
+    await protocolConfig.setRiskManager(riskManager.address);
+    await positionManager.setPerpEngine(perpEngine.address);
+    await marketRegistry.setPerpEngine(perpEngine.address);
+    await riskManager.setPerpEngine(perpEngine.address);
     
     // Configuration de l'oracle mock
-    await marketRegistry.setOracle(ETH_USD_MARKET, mockOracle.target);
+    await marketRegistry.setOracle(ETH_USD_MARKET, mockOracle.address);
   });
   
   describe("📈 Position Opening", function () {
@@ -110,7 +106,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
       // Prépare le collateral
       const MockERC20 = await ethers.getContractAt("MockERC20", await marketRegistry.quoteToken(ETH_USD_MARKET));
       await MockERC20.mint(user1.address, COLLATERAL_AMOUNT);
-      await MockERC20.connect(user1).approve(perpEngine.target, COLLATERAL_AMOUNT);
+      await MockERC20.connect(user1).approve(perpEngine.address, COLLATERAL_AMOUNT);
       
       // Ouvre position
       await expect(
@@ -137,7 +133,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
     it("Should open a short position successfully", async function () {
       const MockERC20 = await ethers.getContractAt("MockERC20", await marketRegistry.quoteToken(ETH_USD_MARKET));
       await MockERC20.mint(user1.address, COLLATERAL_AMOUNT);
-      await MockERC20.connect(user1).approve(perpEngine.target, COLLATERAL_AMOUNT);
+      await MockERC20.connect(user1).approve(perpEngine.address, COLLATERAL_AMOUNT);
       
       await expect(
         perpEngine.connect(user1).openPosition(
@@ -159,7 +155,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
     it("Should reject position with insufficient margin", async function () {
       const MockERC20 = await ethers.getContractAt("MockERC20", await marketRegistry.quoteToken(ETH_USD_MARKET));
       await MockERC20.mint(user1.address, COLLATERAL_AMOUNT / (2)); // Only half the required
-      await MockERC20.connect(user1).approve(perpEngine.target, COLLATERAL_AMOUNT / (2));
+      await MockERC20.connect(user1).approve(perpEngine.address, COLLATERAL_AMOUNT / (2));
       
       await expect(
         perpEngine.connect(user1).openPosition(
@@ -175,7 +171,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
     it("Should reject position exceeding max leverage", async function () {
       const MockERC20 = await ethers.getContractAt("MockERC20", await marketRegistry.quoteToken(ETH_USD_MARKET));
       await MockERC20.mint(user1.address, COLLATERAL_AMOUNT);
-      await MockERC20.connect(user1).approve(perpEngine.target, COLLATERAL_AMOUNT);
+      await MockERC20.connect(user1).approve(perpEngine.address, COLLATERAL_AMOUNT);
       
       const excessLeverage = ethers.parseUnits("15", 18); // 15x > 10x max
       
@@ -196,7 +192,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
       
       const MockERC20 = await ethers.getContractAt("MockERC20", await marketRegistry.quoteToken(ETH_USD_MARKET));
       await MockERC20.mint(user1.address, COLLATERAL_AMOUNT);
-      await MockERC20.connect(user1).approve(perpEngine.target, COLLATERAL_AMOUNT);
+      await MockERC20.connect(user1).approve(perpEngine.address, COLLATERAL_AMOUNT);
       
       await expect(
         perpEngine.connect(user1).openPosition(
@@ -217,7 +213,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
       // Ouvre une position pour les tests de fermeture
       const MockERC20 = await ethers.getContractAt("MockERC20", await marketRegistry.quoteToken(ETH_USD_MARKET));
       await MockERC20.mint(user1.address, COLLATERAL_AMOUNT);
-      await MockERC20.connect(user1).approve(perpEngine.target, COLLATERAL_AMOUNT);
+      await MockERC20.connect(user1).approve(perpEngine.address, COLLATERAL_AMOUNT);
       
       await perpEngine.connect(user1).openPosition(
         ETH_USD_MARKET,
@@ -324,7 +320,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
     beforeEach(async function () {
       const MockERC20 = await ethers.getContractAt("MockERC20", await marketRegistry.quoteToken(ETH_USD_MARKET));
       await MockERC20.mint(user1.address, COLLATERAL_AMOUNT);
-      await MockERC20.connect(user1).approve(perpEngine.target, COLLATERAL_AMOUNT);
+      await MockERC20.connect(user1).approve(perpEngine.address, COLLATERAL_AMOUNT);
       
       await perpEngine.connect(user1).openPosition(
         ETH_USD_MARKET,
@@ -366,7 +362,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
       // Ouvre une position short
       const MockERC20 = await ethers.getContractAt("MockERC20", await marketRegistry.quoteToken(ETH_USD_MARKET));
       await MockERC20.mint(user2.address, COLLATERAL_AMOUNT);
-      await MockERC20.connect(user2).approve(perpEngine.target, COLLATERAL_AMOUNT);
+      await MockERC20.connect(user2).approve(perpEngine.address, COLLATERAL_AMOUNT);
       
       await perpEngine.connect(user2).openPosition(
         ETH_USD_MARKET,
@@ -396,7 +392,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
       // Ouvre positions long et short identiques
       const MockERC20 = await ethers.getContractAt("MockERC20", await marketRegistry.quoteToken(ETH_USD_MARKET));
       await MockERC20.mint(user2.address, COLLATERAL_AMOUNT);
-      await MockERC20.connect(user2).approve(perpEngine.target, COLLATERAL_AMOUNT);
+      await MockERC20.connect(user2).approve(perpEngine.address, COLLATERAL_AMOUNT);
       
       await perpEngine.connect(user2).openPosition(
         ETH_USD_MARKET,
@@ -419,7 +415,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
       // PnL long + PnL short devrait être ~0 (hors frais)
       const sum = longPnl + (shortPnl);
       // Tolérance pour les erreurs d'arrondissement
-      expect(sum((val => val < 0n ? -val : val)( ))).to.be < (ethers.parseUnits("1", 15));
+      expect(sum((val => val < 0n ? -val : val)())).to.be < (ethers.parseUnits("1", 15));
     });
   });
   
@@ -429,7 +425,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
     beforeEach(async function () {
       const MockERC20 = await ethers.getContractAt("MockERC20", await marketRegistry.quoteToken(ETH_USD_MARKET));
       await MockERC20.mint(user1.address, COLLATERAL_AMOUNT);
-      await MockERC20.connect(user1).approve(perpEngine.target, COLLATERAL_AMOUNT);
+      await MockERC20.connect(user1).approve(perpEngine.address, COLLATERAL_AMOUNT);
       
       await perpEngine.connect(user1).openPosition(
         ETH_USD_MARKET,
@@ -510,7 +506,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
       
       // Long position
       await MockERC20.mint(user1.address, COLLATERAL_AMOUNT);
-      await MockERC20.connect(user1).approve(perpEngine.target, COLLATERAL_AMOUNT);
+      await MockERC20.connect(user1).approve(perpEngine.address, COLLATERAL_AMOUNT);
       await perpEngine.connect(user1).openPosition(
         ETH_USD_MARKET,
         true,
@@ -521,7 +517,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
       
       // Short position plus petite pour créer un skew long
       await MockERC20.mint(user2.address, COLLATERAL_AMOUNT / (2));
-      await MockERC20.connect(user2).approve(perpEngine.target, COLLATERAL_AMOUNT / (2));
+      await MockERC20.connect(user2).approve(perpEngine.address, COLLATERAL_AMOUNT / (2));
       await perpEngine.connect(user2).openPosition(
         ETH_USD_MARKET,
         false,
@@ -558,7 +554,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
     it("Should handle multiple funding settlements", async function () {
       const MockERC20 = await ethers.getContractAt("MockERC20", await marketRegistry.quoteToken(ETH_USD_MARKET));
       await MockERC20.mint(user1.address, COLLATERAL_AMOUNT);
-      await MockERC20.connect(user1).approve(perpEngine.target, COLLATERAL_AMOUNT);
+      await MockERC20.connect(user1).approve(perpEngine.address, COLLATERAL_AMOUNT);
       
       await perpEngine.connect(user1).openPosition(
         ETH_USD_MARKET,
@@ -604,7 +600,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
       // Ne devrait pas pouvoir ouvrir de position quand paused
       const MockERC20 = await ethers.getContractAt("MockERC20", await marketRegistry.quoteToken(ETH_USD_MARKET));
       await MockERC20.mint(user1.address, COLLATERAL_AMOUNT);
-      await MockERC20.connect(user1).approve(perpEngine.target, COLLATERAL_AMOUNT);
+      await MockERC20.connect(user1).approve(perpEngine.address, COLLATERAL_AMOUNT);
       
       await expect(
         perpEngine.connect(user1).openPosition(
@@ -626,7 +622,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
       
       const MockERC20 = await ethers.getContractAt("MockERC20", await marketRegistry.quoteToken(ETH_USD_MARKET));
       await MockERC20.mint(user1.address, COLLATERAL_AMOUNT);
-      await MockERC20.connect(user1).approve(perpEngine.target, COLLATERAL_AMOUNT);
+      await MockERC20.connect(user1).approve(perpEngine.address, COLLATERAL_AMOUNT);
       
       await expect(
         perpEngine.connect(user1).openPosition(
@@ -662,7 +658,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
       for (let i = 0; i < 3; i++) {
         const user = (await ethers.getSigners())[i + 2];
         await MockERC20.mint(user.address, COLLATERAL_AMOUNT);
-        await MockERC20.connect(user).approve(perpEngine.target, COLLATERAL_AMOUNT);
+        await MockERC20.connect(user).approve(perpEngine.address, COLLATERAL_AMOUNT);
         
         const isLong = i % 2 === 0;
         await perpEngine.connect(user).openPosition(
@@ -684,7 +680,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
     it("Should maintain invariant: no negative collateral", async function () {
       const MockERC20 = await ethers.getContractAt("MockERC20", await marketRegistry.quoteToken(ETH_USD_MARKET));
       await MockERC20.mint(user1.address, COLLATERAL_AMOUNT);
-      await MockERC20.connect(user1).approve(perpEngine.target, COLLATERAL_AMOUNT);
+      await MockERC20.connect(user1).approve(perpEngine.address, COLLATERAL_AMOUNT);
       
       await perpEngine.connect(user1).openPosition(
         ETH_USD_MARKET,
@@ -704,7 +700,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
     it("Should maintain invariant: position size > 0", async function () {
       const MockERC20 = await ethers.getContractAt("MockERC20", await marketRegistry.quoteToken(ETH_USD_MARKET));
       await MockERC20.mint(user1.address, COLLATERAL_AMOUNT);
-      await MockERC20.connect(user1).approve(perpEngine.target, COLLATERAL_AMOUNT);
+      await MockERC20.connect(user1).approve(perpEngine.address, COLLATERAL_AMOUNT);
       
       await perpEngine.connect(user1).openPosition(
         ETH_USD_MARKET,

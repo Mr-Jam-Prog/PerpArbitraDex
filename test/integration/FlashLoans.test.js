@@ -1,13 +1,10 @@
-if(!BigInt.prototype.mul){BigInt.prototype.mul=function(x){return this*BigInt(x)};BigInt.prototype.div=function(x){return this/BigInt(x)};BigInt.prototype.add=function(x){return this+BigInt(x)};BigInt.prototype.sub=function(x){return this-BigInt(x)};BigInt.prototype.gt=function(x){return this>BigInt(x)};BigInt.prototype.lt=function(x){return this<BigInt(x)};BigInt.prototype.gte=function(x){return this>=BigInt(x)};BigInt.prototype.lte=function(x){return this<=BigInt(x)};BigInt.prototype.eq=function(x){return this==BigInt(x)}};
 // @title: Tests d'intégration Flash Loans Aave V3
 // @security: Atomicité complète, pas de fonds bloqués
 // @invariants: Flash loan doit être remboursé dans la même transaction
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits, parseEther } = ethers;
-const { parseUnits, parseEther } = ethers;
-const { parseUnits, formatUnits } =
+const { parseUnits, formatUnits } = ethers.utils;
 
 describe("🚀 FlashLoans Integration", function () {
   let deployer, user1, liquidator;
@@ -26,7 +23,7 @@ describe("🚀 FlashLoans Integration", function () {
     const aavePoolMock = await AavePoolMock.deploy();
     
     const AaveIntegrator = await ethers.getContractFactory("AaveFlashLoanIntegrator");
-    aaveIntegrator = await AaveIntegrator.deploy(aavePoolMock.target);
+    aaveIntegrator = await AaveIntegrator.deploy(aavePoolMock.address);
     
     // Déploiement du FlashLiquidator
     const FlashLiquidator = await ethers.getContractFactory("FlashLiquidator");
@@ -48,7 +45,7 @@ describe("🚀 FlashLoans Integration", function () {
       const premium = loanAmount.mul(9).div(10000); // 0.09% premium
       
       const tx = await aaveIntegrator.executeFlashLoan(
-        usdc.target,
+        usdc.address,
         loanAmount,
         premium,
         "0x"
@@ -56,7 +53,7 @@ describe("🚀 FlashLoans Integration", function () {
       
       await expect(tx)
         .to.emit(aaveIntegrator, "FlashLoanExecuted")
-        .withArgs(usdc.target, loanAmount, premium);
+        .withArgs(usdc.address, loanAmount, premium);
     });
     
     it("Devrait rejeter un flash loan non remboursé", async function () {
@@ -64,14 +61,14 @@ describe("🚀 FlashLoans Integration", function () {
       const premium = loanAmount.mul(9).div(10000);
       
       // Encodage d'une opération qui ne rembourse pas
-      const maliciousData = ethers.AbiCoder.defaultAbiCoder().encode(
+      const maliciousData = ethers.utils.defaultAbiCoder.encode(
         ["bool"],
         [false] // Ne pas rembourser
       );
       
       await expect(
         aaveIntegrator.executeFlashLoan(
-          usdc.target,
+          usdc.address,
           loanAmount,
           premium,
           maliciousData
@@ -84,7 +81,7 @@ describe("🚀 FlashLoans Integration", function () {
       const expectedPremium = loanAmount.mul(9).div(10000); // 0.09%
       
       const premium = await aaveIntegrator.calculateFlashLoanFee(
-        usdc.target,
+        usdc.address,
         loanAmount
       );
       
@@ -98,7 +95,7 @@ describe("🚀 FlashLoans Integration", function () {
       const collateralAmount = parseUnits("1000", 6); // 1000 USDC
       const positionSize = parseUnits("10000", 6); // 10k position
       
-      await usdc.connect(user1).approve(perpEngine.target, collateralAmount);
+      await usdc.connect(user1).approve(perpEngine.address, collateralAmount);
       await perpEngine.connect(user1).openPosition(
         "ETH-USD",
         collateralAmount,
@@ -116,7 +113,7 @@ describe("🚀 FlashLoans Integration", function () {
       
       const tx = await flashLiquidator.executeFlashLiquidation(
         positionId,
-        usdc.target,
+        usdc.address,
         loanAmount
       );
       
@@ -135,7 +132,7 @@ describe("🚀 FlashLoans Integration", function () {
       
       await flashLiquidator.connect(liquidator).executeFlashLiquidation(
         positionId,
-        usdc.target,
+        usdc.address,
         parseUnits("5000", 6)
       );
       
@@ -152,7 +149,7 @@ describe("🚀 FlashLoans Integration", function () {
       await expect(
         flashLiquidator.executeFlashLiquidation(
           positionId,
-          usdc.target,
+          usdc.address,
           parseUnits("100000", 6) // Montant trop élevé
         )
       ).to.be.revertedWith("Not profitable");
@@ -174,12 +171,12 @@ describe("🚀 FlashLoans Integration", function () {
     });
     
     it("Devrait rejeter les montants trop élevés", async function () {
-      const maxLoan = await aaveIntegrator.getMaxFlashLoan(usdc.target);
+      const maxLoan = await aaveIntegrator.getMaxFlashLoan(usdc.address);
       const excessiveAmount = maxLoan.add(1);
       
       await expect(
         aaveIntegrator.executeFlashLoan(
-          usdc.target,
+          usdc.address,
           excessiveAmount,
           0,
           "0x"
@@ -189,10 +186,10 @@ describe("🚀 FlashLoans Integration", function () {
     
     it("Devrait prévenir les attaques de réentrance", async function () {
       const ReentrancyAttacker = await ethers.getContractFactory("ReentrancyAttacker");
-      const attacker = await ReentrancyAttacker.deploy(aaveIntegrator.target);
+      const attacker = await ReentrancyAttacker.deploy(aaveIntegrator.address);
       
       await expect(
-        attacker.attack(usdc.target, parseUnits("1000", 6))
+        attacker.attack(usdc.address, parseUnits("1000", 6))
       ).to.be.revertedWith("ReentrancyGuard: reentrant call");
     });
   });
@@ -203,7 +200,7 @@ describe("🚀 FlashLoans Integration", function () {
       const premium = loanAmount.mul(9).div(10000);
       
       const tx = await aaveIntegrator.executeFlashLoan(
-        usdc.target,
+        usdc.address,
         loanAmount,
         premium,
         "0x"
@@ -217,7 +214,7 @@ describe("🚀 FlashLoans Integration", function () {
     });
     
     it("Devrait batch multiple flash loans", async function () {
-      const tokens = [usdc.target, weth.target];
+      const tokens = [usdc.address, weth.address];
       const amounts = [
         parseUnits("5000", 6),
         parseUnits("10", 18)

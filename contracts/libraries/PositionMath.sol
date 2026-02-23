@@ -211,8 +211,9 @@ library PositionMath {
             return 0;
         }
         
-        // Calculate maintenance margin
-        uint256 maintenanceMargin = params.size.mulDiv(riskParams.maintenanceMarginBps, 10000);
+        // Calculate maintenance margin in quote units
+        uint256 notionalValue = params.size.mulDiv(validateAndNormalizePrice(currentPrice), DECIMALS);
+        uint256 maintenanceMargin = notionalValue.mulDiv(riskParams.maintenanceMarginBps, 10000);
         
         // Prevent division by zero (should never happen with validation)
         if (maintenanceMargin == 0) {
@@ -247,48 +248,51 @@ library PositionMath {
         // Validate inputs
         _validateLiquidationInputs(params, riskParams);
         
-        // Calculate maintenance margin
-        uint256 maintenanceMargin = params.size.mulDiv(riskParams.maintenanceMarginBps, 10000);
+        // Calculate maintenance margin ratio
+        uint256 mmRatio = DECIMALS.mulDiv(riskParams.maintenanceMarginBps, 10000);
         
         // Calculate required PnL for liquidation
-        int256 requiredPnL = int256(maintenanceMargin) - int256(params.collateral) + params.fundingAccrued;
+        // For liquidation: Collateral + PnL - Funding = MaintenanceMargin
+        // PnL(long) = size * (Price - EntryPrice) / DECIMALS
+        // PnL(short) = size * (EntryPrice - Price) / DECIMALS
+        // MaintenanceMargin = size * Price * mmRatio / DECIMALS
         
-        // If required PnL >= 0, position cannot be liquidated (healthy)
-        if (requiredPnL >= 0) {
-            return LiquidationResult(false, 0);
-        }
-        
-        // Calculate liquidation price
         uint256 entryNormalized = validateAndNormalizePrice(params.entryPrice);
-        uint256 absRequiredPnL = uint256(-requiredPnL);
-        uint256 liquidationPriceNormalized;
         
         if (params.isLong) {
-            // For long: price = entry - (absRequiredPnL * entry) / size
-            uint256 priceReduction = absRequiredPnL.mulDiv(entryNormalized, params.size);
+            // size * (Price - Entry) / D + Collateral - Funding = size * Price * mmRatio / D
+            // size * Price / D - size * Entry / D + C - F = size * Price * mmRatio / D
+            // size * Price / D * (1 - mmRatio) = size * Entry / D - C + F
+            // Price = (size * Entry / D - C + F) * D / (size * (1 - mmRatio))
+
+            int256 numerator = int256(params.size.mulDiv(entryNormalized, DECIMALS)) - int256(params.collateral) + params.fundingAccrued;
+            if (numerator <= 0) return LiquidationResult(false, 0);
             
-            // Check bounds
-            if (priceReduction >= entryNormalized) {
-                return LiquidationResult(false, 0);
-            }
+            uint256 denominator = params.size.mulDiv(DECIMALS - mmRatio, DECIMALS);
+            if (denominator == 0) return LiquidationResult(false, 0);
             
-            liquidationPriceNormalized = entryNormalized - priceReduction;
+            uint256 liqPriceNormalized = uint256(numerator).mulDiv(DECIMALS, denominator);
+            result.isLiquidatable = true;
+            result.liquidationPrice = denormalizePrice(liqPriceNormalized);
         } else {
-            // For short: price = entry + (absRequiredPnL * entry) / size
-            uint256 priceIncrease = absRequiredPnL.mulDiv(entryNormalized, params.size);
+            // size * (Entry - Price) / D + Collateral - Funding = size * Price * mmRatio / D
+            // size * Entry / D - size * Price / D + C - F = size * Price * mmRatio / D
+            // size * Entry / D + C - F = size * Price / D * (1 + mmRatio)
+            // Price = (size * Entry / D + C - F) * D / (size * (1 + mmRatio))
             
-            // Check overflow
-            if (entryNormalized > type(uint256).max - priceIncrease) {
-                return LiquidationResult(false, 0);
-            }
+            int256 numerator = int256(params.size.mulDiv(entryNormalized, DECIMALS)) + int256(params.collateral) - params.fundingAccrued;
+            if (numerator <= 0) return LiquidationResult(false, 0);
             
-            liquidationPriceNormalized = entryNormalized + priceIncrease;
+            uint256 denominator = params.size.mulDiv(DECIMALS + mmRatio, DECIMALS);
+            uint256 liqPriceNormalized = uint256(numerator).mulDiv(DECIMALS, denominator);
+
+            result.isLiquidatable = true;
+            result.liquidationPrice = denormalizePrice(liqPriceNormalized);
         }
         
-        result.isLiquidatable = true;
-        result.liquidationPrice = denormalizePrice(liquidationPriceNormalized);
         return result;
     }
+
     
     /**
      * @dev Unsafe version that reverts if position not liquidatable
@@ -446,13 +450,13 @@ library PositionMath {
     ) private pure returns (int256 pnl, uint256 absolutePnL, bool isProfit) {
         if (currentNormalized > entryNormalized) {
             uint256 priceDiff = currentNormalized - entryNormalized;
-            uint256 profit = priceDiff.mulDiv(size, entryNormalized);
+            uint256 profit = priceDiff.mulDiv(size, DECIMALS);
             pnl = int256(profit);
             absolutePnL = profit;
             isProfit = true;
         } else {
             uint256 priceDiff = entryNormalized - currentNormalized;
-            uint256 loss = priceDiff.mulDiv(size, entryNormalized);
+            uint256 loss = priceDiff.mulDiv(size, DECIMALS);
             pnl = -int256(loss);
             absolutePnL = loss;
             isProfit = false;
@@ -466,13 +470,13 @@ library PositionMath {
     ) private pure returns (int256 pnl, uint256 absolutePnL, bool isProfit) {
         if (currentNormalized < entryNormalized) {
             uint256 priceDiff = entryNormalized - currentNormalized;
-            uint256 profit = priceDiff.mulDiv(size, entryNormalized);
+            uint256 profit = priceDiff.mulDiv(size, DECIMALS);
             pnl = int256(profit);
             absolutePnL = profit;
             isProfit = true;
         } else {
             uint256 priceDiff = currentNormalized - entryNormalized;
-            uint256 loss = priceDiff.mulDiv(size, entryNormalized);
+            uint256 loss = priceDiff.mulDiv(size, DECIMALS);
             pnl = -int256(loss);
             absolutePnL = loss;
             isProfit = false;
@@ -486,8 +490,8 @@ library PositionMath {
     ) private pure returns (int256) {
         unchecked {
             return currentNormalized > entryNormalized
-                ? int256((currentNormalized - entryNormalized).mulDiv(size, entryNormalized))
-                : -int256((entryNormalized - currentNormalized).mulDiv(size, entryNormalized));
+                ? int256((currentNormalized - entryNormalized).mulDiv(size, DECIMALS))
+                : -int256((entryNormalized - currentNormalized).mulDiv(size, DECIMALS));
         }
     }
     
@@ -498,8 +502,8 @@ library PositionMath {
     ) private pure returns (int256) {
         unchecked {
             return currentNormalized < entryNormalized
-                ? int256((entryNormalized - currentNormalized).mulDiv(size, entryNormalized))
-                : -int256((currentNormalized - entryNormalized).mulDiv(size, entryNormalized));
+                ? int256((entryNormalized - currentNormalized).mulDiv(size, DECIMALS))
+                : -int256((currentNormalized - entryNormalized).mulDiv(size, DECIMALS));
         }
     }
     

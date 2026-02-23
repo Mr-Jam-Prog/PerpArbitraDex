@@ -1,4 +1,3 @@
-if(!BigInt.prototype.mul){BigInt.prototype.mul=function(x){return this*BigInt(x)};BigInt.prototype.div=function(x){return this/BigInt(x)};BigInt.prototype.add=function(x){return this+BigInt(x)};BigInt.prototype.sub=function(x){return this-BigInt(x)};BigInt.prototype.gt=function(x){return this>BigInt(x)};BigInt.prototype.lt=function(x){return this<BigInt(x)};BigInt.prototype.gte=function(x){return this>=BigInt(x)};BigInt.prototype.lte=function(x){return this<=BigInt(x)};BigInt.prototype.eq=function(x){return this==BigInt(x)}};
 // @title: Tests unitaires pour LiquidationEngine
 // @coverage: >95% (liquidation logic, incentives, queue)
 // @audit: Critical for protocol solvency
@@ -6,8 +5,6 @@ if(!BigInt.prototype.mul){BigInt.prototype.mul=function(x){return this*BigInt(x)
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits, parseEther } = ethers;
-const { parseUnits, parseEther } = ethers;
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("⚡ LiquidationEngine - Unit Tests", function () {
@@ -29,9 +26,8 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
     
     // Déploiement ProtocolConfig
     const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
-    protocolConfig = await ProtocolConfig.deploy();
+    protocolConfig = await ProtocolConfig.deploy(owner.address, owner.address);
     await protocolConfig.waitForDeployment();
-    await protocolConfig.initialize();
     
     // Déploiement PerpEngine mock
     const MockPerpEngine = await ethers.getContractFactory("MockPerpEngine");
@@ -45,28 +41,28 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
     
     // Déploiement LiquidationQueue
     const LiquidationQueue = await ethers.getContractFactory("LiquidationQueue");
-    liquidationQueue = await LiquidationQueue.deploy(ethers.ZeroAddress, protocolConfig.target);
+    liquidationQueue = await LiquidationQueue.deploy(ethers.ZeroAddress, protocolConfig.address);
     await liquidationQueue.waitForDeployment();
     
     // Déploiement IncentiveDistributor
     const IncentiveDistributor = await ethers.getContractFactory("IncentiveDistributor");
-    incentiveDistributor = await IncentiveDistributor.deploy(protocolConfig.target, ethers.ZeroAddress);
+    incentiveDistributor = await IncentiveDistributor.deploy(protocolConfig.address, ethers.ZeroAddress);
     await incentiveDistributor.waitForDeployment();
     
     // Déploiement LiquidationEngine
     const LiquidationEngine = await ethers.getContractFactory("LiquidationEngine");
     liquidationEngine = await LiquidationEngine.deploy(
-      perpEngine.target,
-      riskManager.target,
-      protocolConfig.target
+      perpEngine.address,
+      riskManager.address,
+      protocolConfig.address
     );
     await liquidationEngine.waitForDeployment();
     
     // Configuration des liens
-    await protocolConfig.setLiquidationEngine(liquidationEngine.target);
-    await liquidationEngine.setLiquidationQueue(liquidationQueue.target);
-    await liquidationEngine.setIncentiveDistributor(incentiveDistributor.target);
-    await liquidationQueue.setLiquidationEngine(liquidationEngine.target);
+    await protocolConfig.setLiquidationEngine(liquidationEngine.address);
+    await liquidationEngine.setLiquidationQueue(liquidationQueue.address);
+    await liquidationEngine.setIncentiveDistributor(incentiveDistributor.address);
+    await liquidationQueue.setLiquidationEngine(liquidationEngine.address);
     
     // Configuration des paramètres
     await protocolConfig.setGlobalParameters(
@@ -241,7 +237,7 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
     it("Should handle flash loan liquidations", async function () {
       // Configure le flash liquidator
       const FlashLiquidator = await ethers.getContractFactory("FlashLiquidator");
-      const flashLiquidator = await FlashLiquidator.deploy(liquidationEngine.target, protocolConfig.target);
+      const flashLiquidator = await FlashLiquidator.deploy(liquidationEngine.address, protocolConfig.address);
       await flashLiquidator.waitForDeployment();
       
       // Simulation de liquidation avec flash loan

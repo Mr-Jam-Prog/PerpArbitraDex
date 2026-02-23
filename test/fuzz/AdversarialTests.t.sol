@@ -60,7 +60,7 @@ contract AdversarialTests is Test {
     LiquidationEngine public liquidationEngine;
     MockERC20 public usdc;
 
-    uint256 public currentPrice = 2000e18;
+    uint256 public currentPrice = 2000e8;
     bool public priceStale = false;
 
     address public trader = makeAddr("trader");
@@ -116,7 +116,7 @@ contract AdversarialTests is Test {
             bytes32("ETH-USD"),
             100e18, // 100x max leverage
             1e16,  // 1% min margin ratio
-            10 ether, // min position size
+            0.1 ether, // min position size
             2e16,  // 2% liquidation fee
             1e15   // 0.1% protocol fee
         );
@@ -151,7 +151,7 @@ contract AdversarialTests is Test {
      */
     function test_extreme_long_skew_stress() public {
         uint256 margin = 100_000e18;
-        uint256 size = 1_000_000e18; // 10x leverage
+        uint256 size = 500e18; // 10x leverage
 
         vm.prank(trader);
         perpEngine.openPosition(IPerpEngine.TradeParams({
@@ -159,7 +159,7 @@ contract AdversarialTests is Test {
             isLong: true,
             size: size,
             margin: margin,
-            acceptablePrice: 2001e18,
+            acceptablePrice: 2001e8,
             deadline: block.timestamp + 1,
             referralCode: bytes32(0)
         }));
@@ -187,7 +187,7 @@ contract AdversarialTests is Test {
     function test_cascade_liquidation_stress() public {
         // Open 10 positions near liquidation
         uint256 margin = 1000e18;
-        uint256 size = 95_000e18; // ~95x leverage, very close to 1% margin ratio
+        uint256 size = 47e18; // ~95x leverage, very close to 1% margin ratio
 
         uint256[] memory posIds = new uint256[](10);
         for(uint256 i=0; i<10; i++) {
@@ -197,14 +197,14 @@ contract AdversarialTests is Test {
                 isLong: true,
                 size: size,
                 margin: margin,
-                acceptablePrice: 2001e18,
+                acceptablePrice: 2001e8,
                 deadline: block.timestamp + 1,
                 referralCode: bytes32(0)
             }));
         }
 
         // Drop price by 1% to trigger all liquidations
-        currentPrice = 1980e18; // 2000 * 0.99
+        currentPrice = 1980e8; // 2000 * 0.99
 
         for(uint256 i=0; i<10; i++) {
             assertTrue(perpEngine.isPositionLiquidatable(posIds[i], currentPrice), "Position should be liquidatable");
@@ -227,7 +227,7 @@ contract AdversarialTests is Test {
      */
     function test_atomic_stress_block() public {
         uint256 margin = 10_000e18;
-        uint256 size = 500_000e18; // 50x leverage
+        uint256 size = 250e18; // 50x leverage
 
         vm.prank(trader);
         uint256 posId = perpEngine.openPosition(IPerpEngine.TradeParams({
@@ -235,7 +235,7 @@ contract AdversarialTests is Test {
             isLong: true,
             size: size,
             margin: margin,
-            acceptablePrice: 2001e18,
+            acceptablePrice: 2001e8,
             deadline: block.timestamp + 1,
             referralCode: bytes32(0)
         }));
@@ -245,7 +245,7 @@ contract AdversarialTests is Test {
         vm.warp(block.timestamp + 1 hours);
 
         // 2. Price crashes
-        currentPrice = 1900e18; // 5% drop
+        currentPrice = 1900e8; // 5% drop
 
         // 3. Liquidate
         vm.prank(address(liquidationEngine));
@@ -267,7 +267,7 @@ contract AdversarialTests is Test {
      */
     function test_long_term_funding_drift() public {
         uint256 margin = 100_000e18;
-        uint256 size = 1_000_000e18;
+        uint256 size = 500e18;
 
         vm.prank(trader);
         perpEngine.openPosition(IPerpEngine.TradeParams({
@@ -275,7 +275,7 @@ contract AdversarialTests is Test {
             isLong: true,
             size: size,
             margin: margin,
-            acceptablePrice: 2001e18,
+            acceptablePrice: 2001e8,
             deadline: block.timestamp + 1,
             referralCode: bytes32(0)
         }));

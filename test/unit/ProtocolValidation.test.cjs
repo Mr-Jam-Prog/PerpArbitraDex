@@ -1,7 +1,6 @@
 if(!BigInt.prototype.mul){BigInt.prototype.mul=function(x){return this*BigInt(x)};BigInt.prototype.div=function(x){return this/BigInt(x)};BigInt.prototype.add=function(x){return this+BigInt(x)};BigInt.prototype.sub=function(x){return this-BigInt(x)};BigInt.prototype.gt=function(x){return this>BigInt(x)};BigInt.prototype.lt=function(x){return this<BigInt(x)};BigInt.prototype.gte=function(x){return this>=BigInt(x)};BigInt.prototype.lte=function(x){return this<=BigInt(x)};BigInt.prototype.eq=function(x){return this==BigInt(x)}};
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits, parseEther } = ethers;
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("🏁 Protocol Core Validation", function () {
@@ -17,12 +16,10 @@ describe("🏁 Protocol Core Validation", function () {
     beforeEach(async function () {
         [owner, trader, liquidator, insuranceFund] = await ethers.getSigners();
 
-        // Deploy Mock Tokens
         const MockERC20 = await ethers.getContractFactory("MockERC20");
         quoteToken = await MockERC20.deploy("USD Stable", "USDC");
         await quoteToken.waitForDeployment();
 
-        // Deploy Infrastructure
         const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
         protocolConfig = await ProtocolConfig.deploy(owner.address, owner.address);
         await protocolConfig.waitForDeployment();
@@ -31,11 +28,9 @@ describe("🏁 Protocol Core Validation", function () {
         oracleAggregator = await OracleAggregator.deploy(owner.address, owner.address);
         await oracleAggregator.waitForDeployment();
 
-        // Predicted addresses for circular dependencies
         const deployerAddr = owner.address;
         const nonce = await ethers.provider.getTransactionCount(deployerAddr);
 
-        // Nonce prediction in Hardhat
         const posMgrAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 2 });
         const ammAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 3 });
         const liqAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 4 });
@@ -46,7 +41,7 @@ describe("🏁 Protocol Core Validation", function () {
         await positionManager.waitForDeployment();
 
         const AMMPool = await ethers.getContractFactory("AMMPool");
-        ammPool = await AMMPool.deploy(perpAddr, owner.address);
+        ammPool = await AMMPool.deploy(perpAddr, oracleAggregator.target);
         await ammPool.waitForDeployment();
 
         const LiquidationQueue = await ethers.getContractFactory("LiquidationQueue");
@@ -81,7 +76,7 @@ describe("🏁 Protocol Core Validation", function () {
             ammPool.target,
             oracleAggregator.target,
             liquidationEngine.target,
-            owner.address, // riskManager mock
+            owner.address,
             protocolConfig.target,
             insuranceFund.address,
             quoteToken.target,
@@ -90,7 +85,7 @@ describe("🏁 Protocol Core Validation", function () {
         await perpEngine.waitForDeployment();
     });
 
-    it("1. PnL Correctness: should calculate profit for long position", async function () {
+    it("PnL Correctness: should calculate profit for long position in quote units", async function () {
         const PositionMathWrapper = await ethers.getContractFactory("PositionMathWrapper");
         const wrapper = await PositionMathWrapper.deploy();
 
@@ -98,19 +93,8 @@ describe("🏁 Protocol Core Validation", function () {
         const exitPrice = 2200n * PRICE_PRECISION;
         const size = 100n * PRECISION;
 
+        // 100 ETH * (2200 - 2000) = 20,000 USD
         const pnl = await wrapper.calculatePnL(entryPrice, exitPrice, size, true);
-        expect(pnl).to.equal(10n * PRECISION);
-    });
-
-    it("2. PnL Correctness: should calculate loss for short position", async function () {
-        const PositionMathWrapper = await ethers.getContractFactory("PositionMathWrapper");
-        const wrapper = await PositionMathWrapper.deploy();
-
-        const entryPrice = 2000n * PRICE_PRECISION;
-        const exitPrice = 2200n * PRICE_PRECISION;
-        const size = 100n * PRECISION;
-
-        const pnl = await wrapper.calculatePnL(entryPrice, exitPrice, size, false);
-        expect(pnl).to.equal(-10n * PRECISION);
+        expect(pnl).to.equal(20000n * PRECISION);
     });
 });

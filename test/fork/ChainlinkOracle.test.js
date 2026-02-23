@@ -1,12 +1,10 @@
-if(!BigInt.prototype.mul){BigInt.prototype.mul=function(x){return this*BigInt(x)};BigInt.prototype.div=function(x){return this/BigInt(x)};BigInt.prototype.add=function(x){return this+BigInt(x)};BigInt.prototype.sub=function(x){return this-BigInt(x)};BigInt.prototype.gt=function(x){return this>BigInt(x)};BigInt.prototype.lt=function(x){return this<BigInt(x)};BigInt.prototype.gte=function(x){return this>=BigInt(x)};BigInt.prototype.lte=function(x){return this<=BigInt(x)};BigInt.prototype.eq=function(x){return this==BigInt(x)}};
 // @title: Tests Chainlink Oracle sur mainnet fork
 // @network: Arbitrum mainnet fork
 // @security: Vérification des prix réels, staleness, déviation
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits, parseEther } = ethers;
-const { parseUnits } =
+const { parseUnits } = ethers.utils;
 
 describe("🔗 Chainlink Oracle Mainnet Fork", function () {
   // Adresses Chainlink Arbitrum
@@ -44,7 +42,7 @@ describe("🔗 Chainlink Oracle Mainnet Fork", function () {
     const ChainlinkOracle = await ethers.getContractFactory("ChainlinkOracle");
     chainlinkOracle = await ChainlinkOracle.deploy(
       CHAINLINK_REGISTRY,
-      ethers.ZeroAddress // aggregator à configurer
+      ethers.constants.AddressZero // aggregator à configurer
     );
     
     // Déploiement de l'agrégateur
@@ -119,7 +117,7 @@ describe("🔗 Chainlink Oracle Mainnet Fork", function () {
   describe("📡 Multi-Source Aggregation", function () {
     it("Devrait agréger plusieurs sources de prix", async function () {
       // Configuration de plusieurs sources
-      await oracleAggregator.addOracleSource("ETH-USD", chainlinkOracle.target);
+      await oracleAggregator.addOracleSource("ETH-USD", chainlinkOracle.address);
       
       // Dans la réalité, ajouter d'autres sources (Pyth, Uniswap TWAP)
       
@@ -135,7 +133,7 @@ describe("🔗 Chainlink Oracle Mainnet Fork", function () {
       // Prix normal: $2000, Prix déviant: $1000 (50% de déviation)
       await deviantOracle.setPrice(parseUnits("1000", 8));
       
-      await oracleAggregator.addOracleSource("ETH-USD", deviantOracle.target);
+      await oracleAggregator.addOracleSource("ETH-USD", deviantOracle.address);
       
       // La déviation devrait être détectée
       const price = await oracleAggregator.getPrice("ETH-USD");
@@ -152,7 +150,7 @@ describe("🔗 Chainlink Oracle Mainnet Fork", function () {
       const FailingOracle = await ethers.getContractFactory("FailingOracle");
       const failingOracle = await FailingOracle.deploy();
       
-      await oracleAggregator.addOracleSource("ETH-USD", failingOracle.target);
+      await oracleAggregator.addOracleSource("ETH-USD", failingOracle.address);
       
       // La source secondaire devrait prendre le relais
       const price = await oracleAggregator.getPrice("ETH-USD");
@@ -169,7 +167,7 @@ describe("🔗 Chainlink Oracle Mainnet Fork", function () {
       // Prix mis à jour il y a plus de 24h
       await staleOracle.setPrice(parseUnits("2000", 8), Date.now() / 1000 - 25 * 3600);
       
-      await oracleAggregator.addOracleSource("ETH-USD", staleOracle.target);
+      await oracleAggregator.addOracleSource("ETH-USD", staleOracle.address);
       
       await expect(oracleAggregator.getPrice("ETH-USD"))
         .to.be.revertedWith("Stale price");
@@ -183,7 +181,7 @@ describe("🔗 Chainlink Oracle Mainnet Fork", function () {
       // Prix à $0.001 (trop bas)
       await extremeOracle.setPrice(parseUnits("0.001", 8));
       
-      await oracleAggregator.addOracleSource("ETH-USD", extremeOracle.target);
+      await oracleAggregator.addOracleSource("ETH-USD", extremeOracle.address);
       
       await expect(oracleAggregator.getPrice("ETH-USD"))
         .to.be.revertedWith("Price out of bounds");

@@ -1,12 +1,10 @@
-if(!BigInt.prototype.mul){BigInt.prototype.mul=function(x){return this*BigInt(x)};BigInt.prototype.div=function(x){return this/BigInt(x)};BigInt.prototype.add=function(x){return this+BigInt(x)};BigInt.prototype.sub=function(x){return this-BigInt(x)};BigInt.prototype.gt=function(x){return this>BigInt(x)};BigInt.prototype.lt=function(x){return this<BigInt(x)};BigInt.prototype.gte=function(x){return this>=BigInt(x)};BigInt.prototype.lte=function(x){return this<=BigInt(x)};BigInt.prototype.eq=function(x){return this==BigInt(x)}};
 // @title: Tests d'intégration Aave V3 sur mainnet fork
 // @network: Arbitrum mainnet fork
 // @security: Tests avec contrats réels, pas de mocks
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits, parseEther } = ethers;
-const { parseUnits } =
+const { parseUnits } = ethers.utils;
 
 describe("🏦 Aave V3 Mainnet Fork Integration", function () {
   // Adresses Arbitrum Mainnet
@@ -76,7 +74,7 @@ describe("🏦 Aave V3 Mainnet Fork Integration", function () {
     it("Devrait déposer des fonds sur Aave", async function () {
       const amount = parseUnits("1000", 6); // 1000 USDC
       
-      await usdc.connect(deployer).approve(aavePool.target, amount);
+      await usdc.connect(deployer).approve(aavePool.address, amount);
       
       const tx = await aavePool.connect(deployer).supply(
         USDC,
@@ -98,7 +96,7 @@ describe("🏦 Aave V3 Mainnet Fork Integration", function () {
       const amount = parseUnits("500", 6);
       const aTokenBalance = await aUsdc.balanceOf(deployer.address);
       
-      await aUsdc.connect(deployer).approve(aavePool.target, amount);
+      await aUsdc.connect(deployer).approve(aavePool.address, amount);
       
       const tx = await aavePool.connect(deployer).withdraw(
         USDC,
@@ -190,7 +188,7 @@ describe("🏦 Aave V3 Mainnet Fork Integration", function () {
     it("Devrait calculer le health factor d'un utilisateur", async function () {
       // Supply de collateral
       const supplyAmount = parseUnits("1000", 6);
-      await usdc.connect(deployer).approve(aavePool.target, supplyAmount);
+      await usdc.connect(deployer).approve(aavePool.address, supplyAmount);
       await aavePool.connect(deployer).supply(USDC, supplyAmount, deployer.address, 0);
       
       // Emprunt

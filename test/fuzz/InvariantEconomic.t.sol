@@ -143,13 +143,13 @@ contract InvariantEconomicTest is StdInvariant, Test {
 
     // Mock OracleAggregator
     function getPrice(bytes32) external pure returns (uint256) {
-        return 2000e18;
+        return 2000e8;
     }
     function isPriceStale(bytes32) external pure returns (bool) {
         return false;
     }
     function getPriceData(bytes32) external view returns (uint256 price, uint256 timestamp, uint8 status) {
-        return (2000e18, block.timestamp, 1); // 1 = ACTIVE
+        return (2000e8, block.timestamp, 1); // 1 = ACTIVE
     }
 
     // Mock RiskManager
@@ -241,7 +241,7 @@ contract TraderActor {
 
     function openRandomPosition(uint256 seed) external {
         uint256 margin = 1000e18 + (seed % 9000e18);
-        uint256 size = margin * 2;
+        uint256 size = (margin * 2) / 2000;
 
         try perpEngine.openPosition(IPerpEngine.TradeParams({
             marketId: 1,
