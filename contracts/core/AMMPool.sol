@@ -2,6 +2,7 @@
 pragma solidity 0.8.19;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IAMMPool} from "../interfaces/IAMMPool.sol";
 import {IPerpEngine} from "../interfaces/IPerpEngine.sol";
 import {IOracleAggregator} from "../interfaces/IOracleAggregator.sol";
@@ -15,7 +16,7 @@ import {L2GasOptimized} from "../libraries/L2GasOptimized.sol";
  * @notice Virtual AMM pool for funding rate calculation and skew management
  * @dev No real swaps, only tracks open interest and calculates funding
  */
-contract AMMPool is IAMMPool, ERC20 {
+contract AMMPool is IAMMPool, ERC20, Ownable {
     using SafeDecimalMath for uint256;
     using L2GasOptimized for uint256[];
     using FundingRateCalculator for FundingRateCalculator.FundingState;
@@ -68,6 +69,7 @@ contract AMMPool is IAMMPool, ERC20 {
     // ============ CONSTRUCTOR ============
     
     constructor(address perpEngine_, address oracleAggregator_) ERC20("PerpDEX LP", "PLP") {
+        _transferOwnership(msg.sender);
         require(perpEngine_ != address(0), "AMMPool: zero address");
         require(oracleAggregator_ != address(0), "AMMPool: zero address");
         
@@ -374,7 +376,8 @@ contract AMMPool is IAMMPool, ERC20 {
         uint256 skewScale,
         uint256 maxFundingRate,
         uint256 fundingInterval
-    ) external onlyPerpEngine {
+    ) external {
+        require(msg.sender == perpEngine || msg.sender == owner(), "AMMPool: unauthorized");
         require(!_marketConfigs[marketId].isActive, "AMMPool: market already active");
         require(skewScale >= MIN_SKEW_SCALE && skewScale <= MAX_SKEW_SCALE, "AMMPool: invalid skew scale");
         require(maxFundingRate <= MAX_FUNDING_RATE, "AMMPool: funding rate too high");
