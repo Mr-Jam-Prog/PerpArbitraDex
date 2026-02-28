@@ -155,8 +155,8 @@ contract PerpDexGovernor is
         
         // Get proposal details (dummy for now since getProposalParameters is disabled)
         // In real use, we would need the actual parameters
-
-        /*
+        
+        /* 
         (
             address[] memory targets,
             uint256[] memory values,

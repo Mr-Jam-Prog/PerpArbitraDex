@@ -11,7 +11,7 @@ def migrate_file(filepath):
     content = content.replace('ethers.constants.AddressZero', 'ethers.ZeroAddress')
     content = content.replace('ethers.constants.MaxUint256', 'ethers.MaxUint256')
     content = re.sub(r'await (.*)\.deployed\(\)', r'await \1.waitForDeployment()', content)
-
+    
     # Replace BigNumber methods with BigInt operators
     # This is a simplified regex-based replacement, might not catch everything
     content = re.sub(r'\.add\((.*?)\)', r' + (\1)', content)
@@ -24,7 +24,7 @@ def migrate_file(filepath):
     content = re.sub(r'\.gte\((.*?)\)', r' >= (\1)', content)
     content = re.sub(r'\.lte\((.*?)\)', r' <= (\1)', content)
     content = re.sub(r'\.abs\(\)', r'((val => val < 0n ? -val : val)(\0))', content) # Hacky abs
-
+    
     # Replace .address with await .getAddress()
     # Only for specific known contract variables or in general?
     # content = re.sub(r'([a-zA-Z0-9_]+)\.address', r'(await \1.getAddress())', content)

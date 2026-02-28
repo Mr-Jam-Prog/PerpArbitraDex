@@ -375,7 +375,7 @@ export function calculateLiquidationPriceSafe(
         
         const denominator = mulDiv(params.size, DECIMALS + mmRatio, DECIMALS);
         const liqPriceNormalized = mulDiv(uint256(numerator), DECIMALS, denominator);
-
+        
         return {
             isLiquidatable: true,
             liquidationPrice: denormalizePrice(liqPriceNormalized)

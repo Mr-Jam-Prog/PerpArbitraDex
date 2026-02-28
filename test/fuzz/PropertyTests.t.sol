@@ -95,7 +95,7 @@ contract PropertyTests is Test {
         int256 rate2 = FundingRateCalculator.calculateFundingRate(
             uint256(skew2 >= 0 ? skew2 : int256(0)),
             0,
-            100e18,
+            100e18, 
             3600
         );
 
@@ -119,7 +119,7 @@ contract PropertyTests is Test {
         int256 rate = FundingRateCalculator.calculateFundingRate(
             uint256(skew >= 0 ? skew : int256(0)),
             0,
-            skewScale,
+            skewScale, 
             3600
         );
 

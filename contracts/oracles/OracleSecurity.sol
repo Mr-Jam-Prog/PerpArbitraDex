@@ -428,21 +428,21 @@ contract OracleSecurity is IOracleSecurity, Ownable, Pausable {
     function validatePrice(bytes32 feedId, uint256 price) external view override returns (bool) {
         // 1. Check if feed is frozen
         if (_frozenFeeds[feedId]) return false;
-
+        
         // 2. Basic price validation
         if (price == 0) return false;
-
+        
         // 3. Rate limiting check (internal)
         (bool limited, ) = this.checkRateLimit(feedId);
         if (limited) return false;
-
+        
         // 4. Call sanity checker for volatility and deviation
         try IOracleSanityChecker(sanityChecker).checkPrice(feedId, price) returns (bool ok) {
             if (!ok) return false;
         } catch {
             return false;
         }
-
+        
         return true;
     }
 }

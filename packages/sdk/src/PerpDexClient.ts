@@ -84,7 +84,7 @@ export class PerpDexClient {
       const perpEngine = this.getContract('PerpEngine');
       const pos = await perpEngine.getPositionInternal(positionId);
       const ammPool = this.getContract('AMMPool');
-
+      
       const fundingBase = await ammPool.calculateFundingPayment(
         pos.marketId,
         pos.size,
@@ -94,7 +94,7 @@ export class PerpDexClient {
       
       // Convert to quote units
       const { price } = await this.getOraclePrice(pos.marketId.toString());
-      // Price is 8 decimals, but normalized to 18 internally by engine.
+      // Price is 8 decimals, but normalized to 18 internally by engine. 
       // SDK should use normalized price for consistent math.
       const normalizedPrice = price * BigInt(10**10);
       

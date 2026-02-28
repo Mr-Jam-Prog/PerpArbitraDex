@@ -60,7 +60,7 @@ contract PerpDexToken is ERC20, ERC20Permit, ERC20Votes, ERC20Snapshot, Ownable 
         
         emit MinterAdded(_emissionController);
         emit SnapshoterAdded(initialOwner);
-
+        
         _transferOwnership(initialOwner);
     }
 

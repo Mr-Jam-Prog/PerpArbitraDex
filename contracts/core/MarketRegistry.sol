@@ -271,7 +271,7 @@ contract MarketRegistry is IMarketRegistry, Ownable, Pausable {
         view 
         override 
         marketExists(marketId) 
-        returns (IMarketRegistry.Market memory)
+        returns (IMarketRegistry.Market memory) 
     {
         return _markets[marketId];
     }
@@ -283,7 +283,7 @@ contract MarketRegistry is IMarketRegistry, Ownable, Pausable {
         external 
         view 
         override 
-        returns (uint256 marketId, IMarketRegistry.Market memory market)
+        returns (uint256 marketId, IMarketRegistry.Market memory market) 
     {
         marketId = _symbolToMarketId[symbol];
         require(marketId > 0, "MarketRegistry: symbol not found");
@@ -375,7 +375,7 @@ contract MarketRegistry is IMarketRegistry, Ownable, Pausable {
         view 
         override 
         marketExists(marketId) 
-        returns (IMarketRegistry.MarketUpdate[] memory history)
+        returns (IMarketRegistry.MarketUpdate[] memory history) 
     {
         IMarketRegistry.MarketUpdate[] storage fullHistory = _marketHistory[marketId];
         uint256 historyLength = fullHistory.length;

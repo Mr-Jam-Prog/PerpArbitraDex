@@ -22,7 +22,7 @@ contract EdgeCasesTest is AdversarialTests {
         }));
 
         currentPrice = 1000e8; // 50% crash
-
+        
         assertTrue(perpEngine.isPositionLiquidatable(posId, currentPrice), "Should be liquidatable after crash");
     }
 
@@ -47,7 +47,7 @@ contract EdgeCasesTest is AdversarialTests {
     function test_many_vs_one_position() public {
         uint256 totalMargin = 10000e18;
         uint256 totalSize = 50e18; // 100,000 USD notional, 10x leverage
-
+        
         // One large position
         vm.prank(trader);
         perpEngine.openPosition(IPerpEngine.TradeParams({
@@ -61,14 +61,14 @@ contract EdgeCasesTest is AdversarialTests {
         }));
 
         uint256 collateralOne = perpEngine.totalCollateral();
-
+        
         // Reset (re-deploying via setUp is easiest in this context if we want clean state)
         setUp();
-
+        
         // 10 small positions
         uint256 smallMargin = totalMargin / 10;
         uint256 smallSize = totalSize / 10;
-
+        
         for(uint256 i=0; i<10; i++) {
             vm.prank(trader);
             perpEngine.openPosition(IPerpEngine.TradeParams({
@@ -81,9 +81,9 @@ contract EdgeCasesTest is AdversarialTests {
                 referralCode: bytes32(0)
             }));
         }
-
+        
         uint256 collateralMany = perpEngine.totalCollateral();
-
+        
         // Collateral should be identical (within rounding)
         assertApproxEqAbs(collateralOne, collateralMany, 1e10, "Total collateral mismatch between batch and single");
     }

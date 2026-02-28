@@ -82,9 +82,9 @@ contract AdversarialTests is Test {
         usdc = new MockERC20("USDC", "USDC", 18);
         protocolConfig = new ProtocolConfig(address(this), address(this));
         positionManager = new PositionManager(perpAddr);
-
+        
         ammPool = new AMMPool(perpAddr, address(this));
-
+        
         liquidationEngine = new LiquidationEngine(
             address(this),
             address(protocolConfig),
@@ -105,7 +105,7 @@ contract AdversarialTests is Test {
             address(usdc),
             address(usdc)
         );
-
+        
         assertEq(address(ammPool), ammAddr, "AMM address mismatch");
         assertEq(address(perpEngine), perpAddr, "Perp address mismatch");
 
@@ -126,7 +126,7 @@ contract AdversarialTests is Test {
 
         usdc.mint(trader, 10_000_000e18);
         usdc.mint(liquidator, 10_000_000e18);
-
+        
         vm.prank(trader);
         usdc.approve(address(perpEngine), type(uint256).max);
         vm.prank(liquidator);
@@ -175,7 +175,7 @@ contract AdversarialTests is Test {
 
         int256 fundingRate = ammPool.getFundingRate(1);
         assertTrue(fundingRate > 0, "Funding rate should be positive for longs");
-
+        
         // Longs should be paying
         int256 payment = ammPool.calculateFundingPayment(1, size, true, block.timestamp - 1 days);
         assertTrue(payment < 0, "Longs should have negative funding payment (paying)");
@@ -188,7 +188,7 @@ contract AdversarialTests is Test {
         // Open 10 positions near liquidation
         uint256 margin = 1000e18;
         uint256 size = 47e18; // ~95x leverage, very close to 1% margin ratio
-
+        
         uint256[] memory posIds = new uint256[](10);
         for(uint256 i=0; i<10; i++) {
             vm.prank(trader);
@@ -205,10 +205,10 @@ contract AdversarialTests is Test {
 
         // Drop price by 1% to trigger all liquidations
         currentPrice = 1980e8; // 2000 * 0.99
-
+        
         for(uint256 i=0; i<10; i++) {
             assertTrue(perpEngine.isPositionLiquidatable(posIds[i], currentPrice), "Position should be liquidatable");
-
+            
             vm.prank(address(liquidationEngine));
             perpEngine.liquidatePosition(IPerpEngine.LiquidateParams({
                 positionId: posIds[i],
@@ -243,10 +243,10 @@ contract AdversarialTests is Test {
         // In same block (simulated by same timestamp but sequence of calls)
         // 1. Funding accrues (time jump)
         vm.warp(block.timestamp + 1 hours);
-
+        
         // 2. Price crashes
         currentPrice = 1900e8; // 5% drop
-
+        
         // 3. Liquidate
         vm.prank(address(liquidationEngine));
         perpEngine.liquidatePosition(IPerpEngine.LiquidateParams({
@@ -291,7 +291,7 @@ contract AdversarialTests is Test {
         // PnL should be zero (price stayed same), but margin should have decreased due to funding
         IPerpEngine.Position memory pos = perpEngine.getPositionInternal(1);
         assertTrue(pos.margin < margin, "Margin should have decreased by funding");
-
+        
         // Total collateral should track exactly
         assertEq(perpEngine.totalCollateral(), pos.margin, "Global collateral drift detected");
     }

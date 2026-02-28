@@ -1,0 +1,17 @@
+WARNING: You are currently using Node.js v22.22.0, which is not supported by Hardhat. This can lead to unexpected behavior. See https://hardhat.org/nodejs-versions
+
+
+An unexpected error occurred:
+
+ReferenceError: require is not defined in ES module scope, you can use import instead
+This file is being treated as an ES module because it has a '.js' file extension and '/app/package.json' contains "type": "module". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.
+    at file:///app/test/fork/AaveIntegration.test.js:5:20
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at formattedImport (/app/node_modules/.pnpm/mocha@10.8.2/node_modules/mocha/lib/nodejs/esm-utils.js:9:14)
+    at Object.exports.requireOrImport (/app/node_modules/.pnpm/mocha@10.8.2/node_modules/mocha/lib/nodejs/esm-utils.js:42:28)
+    at Object.exports.loadFilesAsync (/app/node_modules/.pnpm/mocha@10.8.2/node_modules/mocha/lib/nodejs/esm-utils.js:100:20)
+    at SimpleTaskDefinition.action (/app/node_modules/.pnpm/hardhat@2.19.4_ts-node@10.9.2_@types+node@22.7.5_typescript@5.9.3__typescript@5.9.3/node_modules/hardhat/src/builtin-tasks/test.ts:132:9)
+    at Environment._runTaskDefinition (/app/node_modules/.pnpm/hardhat@2.19.4_ts-node@10.9.2_@types+node@22.7.5_typescript@5.9.3__typescript@5.9.3/node_modules/hardhat/src/internal/core/runtime-environment.ts:358:14)
+    at Environment._runTaskDefinition (/app/node_modules/.pnpm/hardhat@2.19.4_ts-node@10.9.2_@types+node@22.7.5_typescript@5.9.3__typescript@5.9.3/node_modules/hardhat/src/internal/core/runtime-environment.ts:358:14)
+    at Environment.run (/app/node_modules/.pnpm/hardhat@2.19.4_ts-node@10.9.2_@types+node@22.7.5_typescript@5.9.3__typescript@5.9.3/node_modules/hardhat/src/internal/core/runtime-environment.ts:191:14)

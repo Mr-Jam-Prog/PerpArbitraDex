@@ -264,7 +264,7 @@ library PositionMath {
             // size * Price / D - size * Entry / D + C - F = size * Price * mmRatio / D
             // size * Price / D * (1 - mmRatio) = size * Entry / D - C + F
             // Price = (size * Entry / D - C + F) * D / (size * (1 - mmRatio))
-
+            
             int256 numerator = int256(params.size.mulDiv(entryNormalized, DECIMALS)) - int256(params.collateral) + params.fundingAccrued;
             if (numerator <= 0) return LiquidationResult(false, 0);
             
@@ -285,7 +285,7 @@ library PositionMath {
             
             uint256 denominator = params.size.mulDiv(DECIMALS + mmRatio, DECIMALS);
             uint256 liqPriceNormalized = uint256(numerator).mulDiv(DECIMALS, denominator);
-
+            
             result.isLiquidatable = true;
             result.liquidationPrice = denormalizePrice(liqPriceNormalized);
         }

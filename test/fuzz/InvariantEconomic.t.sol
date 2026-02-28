@@ -97,7 +97,7 @@ contract InvariantEconomicTest is StdInvariant, Test {
         for(uint256 i=0; i<liquidatorActors.length; i++) {
             targetContract(address(liquidatorActors[i]));
         }
-
+        
         excludeSender(address(0));
         excludeSender(address(this));
         excludeSender(address(perpEngine));
@@ -107,10 +107,10 @@ contract InvariantEconomicTest is StdInvariant, Test {
     function _deployProtocol() internal {
         // Predict addresses for circular dependency
         uint256 nonce = vm.getNonce(address(this));
-
+        
         usdc = new MockERC20("USDC", "USDC", 18);
         protocolConfig = new ProtocolConfig(address(this), address(this));
-
+        
         vm.computeCreateAddress(address(this), nonce + 2); // PositionManager
         address ammAddr = vm.computeCreateAddress(address(this), nonce + 3);
         address liqAddr = vm.computeCreateAddress(address(this), nonce + 4);
@@ -118,7 +118,7 @@ contract InvariantEconomicTest is StdInvariant, Test {
 
         positionManager = new PositionManager(perpAddr);
         ammPool = new AMMPool(perpAddr, address(this));
-
+        
         liquidationEngine = new LiquidationEngine(
             perpAddr,
             address(protocolConfig),
@@ -168,7 +168,7 @@ contract InvariantEconomicTest is StdInvariant, Test {
             2e16,
             1e15
         );
-
+        
         vm.prank(address(perpEngine));
         ammPool.initializeMarket(1, 100_000e18, 1e16, 1 hours);
     }
@@ -214,7 +214,7 @@ contract InvariantEconomicTest is StdInvariant, Test {
         uint256 total = usdc.balanceOf(address(perpEngine));
         total += usdc.balanceOf(address(ammPool));
         total += usdc.balanceOf(address(liquidationEngine));
-
+        
         for(uint256 i=0; i<traderActors.length; i++) {
             total += usdc.balanceOf(address(traderActors[i]));
         }
@@ -242,7 +242,7 @@ contract TraderActor {
     function openRandomPosition(uint256 seed) external {
         uint256 margin = 1000e18 + (seed % 9000e18);
         uint256 size = (margin * 2) / 2000;
-
+        
         try perpEngine.openPosition(IPerpEngine.TradeParams({
             marketId: 1,
             isLong: seed % 2 == 0,
@@ -260,7 +260,7 @@ contract TraderActor {
         if (myPositions.length == 0) return;
         uint256 index = seed % myPositions.length;
         uint256 id = myPositions[index];
-
+        
         try perpEngine.closePosition(id) {
             myPositions[index] = myPositions[myPositions.length - 1];
             myPositions.pop();

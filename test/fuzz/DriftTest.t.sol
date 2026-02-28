@@ -32,8 +32,8 @@ contract DriftTest is AdversarialTests {
 
         assertEq(perpEngine.totalCollateral(), expectedMargin, "Initial total collateral mismatch");
 
-        currentPrice = 1960e8;
-
+        currentPrice = 1960e8; 
+        
         assertTrue(perpEngine.isPositionLiquidatable(posId, currentPrice), "Should be liquidatable");
 
         vm.prank(address(liquidationEngine));
@@ -66,7 +66,7 @@ contract DriftTest is AdversarialTests {
             deadline: block.timestamp + 1,
             referralCode: bytes32(0)
         }));
-
+        
         perpEngine.openPosition(IPerpEngine.TradeParams({
             marketId: 1,
             isLong: false,
@@ -88,8 +88,8 @@ contract DriftTest is AdversarialTests {
     }
 
     function test_fuzz_insolvent_path_prevention(uint256 priceDropBps) public {
-        priceDropBps = bound(priceDropBps, 1, 5000);
-
+        priceDropBps = bound(priceDropBps, 1, 5000); 
+        
         uint256 margin = 1000e18;
         uint256 size = 5e18; // 10,000 USD notional, 10x leverage
 
@@ -105,10 +105,10 @@ contract DriftTest is AdversarialTests {
         }));
 
         currentPrice = 2000e8 * (10000 - priceDropBps) / 10000;
-
+        
         if (perpEngine.getHealthFactor(posId) < 1e18) {
             assertTrue(perpEngine.isPositionLiquidatable(posId, currentPrice), "Unsafe position must be liquidatable");
-
+            
             vm.prank(address(liquidationEngine));
             perpEngine.liquidatePosition(IPerpEngine.LiquidateParams({
                 positionId: posId,
@@ -117,7 +117,7 @@ contract DriftTest is AdversarialTests {
                 sizeToLiquidate: size,
                 minReward: 0
             }));
-
+            
             assertEq(perpEngine.totalCollateral(), 0, "Collateral should be cleared after full liquidation");
         }
     }

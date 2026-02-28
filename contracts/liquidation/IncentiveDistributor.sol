@@ -4,6 +4,7 @@ pragma solidity 0.8.19;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 import {ILiquidationEngine} from "../interfaces/ILiquidationEngine.sol";
 import {IPerpEngine} from "../interfaces/IPerpEngine.sol";
@@ -14,7 +15,7 @@ import {IConfigRegistry} from "../interfaces/IConfigRegistry.sol";
  * @notice Distributes liquidation rewards and penalties
  * @dev Ensures proper incentive alignment between liquidators, protocol, and insurance fund
  */
-contract IncentiveDistributor is ReentrancyGuard {
+contract IncentiveDistributor is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
     // ============ STRUCTS ============
@@ -41,6 +42,7 @@ contract IncentiveDistributor is ReentrancyGuard {
     IConfigRegistry public immutable configRegistry;
     
     // ============ STATE VARIABLES ============
+    address public liquidationEngine;
     DistributionConfig public distributionConfig;
     RewardStats public rewardStats;
     
@@ -77,8 +79,8 @@ contract IncentiveDistributor is ReentrancyGuard {
     event StakingContractUpdated(address oldStaking, address newStaking);
 
     // ============ MODIFIERS ============
-    modifier onlyPerpEngine() {
-        require(msg.sender == address(perpEngine), "Only PerpEngine");
+    modifier onlyAuthorized() {
+        require(msg.sender == address(perpEngine) || msg.sender == liquidationEngine, "Only authorized");
         _;
     }
     
@@ -137,7 +139,7 @@ contract IncentiveDistributor is ReentrancyGuard {
     function distributeLiquidationPenalty(uint256 positionId, uint256 totalPenalty)
         external
         nonReentrant
-        onlyPerpEngine
+        onlyAuthorized
         onlyValidDistribution(totalPenalty)
     {
         require(!distributedPositions[positionId], "Already distributed");
@@ -173,7 +175,7 @@ contract IncentiveDistributor is ReentrancyGuard {
      * @notice Distribute protocol fees
      * @param feeAmount Fee amount to distribute
      */
-    function distributeProtocolFees(uint256 feeAmount) external nonReentrant onlyPerpEngine {
+    function distributeProtocolFees(uint256 feeAmount) external nonReentrant onlyAuthorized {
         require(feeAmount > 0, "No fees to distribute");
         
         // Protocol fees follow same distribution as penalties
@@ -337,7 +339,7 @@ contract IncentiveDistributor is ReentrancyGuard {
      * @notice Update distribution configuration
      * @param newConfig New distribution configuration
      */
-    function updateDistributionConfig(DistributionConfig calldata newConfig) external onlyPerpEngine {
+    function updateDistributionConfig(DistributionConfig calldata newConfig) external onlyOwner {
         require(newConfig.liquidatorShare <= MAX_SHARE, "Liquidator share too high");
         require(newConfig.protocolShare <= MAX_SHARE, "Protocol share too high");
         require(newConfig.insuranceShare <= MAX_SHARE, "Insurance share too high");
@@ -361,7 +363,7 @@ contract IncentiveDistributor is ReentrancyGuard {
      * @notice Update protocol treasury address
      * @param newTreasury New treasury address
      */
-    function updateProtocolTreasury(address newTreasury) external onlyPerpEngine {
+    function updateProtocolTreasury(address newTreasury) external onlyOwner {
         require(newTreasury != address(0), "Invalid treasury");
         
         emit TreasuryUpdated(protocolTreasury, newTreasury);
@@ -372,7 +374,7 @@ contract IncentiveDistributor is ReentrancyGuard {
      * @notice Update insurance fund address
      * @param newInsuranceFund New insurance fund address
      */
-    function updateInsuranceFund(address newInsuranceFund) external onlyPerpEngine {
+    function updateInsuranceFund(address newInsuranceFund) external onlyOwner {
         require(newInsuranceFund != address(0), "Invalid insurance fund");
         
         emit InsuranceFundUpdated(insuranceFund, newInsuranceFund);
@@ -383,11 +385,16 @@ contract IncentiveDistributor is ReentrancyGuard {
      * @notice Update staking contract address
      * @param newStakingContract New staking contract address
      */
-    function updateStakingContract(address newStakingContract) external onlyPerpEngine {
+    function updateStakingContract(address newStakingContract) external onlyOwner {
         require(newStakingContract != address(0), "Invalid staking contract");
         
         emit StakingContractUpdated(stakingContract, newStakingContract);
         stakingContract = newStakingContract;
+    }
+
+    function setLiquidationEngine(address _liquidationEngine) external onlyOwner {
+        require(_liquidationEngine != address(0), "Invalid address");
+        liquidationEngine = _liquidationEngine;
     }
 
     /**
@@ -395,7 +402,7 @@ contract IncentiveDistributor is ReentrancyGuard {
      * @param token Token to recover
      * @param amount Amount to recover
      */
-    function emergencyRecover(address token, uint256 amount) external onlyPerpEngine {
+    function emergencyRecover(address token, uint256 amount) external onlyOwner {
         require(token != address(quoteToken), "Cannot recover quote token");
         
         IERC20(token).safeTransfer(msg.sender, amount);
@@ -405,7 +412,7 @@ contract IncentiveDistributor is ReentrancyGuard {
      * @notice Sweep excess quote tokens to treasury
      * @dev Only callable when no pending distributions
      */
-    function sweepExcessTokens() external onlyPerpEngine {
+    function sweepExcessTokens() external onlyOwner {
         uint256 contractBalance = quoteToken.balanceOf(address(this));
         uint256 reservedAmount = _calculateReservedAmount();
         

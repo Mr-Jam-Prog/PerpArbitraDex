@@ -261,7 +261,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         
         // Mint position NFT
         IPositionManager(positionManager).mint(msg.sender, positionId);
-
+        
         emit PositionOpened(
             positionId,
             msg.sender,
@@ -305,7 +305,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         // Calculate new values
         uint256 newSize = position.size + sizeAdded;
         uint256 newMargin = position.margin + marginAdded;
-
+        
         // Calculate leverage: (size * price) / margin
         uint256 newNotionalValue = newSize.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
         uint256 newLeverage = newNotionalValue.mulDiv(PRECISION, newMargin);
@@ -405,7 +405,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         int256 fundingPayment = int256(uint256(fundingPaymentBase > 0 ? fundingPaymentBase : -fundingPaymentBase)
             .mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION));
         if (fundingPaymentBase < 0) fundingPayment = -fundingPayment;
-
+        
         int256 totalPnl = pnl + fundingPayment;
         
         // Update global metrics
@@ -499,7 +499,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         int256 fundingPayment = int256(uint256(fundingPaymentBase > 0 ? fundingPaymentBase : -fundingPaymentBase)
             .mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION));
         if (fundingPaymentBase < 0) fundingPayment = -fundingPayment;
-
+        
         int256 totalPnl = pnl + fundingPayment;
         
         // Update global metrics
@@ -612,7 +612,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         if (pnl < 0) {
             pnlDeduction = uint256(-pnl);
         }
-
+        
         // Remaining margin after PnL
         uint256 remainingAfterPnl = 0;
         if (pnlDeduction < position.margin) {
@@ -728,18 +728,18 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         
         // Get current price
         (uint256 currentPrice, ) = _getMarketPrice(position.marketId);
-
+        
         // Transfer margin
         quoteToken.safeTransferFrom(msg.sender, address(this), amount);
         
         // Update position
         position.margin += amount;
         totalCollateral += amount;
-
+        
         // Update leverage
         uint256 notionalValue = position.size.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
         position.leverage = notionalValue.mulDiv(PRECISION, position.margin);
-
+        
         position.lastUpdated = block.timestamp;
     }
 
@@ -788,11 +788,11 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         // Update position
         position.margin = newMargin;
         totalCollateral -= amount;
-
+        
         // Update leverage
         uint256 notionalValue = position.size.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
         position.leverage = notionalValue.mulDiv(PRECISION, position.margin);
-
+        
         position.lastUpdated = block.timestamp;
         
         // Transfer margin to trader
@@ -838,7 +838,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             maintenanceMarginBps: _markets[position.marketId].minMarginRatio / (PRECISION / 10000),
             liquidationThresholdBps: 10000
         });
-
+        
         healthFactor = PositionMath.calculateHealthFactor(posParams, currentPrice, riskParams);
     }
 
@@ -878,7 +878,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             maintenanceMarginBps: _markets[position.marketId].minMarginRatio / (PRECISION / 10000),
             liquidationThresholdBps: 10000
         });
-
+        
         PositionMath.LiquidationResult memory result = PositionMath.calculateLiquidationPriceSafe(posParams, riskParams);
         liquidationPrice = result.liquidationPrice;
     }
@@ -948,7 +948,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         int256 fundingPayment = int256(uint256(fundingPaymentBase > 0 ? fundingPaymentBase : -fundingPaymentBase)
             .mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION));
         if (fundingPaymentBase < 0) fundingPayment = -fundingPayment;
-
+        
         PositionMath.PositionParams memory posParams = PositionMath.PositionParams({
             size: position.size,
             collateral: position.margin,
@@ -960,7 +960,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             maintenanceMarginBps: _markets[position.marketId].minMarginRatio / (PRECISION / 10000),
             liquidationThresholdBps: 10000
         });
-
+        
         liquidatable = PositionMath.isPositionLiquidatable(posParams, currentPrice, riskParams);
     }
 
@@ -979,7 +979,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         if (!position.isActive) return viewData;
 
         (uint256 currentPrice, ) = _getMarketPrice(position.marketId);
-
+        
         int256 fundingPaymentBase = IAMMPool(ammPool).calculateFundingPayment(
             position.marketId,
             position.size,
@@ -1079,7 +1079,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         uint256 protocolFeeRatio
     ) external override onlyGovernance {
         require(!_markets[marketId].isActive, "PerpEngine: market already active");
-
+        
         _markets[marketId] = Market({
             isActive: true,
             maxLeverage: maxLeverage,
@@ -1091,7 +1091,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             lastPriceUpdate: block.timestamp,
             lastFundingUpdate: block.timestamp
         });
-
+        
         emit MarketInitialized(marketId, oracleFeedId);
     }
 
@@ -1273,11 +1273,11 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         uint256[] storage ids = _traderPositions[trader];
         uint256 total = ids.length;
         if (cursor >= total) return (positions, total);
-
+        
         uint256 end = cursor + limit;
         if (end > total) end = total;
         uint256 count = end - cursor;
-
+        
         positions = new PositionView[](count);
         for (uint256 i = 0; i < count; i++) {
             positions[i] = getPosition(ids[cursor + i]);
@@ -1311,7 +1311,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         if (!position.isActive) return 0;
 
         (uint256 currentPrice, ) = _getMarketPrice(position.marketId);
-
+        
         int256 fundingPaymentBase = IAMMPool(ammPool).calculateFundingPayment(
             position.marketId,
             position.size,
@@ -1324,14 +1324,14 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
 
         int256 pnl = PositionMath.calculatePnL(position.entryPrice, currentPrice, position.size, position.isLong);
         int256 equity = int256(position.margin) + pnl - fundingPayment;
-
+        
         if (equity <= 0) return 0;
 
         uint256 maintenanceMargin = position.size.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION)
             .mulDiv(_markets[position.marketId].minMarginRatio, PRECISION);
-
+            
         if (uint256(equity) <= maintenanceMargin) return 0;
-
+        
         return uint256(equity) - maintenanceMargin;
     }
 
@@ -1341,12 +1341,12 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
 
         (uint256 currentPrice, ) = _getMarketPrice(position.marketId);
         uint256 totalMargin = position.margin + additionalMargin;
-
+        
         uint256 currentNotional = position.size.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
         uint256 maxNotional = totalMargin.mulDiv(_markets[position.marketId].maxLeverage, PRECISION);
-
+        
         if (maxNotional <= currentNotional) return 0;
-
+        
         uint256 additionalNotional = maxNotional - currentNotional;
         return additionalNotional.mulDiv(PRECISION, currentPrice * PRICE_NORMALIZATION);
     }

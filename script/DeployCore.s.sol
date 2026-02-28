@@ -34,7 +34,7 @@ contract DeployCore is Script {
         for(uint8 i=0; i<12; i++) {
             addrs[i] = vm.computeCreateAddress(deployer, nonce + i);
         }
-
+        
         // 3. Deployment
         ProtocolConfig config = new ProtocolConfig(deployer, deployer);
         MarketRegistry registry = new MarketRegistry(addrs[0]);
@@ -44,7 +44,7 @@ contract DeployCore is Script {
         PositionManager posMgr = new PositionManager(addrs[11]);
         AMMPool amm = new AMMPool(addrs[11], addrs[3]);
         LiquidationQueue liqQueue = new LiquidationQueue(addrs[9]);
-
+        
         IncentiveDistributor incentive = new IncentiveDistributor(
             address(quoteToken),
             addrs[11],
@@ -79,7 +79,7 @@ contract DeployCore is Script {
 
         // 4. Initial Configuration
         perp.setGovernance(deployer);
-
+        
         // ETH-USD
         perp.initializeMarket(1, bytes32("ETH-USD"), 10e18, 2e16, 0.1 ether, 5e16, 1e15);
         // BTC-USD

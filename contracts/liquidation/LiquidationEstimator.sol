@@ -13,10 +13,10 @@ contract LiquidationEstimator {
         liquidationEngine = ILiquidationEngine(_liquidationEngine);
     }
 
-    function estimateLiquidation(uint256 positionId, uint256 currentPrice)
-        external
-        view
-        returns (uint256 reward, uint256 penalty)
+    function estimateLiquidation(uint256 positionId, uint256 currentPrice) 
+        external 
+        view 
+        returns (uint256 reward, uint256 penalty) 
     {
         (reward, penalty, ) = perpEngine.previewLiquidation(positionId, currentPrice);
     }

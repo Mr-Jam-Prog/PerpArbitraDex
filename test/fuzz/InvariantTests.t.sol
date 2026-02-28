@@ -41,7 +41,7 @@ contract InvariantTestsTest is Test {
         // Setup des contrats
         protocolConfig = new ProtocolConfig(address(this), address(this));
         positionManager = new PositionManager(address(this));
-
+        
         usdc = IERC20(address(new MockERC20("USDC", "USDC", 6)));
         weth = IERC20(address(new MockERC20("WETH", "WETH", 18)));
 
@@ -54,8 +54,8 @@ contract InvariantTestsTest is Test {
             address(this), // riskManager mock
             address(protocolConfig),
             address(this), // insuranceFund
-            address(usdc),
-            address(usdc)
+            address(usdc), 
+            address(usdc)  
         );
 
         perpEngine.initializeMarket(

@@ -497,8 +497,8 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
             status = PriceStatus.INACTIVE;
         }
         
-        // Normalize price to 8 decimals
-        uint256 normalizedPrice = _normalizeDecimals(medianPrice, 8);
+        // Price is already normalized to 8 decimals by sources
+        uint256 normalizedPrice = medianPrice;
         
         return AggregatedPrice({
             price: normalizedPrice,
@@ -783,10 +783,10 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
     /**
      * @notice Get aggregated source data for audit
      */
-    function getAggregatedSourceData(bytes32 feedId, uint256 timestamp)
-        external
-        view
-        returns (uint256[] memory prices, uint256[] memory timestamps, uint256[] memory confidences)
+    function getAggregatedSourceData(bytes32 feedId, uint256 timestamp) 
+        external 
+        view 
+        returns (uint256[] memory prices, uint256[] memory timestamps, uint256[] memory confidences) 
     {
         SourceData storage data = _aggregatedSourceData[feedId][timestamp];
         return (data.prices, data.timestamps, data.confidences);
@@ -803,7 +803,7 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
     ) external override whenNotPaused {
         // Only security module can push prices directly
         require(msg.sender == oracleSecurity, "OracleAggregator: only security module");
-
+        
         _aggregatedPrices[feedId] = AggregatedPrice({
             price: price,
             timestamp: timestamp,
@@ -812,7 +812,7 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
             minPrice: price,
             maxPrice: price
         });
-
+        
         emit PriceUpdated(feedId, price, timestamp, confidence);
     }
 }

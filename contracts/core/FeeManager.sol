@@ -17,14 +17,14 @@ contract FeeManager is Ownable {
     function distributeFees(address token, address[] calldata recipients, uint256[] calldata shares) external onlyOwner {
         require(recipients.length == shares.length, "Length mismatch");
         uint256 totalBalance = IERC20(token).balanceOf(address(this));
-
+        
         for (uint256 i = 0; i < recipients.length; i++) {
             uint256 amount = (totalBalance * shares[i]) / 10000;
             if (amount > 0) {
                 IERC20(token).safeTransfer(recipients[i], amount);
             }
         }
-
+        
         emit FeeDistributed(token, totalBalance);
     }
 }
