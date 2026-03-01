@@ -1,0 +1,3965 @@
+No files changed, compilation skipped
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+ --> contracts/liquidation/LiquidationEstimator.sol:8:34
+  |
+8 |     IPerpEngine public immutable perpEngine;
+  |                                  ^^^^^^^^^^ help: consider using: `PERP_ENGINE`
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/tokens/PerpDexLPToken.sol:15:30
+   |
+15 |     address public immutable liquidityPool;
+   |                              ^^^^^^^^^^^^^ help: consider using: `LIQUIDITY_POOL`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+ --> contracts/liquidation/LiquidationEstimator.sol:9:41
+  |
+9 |     ILiquidationEngine public immutable liquidationEngine;
+  |                                         ^^^^^^^^^^^^^^^^^ help: consider using: `LIQUIDATION_ENGINE`
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/tokens/PerpDexLPToken.sol:26:5
+   |
+26 | /     modifier onlyLiquidityPool() {
+27 | |         require(msg.sender == liquidityPool, "Only liquidity pool");
+28 | |         _;
+29 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+26 ~     modifier onlyLiquidityPool() {
+27 +         _onlyLiquidityPool();
+28 +         _;
+29 +     }
+30 + 
+31 +     function _onlyLiquidityPool() internal {
+32 +         require(msg.sender == liquidityPool, "Only liquidity pool");
+33 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unused-import]: unused imports should be removed
+ --> contracts/interfaces/IFlashLoanReceiver.sol:4:9
+  |
+4 | import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+  |         ^^^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/security/PausableController.sol:62:5
+   |
+62 | /     modifier whenNotPaused(bytes32 moduleId) {
+63 | |         require(!isPaused(moduleId), "Module paused");
+64 | |         _;
+65 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+62 ~     modifier whenNotPaused(bytes32 moduleId) {
+63 +         _whenNotPaused(moduleId);
+64 +         _;
+65 +     }
+66 + 
+67 +     function _whenNotPaused(bytes32 moduleId) internal {
+68 +         require(!isPaused(moduleId), "Module paused");
+69 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/tokens/SyntheticAsset.sol:14:30
+   |
+14 |     address public immutable perpEngine;
+   |                              ^^^^^^^^^^ help: consider using: `PERP_ENGINE`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/tokens/SyntheticAsset.sol:15:30
+   |
+15 |     uint256 public immutable marketId;
+   |                              ^^^^^^^^ help: consider using: `MARKET_ID`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/liquidation/FlashLiquidator.sol:22:32
+   |
+22 |     IAavePool public immutable aavePool;
+   |                                ^^^^^^^^ help: consider using: `AAVE_POOL`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+  --> contracts/interfaces/IAMMPool.sol:41:17
+   |
+41 |         uint256 longOI,
+   |                 ^^^^^^ help: consider using: `longOi`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+  --> contracts/interfaces/IAMMPool.sol:42:17
+   |
+42 |         uint256 shortOI
+   |                 ^^^^^^^ help: consider using: `shortOi`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/liquidation/FlashLiquidator.sol:23:41
+   |
+23 |     ILiquidationEngine public immutable liquidationEngine;
+   |                                         ^^^^^^^^^^^^^^^^^ help: consider using: `LIQUIDATION_ENGINE`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/liquidation/FlashLiquidator.sol:24:34
+   |
+24 |     IPerpEngine public immutable perpEngine;
+   |                                  ^^^^^^^^^^ help: consider using: `PERP_ENGINE`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/liquidation/FlashLiquidator.sol:25:29
+   |
+25 |     IERC20 public immutable quoteToken;
+   |                             ^^^^^^^^^^ help: consider using: `QUOTE_TOKEN`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+   --> contracts/interfaces/IAMMPool.sol:114:21
+    |
+114 |             uint256 longOI,
+    |                     ^^^^^^ help: consider using: `longOi`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/tokens/SyntheticAsset.sol:26:5
+   |
+26 | /     modifier onlyPerpEngine() {
+27 | |         require(msg.sender == perpEngine, "Only PerpEngine");
+28 | |         _;
+29 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+26 ~     modifier onlyPerpEngine() {
+27 +         _onlyPerpEngine();
+28 +         _;
+29 +     }
+30 + 
+31 +     function _onlyPerpEngine() internal {
+32 +         require(msg.sender == perpEngine, "Only PerpEngine");
+33 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+   --> contracts/interfaces/IAMMPool.sol:115:21
+    |
+115 |             uint256 shortOI,
+    |                     ^^^^^^^ help: consider using: `shortOi`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[mixed-case-function]: function names should use mixedCase
+   --> contracts/interfaces/IAMMPool.sol:151:14
+    |
+151 |     function getTWAFundingRate(uint256 marketId, uint256 period)
+    |              ^^^^^^^^^^^^^^^^^ help: consider using: `getTwaFundingRate`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-function
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/tokens/CollateralWrapper.sol:23:29
+   |
+23 |     IERC20 public immutable underlying;
+   |                             ^^^^^^^^^^ help: consider using: `UNDERLYING`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/tokens/CollateralWrapper.sol:24:30
+   |
+24 |     IOracle public immutable oracle;
+   |                              ^^^^^^ help: consider using: `ORACLE`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/tokens/CollateralWrapper.sol:25:30
+   |
+25 |     bytes32 public immutable feedId;
+   |                              ^^^^^^ help: consider using: `FEED_ID`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/liquidation/FlashLiquidator.sol:57:5
+   |
+57 | /     modifier onlyApprovedLiquidator() {
+58 | |         require(approvedLiquidators[msg.sender], "Not approved liquidator");
+59 | |         _;
+60 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+57 ~     modifier onlyApprovedLiquidator() {
+58 +         _onlyApprovedLiquidator();
+59 +         _;
+60 +     }
+61 + 
+62 +     function _onlyApprovedLiquidator() internal {
+63 +         require(approvedLiquidators[msg.sender], "Not approved liquidator");
+64 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/security/RateLimiter.sol:55:5
+   |
+55 | /     modifier onlyAdmin() {
+56 | |         require(msg.sender == admin, "Only admin");
+57 | |         _;
+58 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+55 ~     modifier onlyAdmin() {
+56 +         _onlyAdmin();
+57 +         _;
+58 +     }
+59 + 
+60 +     function _onlyAdmin() internal {
+61 +         require(msg.sender == admin, "Only admin");
+62 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/security/RateLimiter.sol:60:5
+   |
+60 | /     modifier onlyGovernor() {
+61 | |         require(governors.contains(msg.sender), "Only governor");
+62 | |         _;
+63 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+60 ~     modifier onlyGovernor() {
+61 +         _onlyGovernor();
+62 +         _;
+63 +     }
+64 + 
+65 +     function _onlyGovernor() internal {
+66 +         require(governors.contains(msg.sender), "Only governor");
+67 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/governance/VotingEscrow.sol:37:29
+   |
+37 |     IERC20 public immutable token;
+   |                             ^^^^^ help: consider using: `TOKEN`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/governance/VotingEscrow.sol:38:30
+   |
+38 |     address public immutable feeDistributor;
+   |                              ^^^^^^^^^^^^^^ help: consider using: `FEE_DISTRIBUTOR`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/liquidation/FlashLiquidator.sol:62:5
+   |
+62 | /     modifier onlyAavePool() {
+63 | |         require(msg.sender == address(aavePool), "Only Aave Pool");
+64 | |         _;
+65 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+62 ~     modifier onlyAavePool() {
+63 +         _onlyAavePool();
+64 +         _;
+65 +     }
+66 + 
+67 +     function _onlyAavePool() internal {
+68 +         require(msg.sender == address(aavePool), "Only Aave Pool");
+69 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/security/RateLimiter.sol:65:5
+   |
+65 | /     modifier checkRateLimit(bytes32 limitId, address account) {
+66 | |         if (!exemptAddresses[account]) {
+67 | |             _checkRateLimit(limitId, account);
+...  |
+70 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+65 ~     modifier checkRateLimit(bytes32 limitId, address account) {
+66 +         _checkRateLimit(limitId, account);
+67 +         _;
+68 +     }
+69 + 
+70 +     function _checkRateLimit(bytes32 limitId, address account) internal {
+71 +         if (!exemptAddresses[account]) {
+72 +             _checkRateLimit(limitId, account);
+73 +         }
+74 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/governance/VotingEscrow.sol:72:5
+   |
+72 | /     modifier notContract() {
+73 | |         require(msg.sender == tx.origin, "No contracts");
+74 | |         _;
+75 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+72 ~     modifier notContract() {
+73 +         _notContract();
+74 +         _;
+75 +     }
+76 + 
+77 +     function _notContract() internal {
+78 +         require(msg.sender == tx.origin, "No contracts");
+79 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/tokens/CollateralWrapper.sol:73:5
+   |
+73 | /     modifier validAmount(uint256 amount) {
+74 | |         require(amount >= minWrapAmount, "Below minimum");
+75 | |         require(amount <= maxWrapAmount, "Above maximum");
+76 | |         _;
+77 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+73 ~     modifier validAmount(uint256 amount) {
+74 +         _validAmount(amount);
+75 +         _;
+76 +     }
+77 + 
+78 +     function _validAmount(uint256 amount) internal {
+79 +         require(amount >= minWrapAmount, "Below minimum");
+80 +         require(amount <= maxWrapAmount, "Above maximum");
+81 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[asm-keccak256]: use of inefficient hashing mechanism; consider using inline assembly
+   --> contracts/liquidation/FlashLiquidator.sol:105:29
+    |
+105 |         bytes32 requestId = keccak256(abi.encodePacked(positionId, msg.sender, block.timestamp));
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#asm-keccak256
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/security/CircuitBreaker.sol:34:30
+   |
+34 |     address public immutable pausableController;
+   |                              ^^^^^^^^^^^^^^^^^^ help: consider using: `PAUSABLE_CONTROLLER`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[mixed-case-function]: function names should use mixedCase
+   --> contracts/libraries/FundingRateCalculator.sol:141:14
+    |
+141 |     function calculateTWAPFundingRate(
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `calculateTwapFundingRate`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-function
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/governance/VotingEscrow.sol:353:20
+    |
+353 |             bias = int128(int256((lockedBalance.amount * remainingTime) / MAX_TIME));
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int128' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+  --> contracts/libraries/FundingRateCalculator.sol:50:26
+   |
+50 |         int256 netSkew = int256(longOpenInterest) - int256(shortOpenInterest);
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: consider disabling this lint if you're certain the cast is safe
+           
+           // casting to 'int256' is safe because [explain why]
+           // forge-lint: disable-next-line(unsafe-typecast)
+           
+           
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+  --> contracts/libraries/FundingRateCalculator.sol:50:53
+   |
+50 |         int256 netSkew = int256(longOpenInterest) - int256(shortOpenInterest);
+   |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: consider disabling this lint if you're certain the cast is safe
+           
+           // casting to 'int256' is safe because [explain why]
+           // forge-lint: disable-next-line(unsafe-typecast)
+           
+           
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/governance/VotingEscrow.sol:353:27
+    |
+353 |             bias = int128(int256((lockedBalance.amount * remainingTime) / MAX_TIME));
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/governance/VotingEscrow.sol:354:21
+    |
+354 |             slope = int128(int256(lockedBalance.amount / MAX_TIME));
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int128' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+  --> contracts/libraries/FundingRateCalculator.sol:65:41
+   |
+65 |         fundingRate = (normalizedSkew * int256(FUNDING_VELOCITY_MAX) * int256(timeElapsed)) / int256(PRECISION);
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: consider disabling this lint if you're certain the cast is safe
+           
+           // casting to 'int256' is safe because [explain why]
+           // forge-lint: disable-next-line(unsafe-typecast)
+           
+           
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/liquidation/LiquidationQueue.sol:63:30
+   |
+63 |     address public immutable liquidationEngine;
+   |                              ^^^^^^^^^^^^^^^^^ help: consider using: `LIQUIDATION_ENGINE`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/security/CircuitBreaker.sol:66:5
+   |
+66 | /     modifier onlyGuardian() {
+67 | |         require(msg.sender == guardian, "Only guardian");
+68 | |         _;
+69 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+66 ~     modifier onlyGuardian() {
+67 +         _onlyGuardian();
+68 +         _;
+69 +     }
+70 + 
+71 +     function _onlyGuardian() internal {
+72 +         require(msg.sender == guardian, "Only guardian");
+73 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/governance/VotingEscrow.sol:354:28
+    |
+354 |             slope = int128(int256(lockedBalance.amount / MAX_TIME));
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/governance/VotingEscrow.sol:370:19
+    |
+370 |             bias: int128(int256(totalVotingPower)),
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int128' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+  --> contracts/libraries/FundingRateCalculator.sol:65:72
+   |
+65 |         fundingRate = (normalizedSkew * int256(FUNDING_VELOCITY_MAX) * int256(timeElapsed)) / int256(PRECISION);
+   |                                                                        ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: consider disabling this lint if you're certain the cast is safe
+           
+           // casting to 'int256' is safe because [explain why]
+           // forge-lint: disable-next-line(unsafe-typecast)
+           
+           
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+  --> contracts/libraries/FundingRateCalculator.sol:65:95
+   |
+65 |         fundingRate = (normalizedSkew * int256(FUNDING_VELOCITY_MAX) * int256(timeElapsed)) / int256(PRECISION);
+   |                                                                                               ^^^^^^^^^^^^^^^^^
+   |
+   = note: consider disabling this lint if you're certain the cast is safe
+           
+           // casting to 'int256' is safe because [explain why]
+           // forge-lint: disable-next-line(unsafe-typecast)
+           
+           
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+  --> contracts/libraries/FundingRateCalculator.sol:89:30
+   |
+89 |         int256 rawPayment = (int256(positionSize) * fundingRate * int256(timeElapsed)) / int256(PRECISION);
+   |                              ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: consider disabling this lint if you're certain the cast is safe
+           
+           // casting to 'int256' is safe because [explain why]
+           // forge-lint: disable-next-line(unsafe-typecast)
+           
+           
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/governance/VotingEscrow.sol:370:26
+    |
+370 |             bias: int128(int256(totalVotingPower)),
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/liquidation/LiquidationQueue.sol:57:5
+   |
+57 | /     modifier onlyLiquidationEngine() {
+58 | |         require(msg.sender == address(liquidationEngine), "Only LiquidationEngine");
+59 | |         _;
+60 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+57 ~     modifier onlyLiquidationEngine() {
+58 +         _onlyLiquidationEngine();
+59 +         _;
+60 +     }
+61 + 
+62 +     function _onlyLiquidationEngine() internal {
+63 +         require(msg.sender == address(liquidationEngine), "Only LiquidationEngine");
+64 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+  --> contracts/libraries/FundingRateCalculator.sol:89:67
+   |
+89 |         int256 rawPayment = (int256(positionSize) * fundingRate * int256(timeElapsed)) / int256(PRECISION);
+   |                                                                   ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: consider disabling this lint if you're certain the cast is safe
+           
+           // casting to 'int256' is safe because [explain why]
+           // forge-lint: disable-next-line(unsafe-typecast)
+           
+           
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/governance/Treasury.sol:23:41
+   |
+23 |     TimelockController public immutable timelock;
+   |                                         ^^^^^^^^ help: consider using: `TIMELOCK`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/governance/Treasury.sol:24:30
+   |
+24 |     uint256 public immutable minDelay;
+   |                              ^^^^^^^^ help: consider using: `MIN_DELAY`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+  --> contracts/libraries/FundingRateCalculator.sol:89:90
+   |
+89 |         int256 rawPayment = (int256(positionSize) * fundingRate * int256(timeElapsed)) / int256(PRECISION);
+   |                                                                                          ^^^^^^^^^^^^^^^^^
+   |
+   = note: consider disabling this lint if you're certain the cast is safe
+           
+           // casting to 'int256' is safe because [explain why]
+           // forge-lint: disable-next-line(unsafe-typecast)
+           
+           
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/liquidation/LiquidationEngine.sol:30:34
+   |
+30 |     IPerpEngine public immutable perpEngine;
+   |                                  ^^^^^^^^^^ help: consider using: `PERP_ENGINE`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/liquidation/LiquidationEngine.sol:31:38
+   |
+31 |     IConfigRegistry public immutable configRegistry;
+   |                                      ^^^^^^^^^^^^^^ help: consider using: `CONFIG_REGISTRY`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/liquidation/LiquidationEngine.sol:32:40
+   |
+32 |     IOracleAggregator public immutable oracleAggregator;
+   |                                        ^^^^^^^^^^^^^^^^ help: consider using: `ORACLE_AGGREGATOR`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/liquidation/LiquidationEngine.sol:33:39
+   |
+33 |     LiquidationQueue public immutable liquidationQueue;
+   |                                       ^^^^^^^^^^^^^^^^ help: consider using: `LIQUIDATION_QUEUE`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[asm-keccak256]: use of inefficient hashing mechanism; consider using inline assembly
+   --> contracts/governance/Treasury.sol:155:31
+    |
+155 |           bytes32 operationId = keccak256(
+    |  _______________________________^
+156 | |             abi.encode(token, to, amount, bytes32(0), block.timestamp)
+157 | |         );
+    | |_________^
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#asm-keccak256
+
+note[unused-import]: unused imports should be removed
+ --> contracts/interfaces/IPerpEngine.sol:4:9
+  |
+4 | import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+  |         ^^^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/liquidation/LiquidationEngine.sol:34:43
+   |
+34 |     IncentiveDistributor public immutable incentiveDistributor;
+   |                                           ^^^^^^^^^^^^^^^^^^^^ help: consider using: `INCENTIVE_DISTRIBUTOR`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/FundingRateCalculator.sol:159:50
+    |
+159 |                 weightedSum += fundingRates[i] * int256(segmentDuration);
+    |                                                  ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/governance/EmissionController.sol:27:29
+   |
+27 |     IERC20 public immutable token;
+   |                             ^^^^^ help: consider using: `TOKEN`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/governance/EmissionController.sol:28:30
+   |
+28 |     address public immutable treasury;
+   |                              ^^^^^^^^ help: consider using: `TREASURY`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/FundingRateCalculator.sol:165:45
+    |
+165 |             twapFundingRate = weightedSum / int256(totalDuration);
+    |                                             ^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/FundingRateCalculator.sol:181:27
+    |
+181 |         if (fundingRate > int256(MAX_FUNDING_RATE)) {
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/FundingRateCalculator.sol:182:27
+    |
+182 |             clampedRate = int256(MAX_FUNDING_RATE);
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/FundingRateCalculator.sol:183:35
+    |
+183 |         } else if (fundingRate < -int256(MAX_FUNDING_RATE)) {
+    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[mixed-case-function]: function names should use mixedCase
+   --> contracts/interfaces/IOracleAggregator.sol:134:14
+    |
+134 |     function getTWAP(bytes32 feedId, uint256 period)
+    |              ^^^^^^^ help: consider using: `getTwap`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-function
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/liquidation/LiquidationEngine.sol:35:29
+   |
+35 |     IERC20 public immutable quoteToken;
+   |                             ^^^^^^^^^^ help: consider using: `QUOTE_TOKEN`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[unused-import]: unused imports should be removed
+ --> contracts/governance/EmissionController.sol:6:9
+  |
+6 | import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+  |         ^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/FundingRateCalculator.sol:184:28
+    |
+184 |             clampedRate = -int256(MAX_FUNDING_RATE);
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/governance/EmissionController.sol:65:5
+   |
+65 | /     modifier onlyGovernor() {
+66 | |         require(msg.sender == governor, "Only governor");
+67 | |         _;
+68 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+65 ~     modifier onlyGovernor() {
+66 +         _onlyGovernor();
+67 +         _;
+68 +     }
+69 + 
+70 +     function _onlyGovernor() internal {
+71 +         require(msg.sender == governor, "Only governor");
+72 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/liquidation/LiquidationEngine.sol:49:5
+   |
+49 | /     modifier onlyPerpEngine() {
+50 | |         require(msg.sender == address(perpEngine), "Only PerpEngine");
+51 | |         _;
+52 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+49 ~     modifier onlyPerpEngine() {
+50 +         _onlyPerpEngine();
+51 +         _;
+52 +     }
+53 + 
+54 +     function _onlyPerpEngine() internal {
+55 +         require(msg.sender == address(perpEngine), "Only PerpEngine");
+56 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/FundingRateCalculator.sol:221:26
+    |
+221 |         int256 netSkew = int256(longOpenInterest) - int256(shortOpenInterest);
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/FundingRateCalculator.sol:221:53
+    |
+221 |         int256 netSkew = int256(longOpenInterest) - int256(shortOpenInterest);
+    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/FundingRateCalculator.sol:222:30
+    |
+222 |         premium = (netSkew * int256(PRECISION)) / int256(skewScale);
+    |                              ^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/FundingRateCalculator.sol:222:51
+    |
+222 |         premium = (netSkew * int256(PRECISION)) / int256(skewScale);
+    |                                                   ^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/FundingRateCalculator.sol:238:44
+    |
+238 |         int256 adjustment = (fundingRate * int256(timeToNextFunding)) / int256(PRECISION);
+    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/FundingRateCalculator.sol:238:73
+    |
+238 |         int256 adjustment = (fundingRate * int256(timeToNextFunding)) / int256(PRECISION);
+    |                                                                         ^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/liquidation/LiquidationEngine.sol:54:5
+   |
+54 | /     modifier onlyValidPosition(uint256 positionId) {
+55 | |         require(!isPositionLiquidated[positionId], "Position already liquidated");
+56 | |         require(perpEngine.getHealthFactor(positionId) > 0, "Invalid position");
+57 | |         _;
+58 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+54 ~     modifier onlyValidPosition(uint256 positionId) {
+55 +         _onlyValidPosition(positionId);
+56 +         _;
+57 +     }
+58 + 
+59 +     function _onlyValidPosition(uint256 positionId) internal {
+60 +         require(!isPositionLiquidated[positionId], "Position already liquidated");
+61 +         require(perpEngine.getHealthFactor(positionId) > 0, "Invalid position");
+62 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/governance/PerpDexToken.sol:18:30
+   |
+18 |     address public immutable emissionController;
+   |                              ^^^^^^^^^^^^^^^^^^ help: consider using: `EMISSION_CONTROLLER`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[unused-import]: unused imports should be removed
+ --> contracts/core/MarketRegistry.sol:8:9
+  |
+8 | import {IOracleAggregator} from "../interfaces/IOracleAggregator.sol";
+  |         ^^^^^^^^^^^^^^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+note[unused-import]: unused imports should be removed
+ --> contracts/core/MarketRegistry.sol:9:9
+  |
+9 | import {IConfigRegistry} from "../interfaces/IConfigRegistry.sol";
+  |         ^^^^^^^^^^^^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/core/MarketRegistry.sol:69:5
+   |
+69 | /     modifier onlyGovernance() {
+70 | |         require(msg.sender == owner() || msg.sender == configRegistry, 
+71 | |             "MarketRegistry: only governance");
+72 | |         _;
+73 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+69 ~     modifier onlyGovernance() {
+70 +         _onlyGovernance();
+71 +         _;
+72 +     }
+73 + 
+74 +     function _onlyGovernance() internal {
+75 +         require(msg.sender == owner() || msg.sender == configRegistry, 
+76 +             "MarketRegistry: only governance");
+77 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/FundingRateCalculator.sol:239:32
+    |
+239 |         int256 markPriceInt = (int256(indexPrice) * (int256(PRECISION) + adjustment)) / int256(PRECISION);
+    |                                ^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/FundingRateCalculator.sol:239:54
+    |
+239 |         int256 markPriceInt = (int256(indexPrice) * (int256(PRECISION) + adjustment)) / int256(PRECISION);
+    |                                                      ^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/FundingRateCalculator.sol:239:89
+    |
+239 |         int256 markPriceInt = (int256(indexPrice) * (int256(PRECISION) + adjustment)) / int256(PRECISION);
+    |                                                                                         ^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/FundingRateCalculator.sol:242:21
+    |
+242 |         markPrice = uint256(markPriceInt);
+    |                     ^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/core/MarketRegistry.sol:75:5
+   |
+75 | /     modifier marketExists(uint256 marketId) {
+76 | |         require(marketId > 0 && marketId < _nextMarketId, "MarketRegistry: invalid market ID");
+77 | |         require(_markets[marketId].createdAt > 0, "MarketRegistry: market not found");
+78 | |         _;
+79 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+75 ~     modifier marketExists(uint256 marketId) {
+76 +         _marketExists(marketId);
+77 +         _;
+78 +     }
+79 + 
+80 +     function _marketExists(uint256 marketId) internal {
+81 +         require(marketId > 0 && marketId < _nextMarketId, "MarketRegistry: invalid market ID");
+82 +         require(_markets[marketId].createdAt > 0, "MarketRegistry: market not found");
+83 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/core/MarketRegistry.sol:81:5
+   |
+81 | /     modifier marketActive(uint256 marketId) {
+82 | |         require(_markets[marketId].isActive, "MarketRegistry: market inactive");
+83 | |         _;
+84 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+81 ~     modifier marketActive(uint256 marketId) {
+82 +         _marketActive(marketId);
+83 +         _;
+84 +     }
+85 + 
+86 +     function _marketActive(uint256 marketId) internal {
+87 +         require(_markets[marketId].isActive, "MarketRegistry: market inactive");
+88 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/governance/PerpDexToken.sol:33:5
+   |
+33 | /     modifier onlyMinter() {
+34 | |         require(minters[msg.sender], "Only minter");
+35 | |         _;
+36 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+33 ~     modifier onlyMinter() {
+34 +         _onlyMinter();
+35 +         _;
+36 +     }
+37 + 
+38 +     function _onlyMinter() internal {
+39 +         require(minters[msg.sender], "Only minter");
+40 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/governance/PerpDexToken.sol:38:5
+   |
+38 | /     modifier onlySnapshoter() {
+39 | |         require(snapshoters[msg.sender], "Only snapshoter");
+40 | |         _;
+41 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+38 ~     modifier onlySnapshoter() {
+39 +         _onlySnapshoter();
+40 +         _;
+41 +     }
+42 + 
+43 +     function _onlySnapshoter() internal {
+44 +         require(snapshoters[msg.sender], "Only snapshoter");
+45 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/liquidation/IncentiveDistributor.sol:39:29
+   |
+39 |     IERC20 public immutable quoteToken;
+   |                             ^^^^^^^^^^ help: consider using: `QUOTE_TOKEN`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[pascal-case-struct]: structs should use PascalCase
+  --> contracts/oracles/RWAOracleAdapter.sol:25:12
+   |
+25 |     struct RWAPrice {
+   |            ^^^^^^^^ help: consider using: `RwaPrice`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#pascal-case-struct
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/liquidation/IncentiveDistributor.sol:40:34
+   |
+40 |     IPerpEngine public immutable perpEngine;
+   |                                  ^^^^^^^^^^ help: consider using: `PERP_ENGINE`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/liquidation/IncentiveDistributor.sol:41:38
+   |
+41 |     IConfigRegistry public immutable configRegistry;
+   |                                      ^^^^^^^^^^^^^^ help: consider using: `CONFIG_REGISTRY`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/governance/FeeDistributor.sol:37:29
+   |
+37 |     IERC20 public immutable quoteToken;
+   |                             ^^^^^^^^^^ help: consider using: `QUOTE_TOKEN`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/governance/FeeDistributor.sol:38:30
+   |
+38 |     address public immutable treasury;
+   |                              ^^^^^^^^ help: consider using: `TREASURY`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[unused-import]: unused imports should be removed
+ --> contracts/liquidation/IncentiveDistributor.sol:8:9
+  |
+8 | import {ILiquidationEngine} from "../interfaces/ILiquidationEngine.sol";
+  |         ^^^^^^^^^^^^^^^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/FundingRateCalculator.sol:248:25
+    |
+248 |         return x >= 0 ? uint256(x) : uint256(-x);
+    |                         ^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/FundingRateCalculator.sol:248:38
+    |
+248 |         return x >= 0 ? uint256(x) : uint256(-x);
+    |                                      ^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[unused-import]: unused imports should be removed
+ --> contracts/governance/FeeDistributor.sol:7:9
+  |
+7 | import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+  |         ^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/liquidation/IncentiveDistributor.sol:80:5
+   |
+80 | /     modifier onlyPerpEngine() {
+81 | |         require(msg.sender == address(perpEngine), "Only PerpEngine");
+82 | |         _;
+83 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+80 ~     modifier onlyPerpEngine() {
+81 +         _onlyPerpEngine();
+82 +         _;
+83 +     }
+84 + 
+85 +     function _onlyPerpEngine() internal {
+86 +         require(msg.sender == address(perpEngine), "Only PerpEngine");
+87 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+warning[incorrect-shift]: the order of args in a shift operation is incorrect
+  --> contracts/libraries/BitPacking.sol:49:46
+   |
+49 |     uint256 internal constant IS_LONG_MASK = 1 << IS_LONG_OFFSET;
+   |                                              ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#incorrect-shift
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/liquidation/IncentiveDistributor.sol:85:5
+   |
+85 | /     modifier onlyValidDistribution(uint256 totalAmount) {
+86 | |         require(totalAmount > 0, "Invalid distribution amount");
+87 | |         require(distributionConfig.totalShares == SHARE_SCALE, "Invalid share configuration");
+88 | |         _;
+89 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+85 ~     modifier onlyValidDistribution(uint256 totalAmount) {
+86 +         _onlyValidDistribution(totalAmount);
+87 +         _;
+88 +     }
+89 + 
+90 +     function _onlyValidDistribution(uint256 totalAmount) internal {
+91 +         require(totalAmount > 0, "Invalid distribution amount");
+92 +         require(distributionConfig.totalShares == SHARE_SCALE, "Invalid share configuration");
+93 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/governance/FeeDistributor.sol:58:5
+   |
+58 | /     modifier onlyTreasury() {
+59 | |         require(msg.sender == treasury, "Only treasury");
+60 | |         _;
+61 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+58 ~     modifier onlyTreasury() {
+59 +         _onlyTreasury();
+60 +         _;
+61 +     }
+62 + 
+63 +     function _onlyTreasury() internal {
+64 +         require(msg.sender == treasury, "Only treasury");
+65 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/governance/FeeDistributor.sol:63:5
+   |
+63 | /     modifier validShare(uint256 share) {
+64 | |         require(share <= MAX_SHARE, "Share too high");
+65 | |         require(share > 0, "Invalid share");
+66 | |         _;
+67 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+63 ~     modifier validShare(uint256 share) {
+64 +         _validShare(share);
+65 +         _;
+66 +     }
+67 + 
+68 +     function _validShare(uint256 share) internal {
+69 +         require(share <= MAX_SHARE, "Share too high");
+70 +         require(share > 0, "Invalid share");
+71 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+warning[incorrect-shift]: the order of args in a shift operation is incorrect
+  --> contracts/libraries/BitPacking.sol:81:30
+   |
+81 |         require(leverage <= (1 << LEVERAGE_BITS) - 1, "BitPacking: leverage overflow");
+   |                              ^^^^^^^^^^^^^^^^^^
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#incorrect-shift
+
+note[mixed-case-function]: function names should use mixedCase
+  --> contracts/test/MockAavePool.sol:33:14
+   |
+33 |     function FLASHLOAN_PREMIUM_TOTAL() external pure returns (uint256) {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `flashloanPremiumTotal`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-function
+
+warning[incorrect-shift]: the order of args in a shift operation is incorrect
+  --> contracts/libraries/BitPacking.sol:82:27
+   |
+82 |         require(flags <= (1 << FLAGS_BITS) - 1, "BitPacking: flags overflow");
+   |                           ^^^^^^^^^^^^^^^
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#incorrect-shift
+
+warning[incorrect-shift]: the order of args in a shift operation is incorrect
+   --> contracts/libraries/BitPacking.sol:147:25
+    |
+147 |         uint256 mask = (1 << bits) - 1;
+    |                         ^^^^^^^^^
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#incorrect-shift
+
+note[unaliased-plain-import]: use named imports '{A, B}' or alias 'import ".." as X'
+ --> contracts/test/PositionMathWrapper.sol:4:8
+  |
+4 | import "../libraries/PositionMath.sol";
+  |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unaliased-plain-import
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+  --> contracts/integration/CrossChainMessenger.sol:22:14
+   |
+22 |         bool payInZRO,
+   |              ^^^^^^^^ help: consider using: `payInZro`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/integration/CrossChainMessenger.sol:38:41
+   |
+38 |     ILayerZeroEndpoint public immutable lzEndpoint;
+   |                                         ^^^^^^^^^^ help: consider using: `LZ_ENDPOINT`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+warning[incorrect-shift]: the order of args in a shift operation is incorrect
+   --> contracts/libraries/BitPacking.sol:167:26
+    |
+167 |         require(value < (1 << bits), "BitPacking: value overflow");
+    |                          ^^^^^^^^^
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#incorrect-shift
+
+note[pascal-case-struct]: structs should use PascalCase
+  --> contracts/oracles/RWAOracleAdapter.sol:33:12
+   |
+33 |     struct RWAConfig {
+   |            ^^^^^^^^^ help: consider using: `RwaConfig`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#pascal-case-struct
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/security/EmergencyGuardian.sol:63:5
+   |
+63 | /     modifier onlyEmergencyGuardian() {
+64 | |         require(
+65 | |             hasRole(EMERGENCY_GUARDIAN_ROLE, msg.sender),
+66 | |             "Only emergency guardian"
+67 | |         );
+68 | |         _;
+69 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+63 ~     modifier onlyEmergencyGuardian() {
+64 +         _onlyEmergencyGuardian();
+65 +         _;
+66 +     }
+67 + 
+68 +     function _onlyEmergencyGuardian() internal {
+69 +         require(
+70 +             hasRole(EMERGENCY_GUARDIAN_ROLE, msg.sender),
+71 +             "Only emergency guardian"
+72 +         );
+73 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+warning[incorrect-shift]: the order of args in a shift operation is incorrect
+   --> contracts/libraries/BitPacking.sol:169:25
+    |
+169 |         uint256 mask = (1 << bits) - 1;
+    |                         ^^^^^^^^^
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#incorrect-shift
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/integration/CrossChainMessenger.sol:39:30
+   |
+39 |     address public immutable perpEngine;
+   |                              ^^^^^^^^^^ help: consider using: `PERP_ENGINE`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/security/EmergencyGuardian.sol:71:5
+   |
+71 | /     modifier onlyDuringEmergency() {
+72 | |         require(isEmergencyActive(), "No active emergency");
+73 | |         require(msg.sender == activeSession.guardian, "Not active guardian");
+74 | |         require(block.timestamp <= activeSession.endTime, "Session expired");
+75 | |         _;
+76 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+71 ~     modifier onlyDuringEmergency() {
+72 +         _onlyDuringEmergency();
+73 +         _;
+74 +     }
+75 + 
+76 +     function _onlyDuringEmergency() internal {
+77 +         require(isEmergencyActive(), "No active emergency");
+78 +         require(msg.sender == activeSession.guardian, "Not active guardian");
+79 +         require(block.timestamp <= activeSession.endTime, "Session expired");
+80 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+   --> contracts/integration/CrossChainMessenger.sol:103:5
+    |
+103 | /     modifier onlyMessenger() {
+104 | |         require(hasRole(MESSENGER_ROLE, msg.sender), "Only messenger");
+105 | |         _;
+106 | |     }
+    | |_____^
+    |
+help: wrap modifier logic to reduce code size
+    |
+103 ~     modifier onlyMessenger() {
+104 +         _onlyMessenger();
+105 +         _;
+106 +     }
+107 + 
+108 +     function _onlyMessenger() internal {
+109 +         require(hasRole(MESSENGER_ROLE, msg.sender), "Only messenger");
+110 +     }
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+warning[incorrect-shift]: the order of args in a shift operation is incorrect
+   --> contracts/libraries/BitPacking.sol:206:35
+    |
+206 |             newPacked = packed | (1 << bit);
+    |                                   ^^^^^^^^
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#incorrect-shift
+
+note[mixed-case-function]: function names should use mixedCase
+   --> contracts/oracles/RWAOracleAdapter.sol:413:14
+    |
+413 |     function withdrawETH() external onlyOwner {
+    |              ^^^^^^^^^^^ help: consider using: `withdrawEth`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-function
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+   --> contracts/integration/CrossChainMessenger.sol:108:5
+    |
+108 | /     modifier onlyGovernor() {
+109 | |         require(hasRole(GOVERNOR_ROLE, msg.sender), "Only governor");
+110 | |         _;
+111 | |     }
+    | |_____^
+    |
+help: wrap modifier logic to reduce code size
+    |
+108 ~     modifier onlyGovernor() {
+109 +         _onlyGovernor();
+110 +         _;
+111 +     }
+112 + 
+113 +     function _onlyGovernor() internal {
+114 +         require(hasRole(GOVERNOR_ROLE, msg.sender), "Only governor");
+115 +     }
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+warning[incorrect-shift]: the order of args in a shift operation is incorrect
+   --> contracts/libraries/BitPacking.sol:208:36
+    |
+208 |             newPacked = packed & ~(1 << bit);
+    |                                    ^^^^^^^^
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#incorrect-shift
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/security/EmergencyGuardian.sol:78:5
+   |
+78 | /     modifier onlyEmergencyOverride() {
+79 | |         require(
+80 | |             hasRole(EMERGENCY_OVERRIDE_ROLE, msg.sender),
+81 | |             "Only emergency override"
+82 | |         );
+83 | |         _;
+84 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+78 ~     modifier onlyEmergencyOverride() {
+79 +         _onlyEmergencyOverride();
+80 +         _;
+81 +     }
+82 + 
+83 +     function _onlyEmergencyOverride() internal {
+84 +         require(
+85 +             hasRole(EMERGENCY_OVERRIDE_ROLE, msg.sender),
+86 +             "Only emergency override"
+87 +         );
+88 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/integration/LidoStETHIntegrator.sol:31:29
+   |
+31 |     IStETH public immutable stETH;
+   |                             ^^^^^ help: consider using: `ST_ETH`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/oracles/RWAOracleAdapter.sol:82:5
+   |
+82 | /     modifier onlyUpdater() {
+83 | |         require(_authorizedUpdaters[msg.sender] || msg.sender == owner(),
+84 | |             "RWAOracleAdapter: unauthorized");
+85 | |         _;
+86 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+82 ~     modifier onlyUpdater() {
+83 +         _onlyUpdater();
+84 +         _;
+85 +     }
+86 + 
+87 +     function _onlyUpdater() internal {
+88 +         require(_authorizedUpdaters[msg.sender] || msg.sender == owner(),
+89 +             "RWAOracleAdapter: unauthorized");
+90 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/oracles/RWAOracleAdapter.sol:88:5
+   |
+88 | /     modifier assetExists(bytes32 assetId) {
+89 | |         require(_assetConfigs[assetId].isActive, "RWAOracleAdapter: asset not found");
+90 | |         _;
+91 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+88 ~     modifier assetExists(bytes32 assetId) {
+89 +         _assetExists(assetId);
+90 +         _;
+91 +     }
+92 + 
+93 +     function _assetExists(bytes32 assetId) internal {
+94 +         require(_assetConfigs[assetId].isActive, "RWAOracleAdapter: asset not found");
+95 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+  --> contracts/libraries/SafeDecimalMath.sol:64:25
+   |
+64 |         return x >= 0 ? uint256(x) : uint256(-x);
+   |                         ^^^^^^^^^^
+   |
+   = note: consider disabling this lint if you're certain the cast is safe
+           
+           // casting to 'uint256' is safe because [explain why]
+           // forge-lint: disable-next-line(unsafe-typecast)
+           
+           
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+  --> contracts/libraries/SafeDecimalMath.sol:64:38
+   |
+64 |         return x >= 0 ? uint256(x) : uint256(-x);
+   |                                      ^^^^^^^^^^^
+   |
+   = note: consider disabling this lint if you're certain the cast is safe
+           
+           // casting to 'uint256' is safe because [explain why]
+           // forge-lint: disable-next-line(unsafe-typecast)
+           
+           
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[incorrect-shift]: the order of args in a shift operation is incorrect
+   --> contracts/libraries/BitPacking.sol:228:28
+    |
+228 |                 packed |= (1 << i);
+    |                            ^^^^^^
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#incorrect-shift
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/integration/LidoStETHIntegrator.sol:32:29
+   |
+32 |     IERC20 public immutable wstETH; // Wrapped stETH if using wstETH
+   |                             ^^^^^^ help: consider using: `WST_ETH`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/integration/LidoStETHIntegrator.sol:33:30
+   |
+33 |     address public immutable perpEngine;
+   |                              ^^^^^^^^^^ help: consider using: `PERP_ENGINE`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/BitPacking.sol:124:30
+    |
+124 |         lastFundingAccrued = uint32((packed & LAST_FUNDING_MASK) >> LAST_FUNDING_OFFSET);
+    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint32' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[named-struct-fields]: prefer initializing structs with named fields
+   --> contracts/oracles/RWAOracleAdapter.sol:309:21
+    |
+309 |             return (RWAPrice(0, 0, 0, bytes32(0), ""), false);
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using named fields: `RWAPrice({ price: 0, timestamp: 0, navTimestamp: 0, proofHash: bytes32(0), metadata: "" })`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#named-struct-fields
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+  --> contracts/integration/LidoStETHIntegrator.sol:36:17
+   |
+36 |     bool public useWstETH; // Whether to use wstETH (non-rebasing) instead of stETH
+   |                 ^^^^^^^^^ help: consider using: `useWstEth`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+warning[incorrect-shift]: the order of args in a shift operation is incorrect
+   --> contracts/libraries/L2GasOptimized.sol:120:25
+    |
+120 |         uint256 mask = (1 << bitsPerValue) - 1;
+    |                         ^^^^^^^^^^^^^^^^^
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#incorrect-shift
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/BitPacking.sol:125:20
+    |
+125 |         leverage = uint24((packed & LEVERAGE_MASK) >> LEVERAGE_OFFSET);
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint24' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/BitPacking.sol:127:17
+    |
+127 |         flags = uint8((packed & FLAGS_MASK) >> FLAGS_OFFSET);
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint8' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[incorrect-shift]: the order of args in a shift operation is incorrect
+   --> contracts/libraries/L2GasOptimized.sol:145:25
+    |
+145 |         uint256 mask = (1 << bitsPerValue) - 1;
+    |                         ^^^^^^^^^^^^^^^^^
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#incorrect-shift
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/BitPacking.sol:286:25
+    |
+286 |             values[i] = uint64(packed >> (i * 64));
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint64' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/BitPacking.sol:322:25
+    |
+322 |             values[i] = uint32(packed >> (i * 32));
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint32' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+  --> contracts/integration/LidoStETHIntegrator.sol:52:17
+   |
+52 |         uint256 stETHAmount,
+   |                 ^^^^^^^^^^^ help: consider using: `stEthAmount`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+  --> contracts/integration/LidoStETHIntegrator.sol:54:14
+   |
+54 |         bool asWstETH
+   |              ^^^^^^^^ help: consider using: `asWstEth`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+  --> contracts/integration/LidoStETHIntegrator.sol:59:17
+   |
+59 |         uint256 stETHAmount,
+   |                 ^^^^^^^^^^^ help: consider using: `stEthAmount`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+  --> contracts/integration/LidoStETHIntegrator.sol:67:14
+   |
+67 |         bool isStETH,
+   |              ^^^^^^^ help: consider using: `isStEth`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+  --> contracts/integration/LidoStETHIntegrator.sol:74:14
+   |
+74 |         bool isStETH,
+   |              ^^^^^^^ help: consider using: `isStEth`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/oracles/PythOracle.sol:25:28
+   |
+25 |     IPyth public immutable pyth;
+   |                            ^^^^ help: consider using: `PYTH`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/oracles/PythOracle.sol:26:30
+   |
+26 |     bytes32 public immutable priceId;
+   |                              ^^^^^^^ help: consider using: `PRICE_ID`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[unaliased-plain-import]: use named imports '{A, B}' or alias 'import ".." as X'
+ --> contracts/libraries/PositionMath.sol:4:8
+  |
+4 | import "./SafeDecimalMath.sol";
+  |        ^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unaliased-plain-import
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+  --> contracts/integration/LidoStETHIntegrator.sol:85:34
+   |
+85 |     event WstETHModeUpdated(bool useWstETH);
+   |                                  ^^^^^^^^^ help: consider using: `useWstEth`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+   --> contracts/integration/LidoStETHIntegrator.sol:101:17
+    |
+101 |         address _stETH,
+    |                 ^^^^^^ help: consider using: `_stEth`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/oracles/PythOracle.sol:261:20
+    |
+261 |             return uint256(uint64(price)) * (10 ** uint32(expo));
+    |                    ^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/oracles/PythOracle.sol:261:28
+    |
+261 |             return uint256(uint64(price)) * (10 ** uint32(expo));
+    |                            ^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint64' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/oracles/PythOracle.sol:261:52
+    |
+261 |             return uint256(uint64(price)) * (10 ** uint32(expo));
+    |                                                    ^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint32' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/PositionMath.sol:224:24
+    |
+224 |         healthFactor = uint256(totalValue).mulDiv(DECIMALS, maintenanceMargin);
+    |                        ^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[named-struct-fields]: prefer initializing structs with named fields
+   --> contracts/libraries/PositionMath.sol:269:40
+    |
+269 |             if (numerator <= 0) return LiquidationResult(false, 0);
+    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using named fields: `LiquidationResult({ isLiquidatable: false, liquidationPrice: 0 })`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#named-struct-fields
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/core/PerpEngine.sol:42:30
+   |
+42 |     address public immutable positionManager;
+   |                              ^^^^^^^^^^^^^^^ help: consider using: `POSITION_MANAGER`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+   --> contracts/integration/LidoStETHIntegrator.sol:102:17
+    |
+102 |         address _wstETH,
+    |                 ^^^^^^^ help: consider using: `_wstEth`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/oracles/PythOracle.sol:264:20
+    |
+264 |             return uint256(uint64(price)) / (10 ** uint32(-expo));
+    |                    ^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[named-struct-fields]: prefer initializing structs with named fields
+   --> contracts/libraries/PositionMath.sol:272:42
+    |
+272 |             if (denominator == 0) return LiquidationResult(false, 0);
+    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using named fields: `LiquidationResult({ isLiquidatable: false, liquidationPrice: 0 })`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#named-struct-fields
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+   --> contracts/integration/LidoStETHIntegrator.sol:104:14
+    |
+104 |         bool _useWstETH
+    |              ^^^^^^^^^^ help: consider using: `_useWstEth`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/core/PerpEngine.sol:43:30
+   |
+43 |     address public immutable ammPool;
+   |                              ^^^^^^^ help: consider using: `AMM_POOL`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/core/PerpEngine.sol:44:30
+   |
+44 |     address public immutable oracleAggregator;
+   |                              ^^^^^^^^^^^^^^^^ help: consider using: `ORACLE_AGGREGATOR`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/PositionMath.sol:274:42
+    |
+274 |             uint256 liqPriceNormalized = uint256(numerator).mulDiv(DECIMALS, denominator);
+    |                                          ^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[named-struct-fields]: prefer initializing structs with named fields
+   --> contracts/libraries/PositionMath.sol:284:40
+    |
+284 |             if (numerator <= 0) return LiquidationResult(false, 0);
+    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using named fields: `LiquidationResult({ isLiquidatable: false, liquidationPrice: 0 })`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#named-struct-fields
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/PositionMath.sol:287:42
+    |
+287 |             uint256 liqPriceNormalized = uint256(numerator).mulDiv(DECIMALS, denominator);
+    |                                          ^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/oracles/PythOracle.sol:264:28
+    |
+264 |             return uint256(uint64(price)) / (10 ** uint32(-expo));
+    |                            ^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint64' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/oracles/PythOracle.sol:264:52
+    |
+264 |             return uint256(uint64(price)) / (10 ** uint32(-expo));
+    |                                                    ^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint32' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/oracles/PythOracle.sol:288:43
+    |
+288 |             return uint256(conf) * (10 ** uint32(expo));
+    |                                           ^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint32' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/oracles/PythOracle.sol:290:43
+    |
+290 |             return uint256(conf) / (10 ** uint32(-expo));
+    |                                           ^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint32' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/PositionMath.sol:338:27
+    |
+338 |             fundingRate > int256(maxFundingPerPeriod) ||
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[mixed-case-function]: function names should use mixedCase
+   --> contracts/integration/LidoStETHIntegrator.sol:126:14
+    |
+126 |     function wrapETH(address referral) external payable nonReentrant validAmount(msg.value) {
+    |              ^^^^^^^ help: consider using: `wrapEth`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-function
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+   --> contracts/integration/LidoStETHIntegrator.sol:132:21
+    |
+132 |             uint256 stETHAmount = _submitToLido(referral);
+    |                     ^^^^^^^^^^^ help: consider using: `stEthAmount`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+   --> contracts/integration/LidoStETHIntegrator.sol:133:21
+    |
+133 |             uint256 wstETHAmount = _stETHToWstETH(stETHAmount);
+    |                     ^^^^^^^^^^^^ help: consider using: `wstEthAmount`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+   --> contracts/integration/LidoStETHIntegrator.sol:144:21
+    |
+144 |             uint256 stETHAmount = stETH.getPooledEthByShares(shares);
+    |                     ^^^^^^^^^^^ help: consider using: `stEthAmount`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[mixed-case-function]: function names should use mixedCase
+   --> contracts/integration/LidoStETHIntegrator.sol:157:14
+    |
+157 |     function unwrapToETH(uint256 amount) external nonReentrant validAmount(amount) {
+    |              ^^^^^^^^^^^ help: consider using: `unwrapToEth`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-function
+
+note[pascal-case-struct]: structs should use PascalCase
+  --> contracts/oracles/TWAPOracle.sol:32:12
+   |
+32 |     struct TWAPConfig {
+   |            ^^^^^^^^^^ help: consider using: `TwapConfig`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#pascal-case-struct
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/core/PerpEngine.sol:45:30
+   |
+45 |     address public immutable liquidationEngine;
+   |                              ^^^^^^^^^^^^^^^^^ help: consider using: `LIQUIDATION_ENGINE`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/core/PerpEngine.sol:46:30
+   |
+46 |     address public immutable riskManager;
+   |                              ^^^^^^^^^^^ help: consider using: `RISK_MANAGER`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/core/PerpEngine.sol:47:30
+   |
+47 |     address public immutable configRegistry;
+   |                              ^^^^^^^^^^^^^^ help: consider using: `CONFIG_REGISTRY`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/core/PerpEngine.sol:48:30
+   |
+48 |     address public immutable insuranceFund;
+   |                              ^^^^^^^^^^^^^ help: consider using: `INSURANCE_FUND`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[mixed-case-function]: function names should use mixedCase
+   --> contracts/oracles/TWAPOracle.sol:212:14
+    |
+212 |     function _calculateTWAP() internal view returns (bool valid, uint256 price) {
+    |              ^^^^^^^^^^^^^^ help: consider using: `_calculateTwap`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-function
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+   --> contracts/integration/LidoStETHIntegrator.sol:230:21
+    |
+230 |             uint256 stETHAmount = stETH.getPooledEthByShares(amount);
+    |                     ^^^^^^^^^^^ help: consider using: `stEthAmount`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/PositionMath.sol:339:28
+    |
+339 |             fundingRate < -int256(maxFundingPerPeriod)
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/PositionMath.sol:353:30
+    |
+353 |             fundingAccrued > int256(size) ||
+    |                              ^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/PositionMath.sol:354:31
+    |
+354 |             fundingAccrued < -int256(size)
+    |                               ^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/PositionMath.sol:454:19
+    |
+454 |             pnl = int256(profit);
+    |                   ^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/PositionMath.sol:460:20
+    |
+460 |             pnl = -int256(loss);
+    |                    ^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/PositionMath.sol:474:19
+    |
+474 |             pnl = int256(profit);
+    |                   ^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/PositionMath.sol:480:20
+    |
+480 |             pnl = -int256(loss);
+    |                    ^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/PositionMath.sol:519:30
+    |
+519 |         if (fundingAccrued > int256(size)) {
+    |                              ^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/PositionMath.sol:520:30
+    |
+520 |             fundingClamped = int256(size);
+    |                              ^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/core/PerpEngine.sol:50:29
+   |
+50 |     IERC20 public immutable baseToken;
+   |                             ^^^^^^^^^ help: consider using: `BASE_TOKEN`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/core/PerpEngine.sol:51:29
+   |
+51 |     IERC20 public immutable quoteToken;
+   |                             ^^^^^^^^^^ help: consider using: `QUOTE_TOKEN`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[mixed-case-function]: function names should use mixedCase
+   --> contracts/oracles/TWAPOracle.sol:422:14
+    |
+422 |     function calculateTWAP() external view returns (uint256 price, bool valid) {
+    |              ^^^^^^^^^^^^^ help: consider using: `calculateTwap`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-function
+
+note[mixed-case-function]: function names should use mixedCase
+   --> contracts/integration/LidoStETHIntegrator.sol:296:14
+    |
+296 |     function getTokenAmountForETH(uint256 ethValue) external view returns (uint256) {
+    |              ^^^^^^^^^^^^^^^^^^^^ help: consider using: `getTokenAmountForEth`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-function
+
+note[mixed-case-function]: function names should use mixedCase
+   --> contracts/integration/LidoStETHIntegrator.sol:342:14
+    |
+342 |     function setWstETHMode(bool _useWstETH) external onlyPerpEngine {
+    |              ^^^^^^^^^^^^^ help: consider using: `setWstEthMode`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-function
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/PositionMath.sol:521:38
+    |
+521 |         } else if (fundingAccrued < -int256(size)) {
+    |                                      ^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/PositionMath.sol:522:31
+    |
+522 |             fundingClamped = -int256(size);
+    |                               ^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/libraries/PositionMath.sol:525:16
+    |
+525 |         return int256(collateral) + pnl - fundingClamped;
+    |                ^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[unused-import]: unused imports should be removed
+ --> contracts/oracles/TWAPOracle.sol:5:9
+  |
+5 | import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+  |         ^^^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+   --> contracts/integration/LidoStETHIntegrator.sol:342:33
+    |
+342 |     function setWstETHMode(bool _useWstETH) external onlyPerpEngine {
+    |                                 ^^^^^^^^^^ help: consider using: `_useWstEth`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[unused-import]: unused imports should be removed
+ --> contracts/upgradeability/TransparentUpgradeableProxy.sol:4:9
+  |
+4 | import {IERC1967} from "@openzeppelin/contracts/interfaces/IERC1967.sol";
+  |         ^^^^^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+note[named-struct-fields]: prefer initializing structs with named fields
+  --> contracts/oracles/TWAPOracle.sol:85:32
+   |
+85 |             _observations.push(Observation(0, 0, 0, 0));
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using named fields: `Observation({ timestamp: 0, price: 0, cumulativePrice: 0, cumulativeTime: 0 })`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#named-struct-fields
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+    --> contracts/core/PerpEngine.sol:1302:18
+     |
+1302 |         (uint256 longOI, uint256 shortOI,) = IAMMPool(ammPool).getMarketSkew(marketId);
+     |                  ^^^^^^ help: consider using: `longOi`
+     |
+     = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/upgradeability/TransparentUpgradeableProxy.sol:29:5
+   |
+29 | /     modifier ifAdmin() {
+30 | |         if (msg.sender == _admin()) {
+31 | |             _;
+32 | |         } else {
+...  |
+35 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+30 |     modifier ifAdmin() {
+31 ~         _ifAdmin();
+32 +         _;
+33 +     }
+34 + 
+35 +     function _ifAdmin() internal {
+36 ~         if (msg.sender == _admin()) {
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[named-struct-fields]: prefer initializing structs with named fields
+   --> contracts/oracles/TWAPOracle.sol:307:40
+    |
+307 |                     _observations.push(Observation(0, 0, 0, 0));
+    |                                        ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using named fields: `Observation({ timestamp: 0, price: 0, cumulativePrice: 0, cumulativeTime: 0 })`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#named-struct-fields
+
+note[mixed-case-function]: function names should use mixedCase
+   --> contracts/integration/LidoStETHIntegrator.sol:354:14
+    |
+354 |     function emergencyWithdrawETH(uint256 amount) external onlyPerpEngine {
+    |              ^^^^^^^^^^^^^^^^^^^^ help: consider using: `emergencyWithdrawEth`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-function
+
+note[mixed-case-function]: function names should use mixedCase
+   --> contracts/integration/LidoStETHIntegrator.sol:390:14
+    |
+390 |     function _stETHToWstETH(uint256 stETHAmount) internal returns (uint256) {
+    |              ^^^^^^^^^^^^^^ help: consider using: `_stEthToWstEth`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-function
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+   --> contracts/integration/LidoStETHIntegrator.sol:390:37
+    |
+390 |     function _stETHToWstETH(uint256 stETHAmount) internal returns (uint256) {
+    |                                     ^^^^^^^^^^^ help: consider using: `stEthAmount`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+  --> test/fuzz/PropertyTests.t.sol:85:30
+   |
+85 |         skew1 = int256(bound(uint256(skew1), 0, 1e30));
+   |                              ^^^^^^^^^^^^^^
+   |
+   = note: consider disabling this lint if you're certain the cast is safe
+           
+           // casting to 'uint256' is safe because [explain why]
+           // forge-lint: disable-next-line(unsafe-typecast)
+           
+           
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+  --> test/fuzz/PropertyTests.t.sol:86:30
+   |
+86 |         skew2 = int256(bound(uint256(skew2), 0, 1e30));
+   |                              ^^^^^^^^^^^^^^
+   |
+   = note: consider disabling this lint if you're certain the cast is safe
+           
+           // casting to 'uint256' is safe because [explain why]
+           // forge-lint: disable-next-line(unsafe-typecast)
+           
+           
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> test/fuzz/PropertyTests.t.sol:116:29
+    |
+116 |         skew = int256(bound(uint256(skew), 0, 1e30));
+    |                             ^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/oracles/OracleSecurity.sol:79:5
+   |
+79 | /     modifier onlyGuardian() {
+80 | |         require(msg.sender == guardian, "OracleSecurity: only guardian");
+81 | |         _;
+82 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+79 ~     modifier onlyGuardian() {
+80 +         _onlyGuardian();
+81 +         _;
+82 +     }
+83 + 
+84 +     function _onlyGuardian() internal {
+85 +         require(msg.sender == guardian, "OracleSecurity: only guardian");
+86 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+    --> contracts/core/PerpEngine.sol:1302:34
+     |
+1302 |         (uint256 longOI, uint256 shortOI,) = IAMMPool(ammPool).getMarketSkew(marketId);
+     |                                  ^^^^^^^ help: consider using: `shortOi`
+     |
+     = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[unused-import]: unused imports should be removed
+ --> test/fuzz/InvariantTests.t.sol:5:9
+  |
+5 | import {StdInvariant} from "forge-std/StdInvariant.sol";
+  |         ^^^^^^^^^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+  --> test/fuzz/InvariantTests.t.sol:63:13
+   |
+63 |             bytes32("ETH-USD"),
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+   = note: consider disabling this lint if you're certain the cast is safe
+           
+           // casting to 'bytes32' is safe because [explain why]
+           // forge-lint: disable-next-line(unsafe-typecast)
+           
+           
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[unused-import]: unused imports should be removed
+ --> contracts/integration/LidoStETHIntegrator.sol:7:9
+  |
+7 | import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+  |         ^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+note[unused-import]: unused imports should be removed
+  --> contracts/core/PerpEngine.sol:16:9
+   |
+16 | import {IConfigRegistry} from "../interfaces/IConfigRegistry.sol";
+   |         ^^^^^^^^^^^^^^^
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/oracles/OracleSecurity.sol:84:5
+   |
+84 | /     modifier onlyAggregator() {
+85 | |         require(msg.sender == oracleAggregator, "OracleSecurity: only aggregator");
+86 | |         _;
+87 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+84 ~     modifier onlyAggregator() {
+85 +         _onlyAggregator();
+86 +         _;
+87 +     }
+88 + 
+89 +     function _onlyAggregator() internal {
+90 +         require(msg.sender == oracleAggregator, "OracleSecurity: only aggregator");
+91 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/integration/LidoStETHIntegrator.sol:88:5
+   |
+88 | /     modifier onlyPerpEngine() {
+89 | |         require(msg.sender == perpEngine, "Only PerpEngine");
+90 | |         _;
+91 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+88 ~     modifier onlyPerpEngine() {
+89 +         _onlyPerpEngine();
+90 +         _;
+91 +     }
+92 + 
+93 +     function _onlyPerpEngine() internal {
+94 +         require(msg.sender == perpEngine, "Only PerpEngine");
+95 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unused-import]: unused imports should be removed
+  --> contracts/core/PerpEngine.sol:20:9
+   |
+20 | import {FundingRateCalculator} from "../libraries/FundingRateCalculator.sol";
+   |         ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+   --> contracts/core/PerpEngine.sol:108:5
+    |
+108 | /     modifier onlyPositionManager() {
+109 | |         require(msg.sender == positionManager, "PerpEngine: only PositionManager");
+110 | |         _;
+111 | |     }
+    | |_____^
+    |
+help: wrap modifier logic to reduce code size
+    |
+108 ~     modifier onlyPositionManager() {
+109 +         _onlyPositionManager();
+110 +         _;
+111 +     }
+112 + 
+113 +     function _onlyPositionManager() internal {
+114 +         require(msg.sender == positionManager, "PerpEngine: only PositionManager");
+115 +     }
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> test/fuzz/InvariantEconomic.t.sol:164:13
+    |
+164 |             bytes32("ETH-USD"),
+    |             ^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'bytes32' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/oracles/ChainlinkOracle.sol:26:44
+   |
+26 |     AggregatorV3Interface public immutable priceFeed;
+   |                                            ^^^^^^^^^ help: consider using: `PRICE_FEED`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/integration/LidoStETHIntegrator.sol:93:5
+   |
+93 | /     modifier validAmount(uint256 amount) {
+94 | |         require(amount >= minWrapAmount, "Below minimum");
+95 | |         require(amount <= maxWrapAmount, "Above maximum");
+96 | |         _;
+97 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+93 ~     modifier validAmount(uint256 amount) {
+94 +         _validAmount(amount);
+95 +         _;
+96 +     }
+97 + 
+98 +     function _validAmount(uint256 amount) internal {
+99 +         require(amount >= minWrapAmount, "Below minimum");
+100+         require(amount <= maxWrapAmount, "Above maximum");
+101+     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+warning[erc20-unchecked-transfer]: ERC20 'transfer' and 'transferFrom' calls should check the return value
+   --> contracts/integration/LidoStETHIntegrator.sol:181:13
+    |
+181 |             stETH.transferFrom(msg.sender, address(this), amount);
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#erc20-unchecked-transfer
+
+warning[erc20-unchecked-transfer]: ERC20 'transfer' and 'transferFrom' calls should check the return value
+   --> contracts/integration/LidoStETHIntegrator.sol:203:13
+    |
+203 |             stETH.transferFrom(msg.sender, address(this), amount);
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#erc20-unchecked-transfer
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+   --> contracts/core/PerpEngine.sol:113:5
+    |
+113 | /     modifier onlyLiquidationEngine() {
+114 | |         require(msg.sender == liquidationEngine, "PerpEngine: only LiquidationEngine");
+115 | |         _;
+116 | |     }
+    | |_____^
+    |
+help: wrap modifier logic to reduce code size
+    |
+113 ~     modifier onlyLiquidationEngine() {
+114 +         _onlyLiquidationEngine();
+115 +         _;
+116 +     }
+117 + 
+118 +     function _onlyLiquidationEngine() internal {
+119 +         require(msg.sender == liquidationEngine, "PerpEngine: only LiquidationEngine");
+120 +     }
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+   --> contracts/core/PerpEngine.sol:118:5
+    |
+118 | /     modifier onlyGovernance() {
+119 | |         require(msg.sender == governance, "PerpEngine: only Governance");
+120 | |         _;
+121 | |     }
+    | |_____^
+    |
+help: wrap modifier logic to reduce code size
+    |
+118 ~     modifier onlyGovernance() {
+119 +         _onlyGovernance();
+120 +         _;
+121 +     }
+122 + 
+123 +     function _onlyGovernance() internal {
+124 +         require(msg.sender == governance, "PerpEngine: only Governance");
+125 +     }
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/integration/AaveFlashLoanIntegrator.sol:33:32
+   |
+33 |     IAavePool public immutable aavePool;
+   |                                ^^^^^^^^ help: consider using: `AAVE_POOL`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+   --> test/fuzz/AdversarialTests.t.sol:167:18
+    |
+167 |         (uint256 longOI, uint256 shortOI, int256 netSkew) = ammPool.getMarketSkew(1);
+    |                  ^^^^^^ help: consider using: `longOi`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+   --> test/fuzz/AdversarialTests.t.sol:167:34
+    |
+167 |         (uint256 longOI, uint256 shortOI, int256 netSkew) = ammPool.getMarketSkew(1);
+    |                                  ^^^^^^^ help: consider using: `shortOi`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+   --> contracts/core/PerpEngine.sol:123:5
+    |
+123 | /     modifier marketActive(uint256 marketId) {
+124 | |         require(_markets[marketId].isActive, "PerpEngine: market inactive");
+125 | |         _;
+126 | |     }
+    | |_____^
+    |
+help: wrap modifier logic to reduce code size
+    |
+123 ~     modifier marketActive(uint256 marketId) {
+124 +         _marketActive(marketId);
+125 +         _;
+126 +     }
+127 + 
+128 +     function _marketActive(uint256 marketId) internal {
+129 +         require(_markets[marketId].isActive, "PerpEngine: market inactive");
+130 +     }
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+   --> contracts/core/PerpEngine.sol:128:5
+    |
+128 | /     modifier validPosition(uint256 positionId) {
+129 | |         require(_positions[positionId].isActive, "PerpEngine: invalid position");
+130 | |         _;
+131 | |     }
+    | |_____^
+    |
+help: wrap modifier logic to reduce code size
+    |
+128 ~     modifier validPosition(uint256 positionId) {
+129 +         _validPosition(positionId);
+130 +         _;
+131 +     }
+132 + 
+133 +     function _validPosition(uint256 positionId) internal {
+134 +         require(_positions[positionId].isActive, "PerpEngine: invalid position");
+135 +     }
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> test/fuzz/AdversarialTests.t.sol:116:13
+    |
+116 |             bytes32("ETH-USD"),
+    |             ^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'bytes32' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> test/fuzz/AdversarialTests.t.sol:170:27
+    |
+170 |         assertEq(netSkew, int256(size));
+    |                           ^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/integration/AaveFlashLoanIntegrator.sol:34:30
+   |
+34 |     address public immutable flashLiquidator;
+   |                              ^^^^^^^^^^^^^^^ help: consider using: `FLASH_LIQUIDATOR`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/core/PerpEngine.sol:325:13
+    |
+325 |             int256(sizeAdded)
+    |             ^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[unused-import]: unused imports should be removed
+ --> test/fuzz/EdgeCases.t.sol:4:9
+  |
+4 | import {Test} from "forge-std/Test.sol";
+  |         ^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/oracles/ChainlinkOracle.sol:117:37
+    |
+117 |             price = _normalizePrice(uint256(answer), CHAINLINK_DECIMALS);
+    |                                     ^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[unused-import]: unused imports should be removed
+ --> test/fuzz/DriftTest.t.sol:4:9
+  |
+4 | import {Test} from "forge-std/Test.sol";
+  |         ^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+note[unused-import]: unused imports should be removed
+ --> test/fuzz/DriftTest.t.sol:5:9
+  |
+5 | import {console} from "forge-std/console.sol";
+  |         ^^^^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+note[unused-import]: unused imports should be removed
+ --> test/fuzz/DriftTest.t.sol:7:27
+  |
+7 | import {AdversarialTests, MockERC20} from "./AdversarialTests.t.sol";
+  |                           ^^^^^^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/core/PerpEngine.sol:430:14
+    |
+430 |             -int256(sizeReduced)
+    |              ^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/core/PerpEngine.sol:440:44
+    |
+440 |             returnAmount = marginReduced + uint256(totalPnl);
+    |                                            ^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/core/PerpEngine.sol:443:38
+    |
+443 |             int256 remainingMargin = int256(marginReduced) + totalPnl;
+    |                                      ^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/core/PerpEngine.sol:445:28
+    |
+445 |             returnAmount = uint256(remainingMargin);
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+  --> script/DeployCore.s.sol:84:34
+   |
+84 |         perp.initializeMarket(1, bytes32("ETH-USD"), 10e18, 2e16, 0.1 ether, 5e16, 1e15);
+   |                                  ^^^^^^^^^^^^^^^^^^
+   |
+   = note: consider disabling this lint if you're certain the cast is safe
+           
+           // casting to 'bytes32' is safe because [explain why]
+           // forge-lint: disable-next-line(unsafe-typecast)
+           
+           
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+  --> script/DeployCore.s.sol:86:34
+   |
+86 |         perp.initializeMarket(2, bytes32("BTC-USD"), 10e18, 2e16, 0.01 ether, 5e16, 1e15);
+   |                                  ^^^^^^^^^^^^^^^^^^
+   |
+   = note: consider disabling this lint if you're certain the cast is safe
+           
+           // casting to 'bytes32' is safe because [explain why]
+           // forge-lint: disable-next-line(unsafe-typecast)
+           
+           
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/integration/AaveFlashLoanIntegrator.sol:35:34
+   |
+35 |     IPerpEngine public immutable perpEngine;
+   |                                  ^^^^^^^^^^ help: consider using: `PERP_ENGINE`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/integration/AaveFlashLoanIntegrator.sol:36:29
+   |
+36 |     IERC20 public immutable quoteToken;
+   |                             ^^^^^^^^^^ help: consider using: `QUOTE_TOKEN`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/core/AMMPool.sol:34:30
+   |
+34 |     address public immutable perpEngine;
+   |                              ^^^^^^^^^^ help: consider using: `PERP_ENGINE`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/oracles/ChainlinkOracle.sol:175:45
+    |
+175 |             uint256 price = _normalizePrice(uint256(answer), CHAINLINK_DECIMALS);
+    |                                             ^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/core/AMMPool.sol:35:30
+   |
+35 |     address public immutable oracleAggregator;
+   |                              ^^^^^^^^^^^^^^^^ help: consider using: `ORACLE_AGGREGATOR`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/core/PerpEngine.sol:523:46
+    |
+523 |             returnAmount = position.margin + uint256(totalPnl);
+    |                                              ^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+   --> contracts/core/AMMPool.sol:274:21
+    |
+274 |             uint256 longOI,
+    |                     ^^^^^^ help: consider using: `longOi`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+   --> contracts/core/AMMPool.sol:275:21
+    |
+275 |             uint256 shortOI,
+    |                     ^^^^^^^ help: consider using: `shortOi`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[mixed-case-function]: function names should use mixedCase
+   --> contracts/core/AMMPool.sol:305:14
+    |
+305 |     function getTWAFundingRate(uint256 marketId, uint256 period)
+    |              ^^^^^^^^^^^^^^^^^ help: consider using: `getTwaFundingRate`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-function
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+   --> contracts/core/AMMPool.sol:359:21
+    |
+359 |             uint256 avgOI = (skew.longOpenInterest + skew.shortOpenInterest) / 2;
+    |                     ^^^^^ help: consider using: `avgOi`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/integration/AaveFlashLoanIntegrator.sol:80:5
+   |
+80 | /     modifier onlyFlashLiquidator() {
+81 | |         require(msg.sender == flashLiquidator, "Only FlashLiquidator");
+82 | |         _;
+83 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+80 ~     modifier onlyFlashLiquidator() {
+81 +         _onlyFlashLiquidator();
+82 +         _;
+83 +     }
+84 + 
+85 +     function _onlyFlashLiquidator() internal {
+86 +         require(msg.sender == flashLiquidator, "Only FlashLiquidator");
+87 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/integration/AaveFlashLoanIntegrator.sol:85:5
+   |
+85 | /     modifier onlyAavePool() {
+86 | |         require(msg.sender == address(aavePool), "Only Aave Pool");
+87 | |         _;
+88 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+85 ~     modifier onlyAavePool() {
+86 +         _onlyAavePool();
+87 +         _;
+88 +     }
+89 + 
+90 +     function _onlyAavePool() internal {
+91 +         require(msg.sender == address(aavePool), "Only Aave Pool");
+92 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unused-import]: unused imports should be removed
+ --> contracts/core/AMMPool.sol:7:9
+  |
+7 | import {IPerpEngine} from "../interfaces/IPerpEngine.sol";
+  |         ^^^^^^^^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+note[unused-import]: unused imports should be removed
+ --> contracts/core/AMMPool.sol:8:9
+  |
+8 | import {IOracleAggregator} from "../interfaces/IOracleAggregator.sol";
+  |         ^^^^^^^^^^^^^^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/oracles/ChainlinkOracle.sol:259:16
+    |
+259 |         return uint8(PRICE_DECIMALS);
+    |                ^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint8' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/oracles/ChainlinkOracle.sol:345:53
+    |
+345 |         return (lastValidPrice, lastValidTimestamp, uint80(lastValidRoundId));
+    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint80' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/integration/AaveFlashLoanIntegrator.sol:90:5
+   |
+90 | /     modifier validAmount(uint256 amount) {
+91 | |         require(amount >= minFlashLoanAmount, "Below minimum");
+92 | |         require(amount <= maxFlashLoanAmount, "Above maximum");
+93 | |         _;
+94 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+90 ~     modifier validAmount(uint256 amount) {
+91 +         _validAmount(amount);
+92 +         _;
+93 +     }
+94 + 
+95 +     function _validAmount(uint256 amount) internal {
+96 +         require(amount >= minFlashLoanAmount, "Below minimum");
+97 +         require(amount <= maxFlashLoanAmount, "Above maximum");
+98 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[asm-keccak256]: use of inefficient hashing mechanism; consider using inline assembly
+   --> contracts/integration/AaveFlashLoanIntegrator.sol:138:29
+    |
+138 |           bytes32 requestId = keccak256(
+    |  _____________________________^
+139 | |             abi.encodePacked(positionId, msg.sender, block.timestamp, loanAmount)
+140 | |         );
+    | |_________^
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#asm-keccak256
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/core/PerpEngine.sol:528:28
+    |
+528 |             returnAmount = uint256(remainingMargin);
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/core/AMMPool.sol:59:5
+   |
+59 | /     modifier onlyPerpEngine() {
+60 | |         require(msg.sender == perpEngine, "AMMPool: only PerpEngine");
+61 | |         _;
+62 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+59 ~     modifier onlyPerpEngine() {
+60 +         _onlyPerpEngine();
+61 +         _;
+62 +     }
+63 + 
+64 +     function _onlyPerpEngine() internal {
+65 +         require(msg.sender == perpEngine, "AMMPool: only PerpEngine");
+66 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/core/PerpEngine.sol:613:28
+    |
+613 |             pnlDeduction = uint256(-pnl);
+    |                            ^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/integration/AccountAbstractionAdapter.sol:52:34
+   |
+52 |     IEntryPoint public immutable entryPoint;
+   |                                  ^^^^^^^^^^ help: consider using: `ENTRY_POINT`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/integration/AccountAbstractionAdapter.sol:53:30
+   |
+53 |     address public immutable perpEngine;
+   |                              ^^^^^^^^^^ help: consider using: `PERP_ENGINE`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/core/AMMPool.sol:64:5
+   |
+64 | /     modifier marketExists(uint256 marketId) {
+65 | |         require(_marketConfigs[marketId].isActive, "AMMPool: market inactive");
+66 | |         _;
+67 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+64 ~     modifier marketExists(uint256 marketId) {
+65 +         _marketExists(marketId);
+66 +         _;
+67 +     }
+68 + 
+69 +     function _marketExists(uint256 marketId) internal {
+70 +         require(_marketConfigs[marketId].isActive, "AMMPool: market inactive");
+71 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/integration/AccountAbstractionAdapter.sol:54:29
+   |
+54 |     IERC20 public immutable quoteToken;
+   |                             ^^^^^^^^^^ help: consider using: `QUOTE_TOKEN`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+  --> contracts/core/AMMPool.sol:94:42
+   |
+94 |                 skew.longOpenInterest += uint256(sizeChange);
+   |                                          ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: consider disabling this lint if you're certain the cast is safe
+           
+           // casting to 'uint256' is safe because [explain why]
+           // forge-lint: disable-next-line(unsafe-typecast)
+           
+           
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+  --> contracts/core/AMMPool.sol:96:42
+   |
+96 |                 skew.longOpenInterest -= uint256(-sizeChange);
+   |                                          ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: consider disabling this lint if you're certain the cast is safe
+           
+           // casting to 'uint256' is safe because [explain why]
+           // forge-lint: disable-next-line(unsafe-typecast)
+           
+           
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/core/PerpEngine.sol:661:14
+    |
+661 |             -int256(liquidatedSize)
+    |              ^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'int256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/core/AMMPool.sol:100:43
+    |
+100 |                 skew.shortOpenInterest += uint256(sizeChange);
+    |                                           ^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/core/AMMPool.sol:102:43
+    |
+102 |                 skew.shortOpenInterest -= uint256(-sizeChange);
+    |                                           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/core/AMMPool.sol:195:49
+    |
+195 |                 state.fundingAccumulatedLong += uint256(fundingPayment);
+    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[mixed-case-function]: function names should use mixedCase
+   --> contracts/oracles/OracleAggregator.sol:321:14
+    |
+321 |     function getTWAP(bytes32 feedId, uint256 period)
+    |              ^^^^^^^ help: consider using: `getTwap`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-function
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/core/AMMPool.sol:197:50
+    |
+197 |                 state.fundingAccumulatedShort += uint256(fundingPayment);
+    |                                                  ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+   --> contracts/core/AMMPool.sol:200:34
+    |
+200 |             uint256 paymentAbs = uint256(-fundingPayment);
+    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: consider disabling this lint if you're certain the cast is safe
+            
+            // casting to 'uint256' is safe because [explain why]
+            // forge-lint: disable-next-line(unsafe-typecast)
+            
+            
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+   --> contracts/oracles/OracleAggregator.sol:716:14
+    |
+716 |         bool requireTWAP,
+    |              ^^^^^^^^^^^ help: consider using: `requireTwap`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+   --> contracts/oracles/OracleAggregator.sol:824:10
+    |
+824 |     bool requireTWAP;
+    |          ^^^^^^^^^^^ help: consider using: `requireTwap`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+    --> contracts/core/PerpEngine.sol:1192:32
+     |
+1192 |             marginDeduction += uint256(-pnl);
+     |                                ^^^^^^^^^^^^^
+     |
+     = note: consider disabling this lint if you're certain the cast is safe
+             
+             // casting to 'uint256' is safe because [explain why]
+             // forge-lint: disable-next-line(unsafe-typecast)
+             
+             
+     = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/integration/AccountAbstractionAdapter.sol:88:5
+   |
+88 | /     modifier onlyEntryPoint() {
+89 | |         require(msg.sender == address(entryPoint), "Only EntryPoint");
+90 | |         _;
+91 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+88 ~     modifier onlyEntryPoint() {
+89 +         _onlyEntryPoint();
+90 +         _;
+91 +     }
+92 + 
+93 +     function _onlyEntryPoint() internal {
+94 +         require(msg.sender == address(entryPoint), "Only EntryPoint");
+95 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/integration/AccountAbstractionAdapter.sol:93:5
+   |
+93 | /     modifier onlyPerpEngine() {
+94 | |         require(msg.sender == perpEngine, "Only PerpEngine");
+95 | |         _;
+96 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+93 ~     modifier onlyPerpEngine() {
+94 +         _onlyPerpEngine();
+95 +         _;
+96 +     }
+97 + 
+98 +     function _onlyPerpEngine() internal {
+99 +         require(msg.sender == perpEngine, "Only PerpEngine");
+100+     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/oracles/OracleAggregator.sol:84:5
+   |
+84 | /     modifier onlySecurityModule() {
+85 | |         require(msg.sender == oracleSecurity, "OracleAggregator: only security module");
+86 | |         _;
+87 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+84 ~     modifier onlySecurityModule() {
+85 +         _onlySecurityModule();
+86 +         _;
+87 +     }
+88 + 
+89 +     function _onlySecurityModule() internal {
+90 +         require(msg.sender == oracleSecurity, "OracleAggregator: only security module");
+91 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unused-import]: unused imports should be removed
+ --> contracts/core/ProtocolConfig.sol:8:9
+  |
+8 | import {ITimelockController} from "../interfaces/ITimelockController.sol";
+  |         ^^^^^^^^^^^^^^^^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/core/ProtocolConfig.sol:62:5
+   |
+62 | /     modifier onlyTimelock() {
+63 | |         require(msg.sender == timelockController, "ProtocolConfig: only timelock");
+64 | |         _;
+65 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+62 ~     modifier onlyTimelock() {
+63 +         _onlyTimelock();
+64 +         _;
+65 +     }
+66 + 
+67 +     function _onlyTimelock() internal {
+68 +         require(msg.sender == timelockController, "ProtocolConfig: only timelock");
+69 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/oracles/OracleAggregator.sol:89:5
+   |
+89 | /     modifier feedExists(bytes32 feedId) {
+90 | |         require(_sources[feedId].length > 0, "OracleAggregator: feed not found");
+91 | |         _;
+92 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+89 ~     modifier feedExists(bytes32 feedId) {
+90 +         _feedExists(feedId);
+91 +         _;
+92 +     }
+93 + 
+94 +     function _feedExists(bytes32 feedId) internal {
+95 +         require(_sources[feedId].length > 0, "OracleAggregator: feed not found");
+96 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/core/PositionManager.sol:34:30
+   |
+34 |     address public immutable perpEngine;
+   |                              ^^^^^^^^^^ help: consider using: `PERP_ENGINE`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+    --> contracts/core/PerpEngine.sol:1195:17
+     |
+1195 |             if (uint256(pnl) > marginDeduction) {
+     |                 ^^^^^^^^^^^^
+     |
+     = note: consider disabling this lint if you're certain the cast is safe
+             
+             // casting to 'uint256' is safe because [explain why]
+             // forge-lint: disable-next-line(unsafe-typecast)
+             
+             
+     = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+    --> contracts/core/PerpEngine.sol:1198:36
+     |
+1198 |                 marginDeduction -= uint256(pnl);
+     |                                    ^^^^^^^^^^^^
+     |
+     = note: consider disabling this lint if you're certain the cast is safe
+             
+             // casting to 'uint256' is safe because [explain why]
+             // forge-lint: disable-next-line(unsafe-typecast)
+             
+             
+     = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/core/ProtocolConfig.sol:67:5
+   |
+67 | /     modifier onlyGuardian() {
+68 | |         require(msg.sender == _configGuardian, "ProtocolConfig: only guardian");
+69 | |         _;
+70 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+67 ~     modifier onlyGuardian() {
+68 +         _onlyGuardian();
+69 +         _;
+70 +     }
+71 + 
+72 +     function _onlyGuardian() internal {
+73 +         require(msg.sender == _configGuardian, "ProtocolConfig: only guardian");
+74 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/core/ProtocolConfig.sol:72:5
+   |
+72 | /     modifier marketExists(uint256 marketId) {
+73 | |         require(_marketConfigs[marketId].isActive || _marketConfigs[marketId].createdAt > 0,
+74 | |             "ProtocolConfig: market not found");
+75 | |         _;
+76 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+72 ~     modifier marketExists(uint256 marketId) {
+73 +         _marketExists(marketId);
+74 +         _;
+75 +     }
+76 + 
+77 +     function _marketExists(uint256 marketId) internal {
+78 +         require(_marketConfigs[marketId].isActive || _marketConfigs[marketId].createdAt > 0,
+79 +             "ProtocolConfig: market not found");
+80 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[mixed-case-function]: function names should use mixedCase
+   --> contracts/core/PositionManager.sol:291:14
+    |
+291 |     function _baseURI() internal view override returns (string memory) {
+    |              ^^^^^^^^ help: consider using: `_baseUri`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-function
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/core/PositionManager.sol:49:5
+   |
+49 | /     modifier onlyPerpEngine() {
+50 | |         require(msg.sender == perpEngine, "PositionManager: only PerpEngine");
+51 | |         _;
+52 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+49 ~     modifier onlyPerpEngine() {
+50 +         _onlyPerpEngine();
+51 +         _;
+52 +     }
+53 + 
+54 +     function _onlyPerpEngine() internal {
+55 +         require(msg.sender == perpEngine, "PositionManager: only PerpEngine");
+56 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+    --> contracts/core/PerpEngine.sol:1333:13
+     |
+1333 |         if (uint256(equity) <= maintenanceMargin) return 0;
+     |             ^^^^^^^^^^^^^^^
+     |
+     = note: consider disabling this lint if you're certain the cast is safe
+             
+             // casting to 'uint256' is safe because [explain why]
+             // forge-lint: disable-next-line(unsafe-typecast)
+             
+             
+     = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+warning[unsafe-typecast]: typecasts that can truncate values should be checked
+    --> contracts/core/PerpEngine.sol:1335:16
+     |
+1335 |         return uint256(equity) - maintenanceMargin;
+     |                ^^^^^^^^^^^^^^^
+     |
+     = note: consider disabling this lint if you're certain the cast is safe
+             
+             // casting to 'uint256' is safe because [explain why]
+             // forge-lint: disable-next-line(unsafe-typecast)
+             
+             
+     = help: https://book.getfoundry.sh/reference/forge/forge-lint#unsafe-typecast
+
+note[mixed-case-function]: function names should use mixedCase
+   --> contracts/upgradeability/UpgradeExecutor.sol:417:14
+    |
+417 |     function emergencyRecoverETH(uint256 amount) external onlyGovernor {
+    |              ^^^^^^^^^^^^^^^^^^^ help: consider using: `emergencyRecoverEth`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-function
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/core/RiskManager.sol:31:30
+   |
+31 |     address public immutable marketRegistry;
+   |                              ^^^^^^^^^^^^^^ help: consider using: `MARKET_REGISTRY`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/core/RiskManager.sol:32:30
+   |
+32 |     address public immutable perpEngine;
+   |                              ^^^^^^^^^^ help: consider using: `PERP_ENGINE`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/upgradeability/UpgradeExecutor.sol:93:5
+   |
+93 | /     modifier onlyGovernor() {
+94 | |         require(hasRole(GOVERNOR_ROLE, msg.sender), "Only governor");
+95 | |         _;
+96 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+93 ~     modifier onlyGovernor() {
+94 +         _onlyGovernor();
+95 +         _;
+96 +     }
+97 + 
+98 +     function _onlyGovernor() internal {
+99 +         require(hasRole(GOVERNOR_ROLE, msg.sender), "Only governor");
+100+     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[screaming-snake-case-immutable]: immutables should use SCREAMING_SNAKE_CASE
+  --> contracts/core/RiskManager.sol:33:30
+   |
+33 |     address public immutable configRegistry;
+   |                              ^^^^^^^^^^^^^^ help: consider using: `CONFIG_REGISTRY`
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#screaming-snake-case-immutable
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+   --> contracts/upgradeability/UpgradeExecutor.sol:98:5
+    |
+ 98 | /     modifier onlyExecutor() {
+ 99 | |         require(hasRole(EXECUTOR_ROLE, msg.sender), "Only executor");
+100 | |         _;
+101 | |     }
+    | |_____^
+    |
+help: wrap modifier logic to reduce code size
+    |
+ 98 ~     modifier onlyExecutor() {
+ 99 +         _onlyExecutor();
+100 +         _;
+101 +     }
+102 + 
+103 +     function _onlyExecutor() internal {
+104 +         require(hasRole(EXECUTOR_ROLE, msg.sender), "Only executor");
+105 +     }
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+   --> contracts/core/RiskManager.sol:398:17
+    |
+398 |         uint256 totalOI = 0; // Placeholder
+    |                 ^^^^^^^ help: consider using: `totalOi`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[mixed-case-variable]: mutable variables should use mixedCase
+   --> contracts/core/RiskManager.sol:418:17
+    |
+418 |         uint256 totalOI = 0; // Placeholder from PerpEngine
+    |                 ^^^^^^^ help: consider using: `totalOi`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-variable
+
+note[asm-keccak256]: use of inefficient hashing mechanism; consider using inline assembly
+   --> contracts/upgradeability/UpgradeExecutor.sol:136:27
+    |
+136 |         bytes32 batchId = keccak256(abi.encode(operations, block.timestamp, msg.sender));
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#asm-keccak256
+
+note[unused-import]: unused imports should be removed
+ --> contracts/core/RiskManager.sol:7:9
+  |
+7 | import {IMarketRegistry} from "../interfaces/IMarketRegistry.sol";
+  |         ^^^^^^^^^^^^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+note[unused-import]: unused imports should be removed
+ --> contracts/core/RiskManager.sol:8:9
+  |
+8 | import {IPerpEngine} from "../interfaces/IPerpEngine.sol";
+  |         ^^^^^^^^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+note[unused-import]: unused imports should be removed
+ --> contracts/core/RiskManager.sol:9:9
+  |
+9 | import {IConfigRegistry} from "../interfaces/IConfigRegistry.sol";
+  |         ^^^^^^^^^^^^^^^
+  |
+  = help: https://book.getfoundry.sh/reference/forge/forge-lint#unused-import
+
+note[unwrapped-modifier-logic]: wrap modifier logic to reduce code size
+  --> contracts/core/RiskManager.sol:57:5
+   |
+57 | /     modifier onlyGovernance() {
+58 | |         require(msg.sender == owner() || msg.sender == configRegistry, 
+59 | |             "RiskManager: only governance");
+60 | |         _;
+61 | |     }
+   | |_____^
+   |
+help: wrap modifier logic to reduce code size
+   |
+57 ~     modifier onlyGovernance() {
+58 +         _onlyGovernance();
+59 +         _;
+60 +     }
+61 + 
+62 +     function _onlyGovernance() internal {
+63 +         require(msg.sender == owner() || msg.sender == configRegistry, 
+64 +             "RiskManager: only governance");
+65 +     }
+   |
+   = help: https://book.getfoundry.sh/reference/forge/forge-lint#unwrapped-modifier-logic
+
+note[mixed-case-function]: function names should use mixedCase
+   --> contracts/upgradeability/ProxyAdmin.sol:171:14
+    |
+171 |     function emergencyRecoverETH(uint256 amount) external onlyOwner {
+    |              ^^^^^^^^^^^^^^^^^^^ help: consider using: `emergencyRecoverEth`
+    |
+    = help: https://book.getfoundry.sh/reference/forge/forge-lint#mixed-case-function
+

@@ -134,8 +134,8 @@ contract PausableController is AccessControl {
         bytes32[] memory modules = pausedModules.values();
         for (uint256 i = 0; i < modules.length; i++) {
             delete moduleStates[modules[i]];
+            pausedModules.remove(modules[i]);
         }
-        pausedModules.clear();
         
         lastGlobalUnpause = block.timestamp;
         

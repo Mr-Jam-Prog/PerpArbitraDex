@@ -66,10 +66,11 @@ export interface Position {
 // ============ TRANSACTION PARAMETERS ============
 export interface OpenPositionParams {
   marketId: string;
+  isLong: boolean;
   size: bigint;
   collateral: bigint;
-  leverage?: number;
-  maxSlippageBps?: number;
+  acceptablePrice?: bigint;
+  deadline?: number;
   referralCode?: string;
 }
 

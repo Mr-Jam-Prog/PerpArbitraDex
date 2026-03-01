@@ -20,7 +20,14 @@
         "doc": "docs",
         "test": "test"
     },
-    "devDependencies": {},
+    "devDependencies": {
+        "@nomicfoundation/hardhat-toolbox": "4.0.0",
+        "@openzeppelin/contracts": "4.9.0",
+        "@chainlink/contracts": "0.8.0",
+        "@pythnetwork/pyth-sdk-solidity": "2.2.1",
+        "ethers": "6.10.0",
+        "hardhat": "2.19.4"
+    },
     "keywords": [],
     "author": "",
     "license": "ISC"

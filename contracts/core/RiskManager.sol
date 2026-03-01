@@ -35,10 +35,10 @@ contract RiskManager is IRiskManager, Ownable {
     // ============ STATE VARIABLES ============
     
     // Market ID => Risk parameters
-    mapping(uint256 => RiskParams) private _riskParams;
+    mapping(uint256 => IRiskManager.RiskParams) private _riskParams;
     
     // Global risk parameters
-    GlobalRiskParams private _globalParams;
+    IRiskManager.GlobalRiskParams private _globalParams;
     
     // Circuit breaker state
     mapping(uint256 => CircuitBreaker) private _circuitBreakers;
@@ -76,7 +76,7 @@ contract RiskManager is IRiskManager, Ownable {
         configRegistry = configRegistry_;
         
         // Initialize global parameters
-        _globalParams = GlobalRiskParams({
+        _globalParams = IRiskManager.GlobalRiskParams({
             maxLeverage: 50 * PRECISION, // 50x default
             minMarginRatio: PRECISION / 50, // 2%
             liquidationThreshold: PRECISION, // 100%
@@ -114,7 +114,7 @@ contract RiskManager is IRiskManager, Ownable {
         }
         
         // Check leverage against market-specific max
-        RiskParams storage params = _riskParams[marketId];
+        IRiskManager.RiskParams storage params = _riskParams[marketId];
         uint256 marketMaxLeverage = params.maxLeverage > 0 ? params.maxLeverage : _globalParams.maxLeverage;
         if (leverage > marketMaxLeverage) {
             return (false, "RiskManager: exceeds market max leverage");
@@ -191,7 +191,7 @@ contract RiskManager is IRiskManager, Ownable {
         }
         
         // Apply market-specific minimum if exists
-        RiskParams storage params = _riskParams[marketId];
+        IRiskManager.RiskParams storage params = _riskParams[marketId];
         if (params.minMarginRatio > 0) {
             uint256 marketMinMargin = size.mulDiv(params.minMarginRatio, PRECISION);
             if (requiredMargin < marketMinMargin) {
@@ -211,7 +211,7 @@ contract RiskManager is IRiskManager, Ownable {
         maxSize = availableMargin.mulDiv(_globalParams.maxLeverage, PRECISION);
         
         // Apply market-specific max leverage if exists
-        RiskParams storage params = _riskParams[marketId];
+        IRiskManager.RiskParams storage params = _riskParams[marketId];
         if (params.maxLeverage > 0 && params.maxLeverage < _globalParams.maxLeverage) {
             maxSize = availableMargin.mulDiv(params.maxLeverage, PRECISION);
         }
@@ -323,7 +323,7 @@ contract RiskManager is IRiskManager, Ownable {
     /**
      * @inheritdoc IRiskManager
      */
-    function setGlobalRiskParams(GlobalRiskParams calldata newParams)
+    function setGlobalRiskParams(IRiskManager.GlobalRiskParams calldata newParams)
         external
         override
         onlyGovernance
@@ -336,7 +336,7 @@ contract RiskManager is IRiskManager, Ownable {
             "RiskManager: concentration too high");
         
         // Save old params for event
-        GlobalRiskParams memory oldParams = _globalParams;
+        IRiskManager.GlobalRiskParams memory oldParams = _globalParams;
         
         // Update
         _globalParams = newParams;
@@ -347,7 +347,7 @@ contract RiskManager is IRiskManager, Ownable {
     /**
      * @inheritdoc IRiskManager
      */
-    function setMarketRiskParams(uint256 marketId, RiskParams calldata newParams)
+    function setMarketRiskParams(uint256 marketId, IRiskManager.RiskParams calldata newParams)
         external
         override
         onlyGovernance
@@ -364,7 +364,7 @@ contract RiskManager is IRiskManager, Ownable {
         }
         
         // Save old params for event
-        RiskParams memory oldParams = _riskParams[marketId];
+        IRiskManager.RiskParams memory oldParams = _riskParams[marketId];
         
         // Update
         _riskParams[marketId] = newParams;
@@ -430,24 +430,24 @@ contract RiskManager is IRiskManager, Ownable {
     /**
      * @notice Get global risk parameters
      */
-    function getGlobalRiskParams() external view returns (GlobalRiskParams memory) {
+    function getGlobalRiskParams() external view returns (IRiskManager.GlobalRiskParams memory) {
         return _globalParams;
     }
 
     /**
      * @notice Get market risk parameters
      */
-    function getMarketRiskParams(uint256 marketId) external view returns (RiskParams memory) {
+    function getMarketRiskParams(uint256 marketId) external view returns (IRiskManager.RiskParams memory) {
         return _riskParams[marketId];
     }
 
     /**
      * @notice Get effective risk parameters for a market
      */
-    function getEffectiveRiskParams(uint256 marketId) external view returns (EffectiveRiskParams memory) {
-        RiskParams storage marketParams = _riskParams[marketId];
+    function getEffectiveRiskParams(uint256 marketId) external view returns (IRiskManager.EffectiveRiskParams memory) {
+        IRiskManager.RiskParams storage marketParams = _riskParams[marketId];
         
-        return EffectiveRiskParams({
+        return IRiskManager.EffectiveRiskParams({
             maxLeverage: marketParams.maxLeverage > 0 ? marketParams.maxLeverage : _globalParams.maxLeverage,
             minMarginRatio: marketParams.minMarginRatio > 0 ? marketParams.minMarginRatio : _globalParams.minMarginRatio,
             liquidationFeeRatio: marketParams.liquidationFeeRatio > 0 ? marketParams.liquidationFeeRatio : _globalParams.liquidationFeeRatio,

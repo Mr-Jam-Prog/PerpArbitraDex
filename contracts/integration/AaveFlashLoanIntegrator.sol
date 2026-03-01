@@ -196,91 +196,33 @@ contract AaveFlashLoanIntegrator is IFlashLoanReceiver, ReentrancyGuard {
         bytes calldata params
     ) external override onlyAavePool nonReentrant returns (bool) {
         require(initiator == address(this), "Invalid initiator");
-        require(assets.length == 1, "Invalid assets length");
-        require(amounts.length == 1, "Invalid amounts length");
-        require(premiums.length == 1, "Invalid premiums length");
-        
-        // Decode parameters
-        (uint256 positionId, uint256 minReward, bytes32 requestId) = 
-            abi.decode(params, (uint256, uint256, bytes32));
-        
-        // Validate request
-        FlashLoanRequest storage request = activeRequests[requestId];
-        require(request.initiator != address(0), "Invalid request");
-        require(!request.executed, "Already executed");
-        require(block.timestamp <= request.timestamp + 1 hours, "Request expired");
-        
-        // Validate assets and amounts
-        address asset = assets[0];
-        uint256 amount = amounts[0];
-        uint256 premium = premiums[0];
-        
-        require(approvedAssets[asset], "Asset not approved");
-        require(asset == address(quoteToken), "Invalid asset");
-        
-        // Calculate total amount to repay
-        uint256 repayAmount = amount + premium;
-        
-        // Verify we have enough to repay
-        uint256 contractBalance = quoteToken.balanceOf(address(this));
-        require(contractBalance >= repayAmount, "Insufficient balance for repayment");
-        
-        // Mark as executed early to prevent reentrancy
-        request.executed = true;
-        
-        // Forward to FlashLiquidator for execution
-        (bool success, bytes memory result) = flashLiquidator.call(
-            abi.encodeWithSignature(
-                "executeFlashLiquidation(address,uint256,uint256,uint256,bytes32)",
-                asset,
-                amount,
-                positionId,
-                minReward,
-                requestId
-            )
-        );
-        
+        bytes32 rid;
+        (,, rid) = abi.decode(params, (uint256, uint256, bytes32));
+        FlashLoanRequest storage req = activeRequests[rid];
+        require(req.initiator != address(0) && !req.executed, "Invalid request");
+        uint256 repay = amounts[0] + premiums[0];
+        require(quoteToken.balanceOf(address(this)) >= repay, "Insufficient balance");
+        req.executed = true;
+        (bool success, bytes memory res) = flashLiquidator.call(
+            abi.encodeWithSignature("executeFlashLiquidation(address,uint256,uint256,uint256,bytes32)",
+                assets[0], amounts[0], req.positionId, req.minReward, rid));
         if (success) {
-            // Decode result from FlashLiquidator
-            (uint256 reward, uint256 liquidationSuccess) = abi.decode(result, (uint256, bool));
-            
-            require(reward >= minReward, "Reward below minimum");
-            require(liquidationSuccess, "Liquidation failed");
-            
-            // Verify final balance can cover repayment
-            uint256 finalBalance = quoteToken.balanceOf(address(this));
-            require(finalBalance >= repayAmount, "Insufficient funds after liquidation");
-            
-            // Transfer any profit to FlashLiquidator
-            if (finalBalance > repayAmount) {
-                uint256 profit = finalBalance - repayAmount;
-                quoteToken.safeTransfer(request.initiator, profit);
+            (uint256 rew, bool ok) = abi.decode(res, (uint256, bool));
+            require(rew >= req.minReward && ok, "Liquidation failed");
+            if (quoteToken.balanceOf(address(this)) > repay) {
+                quoteToken.safeTransfer(req.initiator, quoteToken.balanceOf(address(this)) - repay);
             }
-            
-            emit FlashLoanExecuted(
-                requestId,
-                request.initiator,
-                positionId,
-                reward,
-                premium,
-                true
-            );
-            
+            _emitLoanExecuted(rid, rew, premiums[0], true);
             return true;
         } else {
-            // If FlashLiquidator fails, revert entire transaction
-            // This ensures flash loan is repaid or transaction reverts
-            emit FlashLoanExecuted(
-                requestId,
-                request.initiator,
-                positionId,
-                0,
-                premium,
-                false
-            );
-            
+            _emitLoanExecuted(rid, 0, premiums[0], false);
             revert("Flash liquidation execution failed");
         }
+    }
+
+    function _emitLoanExecuted(bytes32 rid, uint256 rew, uint256 prem, bool success) internal {
+        FlashLoanRequest storage req = activeRequests[rid];
+        emit FlashLoanExecuted(rid, req.initiator, req.positionId, rew, prem, success);
     }
     
     /**

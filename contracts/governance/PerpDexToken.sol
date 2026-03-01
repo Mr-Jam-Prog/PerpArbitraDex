@@ -47,7 +47,7 @@ contract PerpDexToken is ERC20, ERC20Permit, ERC20Votes, ERC20Snapshot, Ownable 
         uint256 maxSupply,
         address initialOwner,
         address _emissionController
-    ) ERC20(name, symbol) ERC20Permit(name) Ownable(initialOwner) {
+    ) ERC20(name, symbol) ERC20Permit(name) {
         require(maxSupply > 0, "Invalid max supply");
         require(_emissionController != address(0), "Invalid emission controller");
         
@@ -60,6 +60,8 @@ contract PerpDexToken is ERC20, ERC20Permit, ERC20Votes, ERC20Snapshot, Ownable 
         
         emit MinterAdded(_emissionController);
         emit SnapshoterAdded(initialOwner);
+        
+        _transferOwnership(initialOwner);
     }
 
     // ============ MINTING FUNCTIONS ============
@@ -146,11 +148,18 @@ contract PerpDexToken is ERC20, ERC20Permit, ERC20Votes, ERC20Snapshot, Ownable 
 
     // ============ OVERRIDES ============
 
-    function _update(address from, address to, uint256 value)
+    function _beforeTokenTransfer(address from, address to, uint256 amount)
+        internal
+        override(ERC20, ERC20Snapshot)
+    {
+        super._beforeTokenTransfer(from, to, amount);
+    }
+
+    function _afterTokenTransfer(address from, address to, uint256 amount)
         internal
         override(ERC20, ERC20Votes)
     {
-        super._update(from, to, value);
+        super._afterTokenTransfer(from, to, amount);
     }
 
     function _mint(address to, uint256 amount)

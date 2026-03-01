@@ -7,8 +7,8 @@
   },
   "lib/openzeppelin-contracts": {
     "tag": {
-      "name": "v5.5.0",
-      "rev": "fcbae5394ae8ad52d8e580a3477db99814b9d565"
+      "name": "v4.9.0",
+      "rev": "54b3f14346da01ba0d159114b399197fea8b7cda"
     }
   },
   "lib/solmate": {

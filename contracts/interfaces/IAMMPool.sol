@@ -48,6 +48,8 @@ interface IAMMPool {
         uint256 maxFundingRate
     );
 
+    event MarketDeactivated(uint256 indexed marketId);
+
     // ============ STATE-CHANGING FUNCTIONS ============
 
     /**

@@ -5,6 +5,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 
 import {IOracleSecurity} from "../interfaces/IOracleSecurity.sol";
+import {IOracleSanityChecker} from "../interfaces/IOracleSanityChecker.sol";
 
 /**
  * @title OracleSecurity
@@ -118,8 +119,8 @@ contract OracleSecurity is IOracleSecurity, Ownable, Pausable {
         }
         
         // Check for emergency override expiration
-        EmergencyOverride storage override = _emergencyOverrides[feedId];
-        if (override.isActive && block.timestamp > override.endTime) {
+        EmergencyOverride storage emOverride = _emergencyOverrides[feedId];
+        if (emOverride.isActive && block.timestamp > emOverride.endTime) {
             return true; // Freeze after emergency override expires
         }
         
@@ -170,19 +171,19 @@ contract OracleSecurity is IOracleSecurity, Ownable, Pausable {
         require(duration >= MIN_EMERGENCY_DURATION && duration <= MAX_EMERGENCY_DURATION,
             "OracleSecurity: invalid duration");
         
-        EmergencyOverride storage override = _emergencyOverrides[feedId];
+        EmergencyOverride storage emOverride = _emergencyOverrides[feedId];
         
-        override.price = price;
-        override.startTime = block.timestamp;
-        override.endTime = block.timestamp + duration;
-        override.setBy = msg.sender;
-        override.isActive = true;
+        emOverride.price = price;
+        emOverride.startTime = block.timestamp;
+        emOverride.endTime = block.timestamp + duration;
+        emOverride.setBy = msg.sender;
+        emOverride.isActive = true;
         
         emit EmergencyOverrideSet(
             feedId,
             price,
-            override.startTime,
-            override.endTime,
+            emOverride.startTime,
+            emOverride.endTime,
             msg.sender
         );
     }
@@ -191,10 +192,10 @@ contract OracleSecurity is IOracleSecurity, Ownable, Pausable {
      * @notice Clear emergency override
      */
     function clearEmergencyOverride(bytes32 feedId) external onlyOwner {
-        EmergencyOverride storage override = _emergencyOverrides[feedId];
-        require(override.isActive, "OracleSecurity: not active");
+        EmergencyOverride storage emOverride = _emergencyOverrides[feedId];
+        require(emOverride.isActive, "OracleSecurity: not active");
         
-        override.isActive = false;
+        emOverride.isActive = false;
         
         emit EmergencyOverrideCleared(feedId, msg.sender);
     }
@@ -321,17 +322,17 @@ contract OracleSecurity is IOracleSecurity, Ownable, Pausable {
      * @notice Check if emergency override is active
      */
     function isEmergencyActive(bytes32 feedId) external view returns (bool) {
-        EmergencyOverride storage override = _emergencyOverrides[feedId];
-        return override.isActive && block.timestamp <= override.endTime;
+        EmergencyOverride storage emOverride = _emergencyOverrides[feedId];
+        return emOverride.isActive && block.timestamp <= emOverride.endTime;
     }
     
     /**
      * @notice Get emergency price if active
      */
     function getEmergencyPrice(bytes32 feedId) external view returns (uint256, bool) {
-        EmergencyOverride storage override = _emergencyOverrides[feedId];
-        if (override.isActive && block.timestamp <= override.endTime) {
-            return (override.price, true);
+        EmergencyOverride storage emOverride = _emergencyOverrides[feedId];
+        if (emOverride.isActive && block.timestamp <= emOverride.endTime) {
+            return (emOverride.price, true);
         }
         return (0, false);
     }
@@ -369,12 +370,12 @@ contract OracleSecurity is IOracleSecurity, Ownable, Pausable {
      * @notice Get time until emergency override expires
      */
     function getEmergencyTimeRemaining(bytes32 feedId) external view returns (uint256) {
-        EmergencyOverride storage override = _emergencyOverrides[feedId];
-        if (!override.isActive || block.timestamp >= override.endTime) {
+        EmergencyOverride storage emOverride = _emergencyOverrides[feedId];
+        if (!emOverride.isActive || block.timestamp >= emOverride.endTime) {
             return 0;
         }
         
-        return override.endTime - block.timestamp;
+        return emOverride.endTime - block.timestamp;
     }
     
     // ============ ADMIN FUNCTIONS ============
@@ -419,5 +420,29 @@ contract OracleSecurity is IOracleSecurity, Ownable, Pausable {
      */
     function emergencyUnpause() external onlyOwner {
         _unpause();
+    }
+
+    /**
+     * @inheritdoc IOracleSecurity
+     */
+    function validatePrice(bytes32 feedId, uint256 price) external view override returns (bool) {
+        // 1. Check if feed is frozen
+        if (_frozenFeeds[feedId]) return false;
+        
+        // 2. Basic price validation
+        if (price == 0) return false;
+        
+        // 3. Rate limiting check (internal)
+        (bool limited, ) = this.checkRateLimit(feedId);
+        if (limited) return false;
+        
+        // 4. Call sanity checker for volatility and deviation
+        try IOracleSanityChecker(sanityChecker).checkPrice(feedId, price) returns (bool ok) {
+            if (!ok) return false;
+        } catch {
+            return false;
+        }
+        
+        return true;
     }
 }

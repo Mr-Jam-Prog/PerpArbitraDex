@@ -240,7 +240,7 @@ contract FlashLiquidator is IFlashLoanReceiver, ReentrancyGuard {
     /**
      * @inheritdoc IFlashLoanReceiver
      */
-    function getFlashLoanFee(address asset) external pure override returns (uint256) {
+    function getFlashLoanFee(address asset) external view override returns (uint256) {
         if (asset != address(quoteToken)) return type(uint256).max;
         return FLASH_LOAN_PREMIUM;
     }

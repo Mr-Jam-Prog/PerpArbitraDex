@@ -64,7 +64,7 @@ contract ChainlinkOracle is IChainlinkOracle, Ownable {
         isActive = true;
         
         // Initialize with current price
-        _updatePrice();
+        updatePrice();
     }
     
     // ============ PRICE FETCHING ============
@@ -142,7 +142,7 @@ contract ChainlinkOracle is IChainlinkOracle, Ownable {
      * @notice Update and cache the current price
      * @return success True if price was updated
      */
-    function updatePrice() external returns (bool success) {
+    function updatePrice() public override returns (bool success) {
         if (!isActive) {
             return false;
         }

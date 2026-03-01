@@ -18,3 +18,7 @@ node_modules/
 
 # PNPM modules
 .pnpm-store/
+artifacts/
+cache/
+test_output.txt
+build_output.txt

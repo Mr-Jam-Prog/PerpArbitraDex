@@ -21,6 +21,8 @@ interface IConfigRegistry {
         uint256 maxFundingRate; // 1e18 = 100%
         uint256 priceImpactK; // Price impact coefficient
         bool isActive; // Market status
+        uint256 createdAt;
+        uint256 updatedAt;
     }
 
     struct ProtocolConfig {
@@ -68,6 +70,12 @@ interface IConfigRegistry {
         address oldGuardian,
         address newGuardian
     );
+
+    event MarketStatusChanged(uint256 indexed marketId, bool isActive);
+    event ConfigUpdateScheduled(bytes32 indexed configHash, uint256 eta);
+    event ConfigUpdateExecuted(bytes32 indexed configHash);
+    event ConfigUpdateCancelled(bytes32 indexed configHash);
+    event MarketInitialized(uint256 indexed marketId, MarketConfig config);
 
     // ============ VIEW FUNCTIONS ============
 

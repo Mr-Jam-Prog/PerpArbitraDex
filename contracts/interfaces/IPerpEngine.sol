@@ -13,7 +13,7 @@ import {IPositionViewer} from "./IPositionViewer.sol";
 interface IPerpEngine is IPositionViewer {
     // ============ STRUCTS ============
     
-    struct PositionParams {
+    struct Position {
         address trader;
         uint256 marketId;
         bool isLong;
@@ -23,6 +23,8 @@ interface IPerpEngine is IPositionViewer {
         uint256 leverage;
         uint256 lastFundingAccrued;
         uint256 openTime;
+        uint256 lastUpdated;
+        bool isActive;
     }
 
     struct TradeParams {
@@ -36,6 +38,7 @@ interface IPerpEngine is IPositionViewer {
     }
 
     struct LiquidateParams {
+        uint256 positionId;
         address trader;
         uint256 marketId;
         uint256 sizeToLiquidate;
@@ -95,6 +98,12 @@ interface IPerpEngine is IPositionViewer {
         uint256 longFundingPayment,
         uint256 shortFundingPayment
     );
+
+    event ProtocolFeeUpdated(uint256 newProtocolFee);
+    event LiquidationPenaltyUpdated(uint256 newLiquidationPenalty);
+    event FundingParamsUpdated(uint256 newFundingInterval, uint256 newMaxFundingRate);
+
+    event MarketInitialized(uint256 indexed marketId, bytes32 oracleFeedId);
 
     // ============ STATE-CHANGING FUNCTIONS ============
 
@@ -172,6 +181,13 @@ interface IPerpEngine is IPositionViewer {
      */
     function removeMargin(uint256 positionId, uint256 amount) external;
 
+    /**
+     * @notice Get internal position details
+     * @param positionId Position ID
+     * @return position Position struct
+     */
+    function getPositionInternal(uint256 positionId) external view returns (Position memory position);
+
     // ============ VIEW FUNCTIONS (from IPositionViewer) ============
     
     /**
@@ -216,6 +232,19 @@ interface IPerpEngine is IPositionViewer {
         view
         returns (bool liquidatable);
 
+    /**
+     * @notice Preview liquidation reward and penalty
+     * @param positionId Position ID
+     * @param currentPrice Current market price
+     * @return reward Estimated reward
+     * @return penalty Estimated penalty
+     * @return newHealthFactor Estimated health factor after liquidation
+     */
+    function previewLiquidation(uint256 positionId, uint256 currentPrice)
+        external
+        view
+        returns (uint256 reward, uint256 penalty, uint256 newHealthFactor);
+
     // ============ ADMIN FUNCTIONS ============
 
     /**
@@ -238,5 +267,24 @@ interface IPerpEngine is IPositionViewer {
     function updateFundingParams(
         uint256 newFundingInterval,
         uint256 newMaxFundingRate
+    ) external;
+
+    /**
+     * @notice Initialize a new market
+     * @param marketId Market ID
+     * @param oracleFeedId Oracle feed ID
+     * @param maxLeverage Maximum leverage
+     * @param minMarginRatio Minimum margin ratio
+     * @param liquidationFeeRatio Liquidation fee ratio
+     * @param protocolFeeRatio Protocol fee ratio
+     */
+    function initializeMarket(
+        uint256 marketId,
+        bytes32 oracleFeedId,
+        uint256 maxLeverage,
+        uint256 minMarginRatio,
+        uint256 minPositionSize,
+        uint256 liquidationFeeRatio,
+        uint256 protocolFeeRatio
     ) external;
 }

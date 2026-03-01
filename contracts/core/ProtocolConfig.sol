@@ -453,11 +453,11 @@ contract ProtocolConfig is IConfigRegistry, Ownable, Pausable {
         
         _validateMarketConfig(config);
         
-        config.createdAt = block.timestamp;
-        config.updatedAt = block.timestamp;
         _marketConfigs[marketId] = config;
+        _marketConfigs[marketId].createdAt = block.timestamp;
+        _marketConfigs[marketId].updatedAt = block.timestamp;
         
-        emit MarketInitialized(marketId, config);
+        emit MarketInitialized(marketId, _marketConfigs[marketId]);
     }
 
     /**

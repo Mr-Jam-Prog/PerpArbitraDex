@@ -35,7 +35,8 @@ contract SyntheticAsset is ERC20, Ownable {
         address _perpEngine,
         uint256 _marketId,
         address initialOwner
-    ) ERC20(name, symbol) Ownable(initialOwner) {
+    ) ERC20(name, symbol) {
+        _transferOwnership(initialOwner);
         require(_perpEngine != address(0), "Invalid PerpEngine");
         require(initialOwner != address(0), "Invalid owner");
         
@@ -99,7 +100,7 @@ contract SyntheticAsset is ERC20, Ownable {
     /**
      * @dev Override transfer to respect transfersEnabled flag
      */
-    function _update(
+    function _beforeTokenTransfer(
         address from,
         address to,
         uint256 amount
@@ -108,7 +109,7 @@ contract SyntheticAsset is ERC20, Ownable {
             require(transfersEnabled, "Transfers disabled");
         }
         
-        super._update(from, to, amount);
+        super._beforeTokenTransfer(from, to, amount);
     }
     
     // ============ VIEW FUNCTIONS ============

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.19;
+
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /**
  * @title SafeDecimalMath
@@ -19,85 +21,7 @@ library SafeDecimalMath {
      */
     function mulDiv(uint256 x, uint256 y, uint256 denominator) internal pure returns (uint256 result) {
         if (denominator == 0) revert DivisionByZero();
-        
-        // Use assembly for gas optimization when safe
-        assembly {
-            // Compute remainder using mulmod
-            let remainder := mulmod(x, y, denominator)
-            
-            // 512-bit multiply [prod1 prod0] = x * y
-            let prod0 := mul(x, y)
-            let prod1 := sub(sub(0, prod0), lt(prod0, 0))
-            
-            // Handle non-overflow cases, 256 by 256 division
-            if iszero(prod1) {
-                if iszero(remainder) {
-                    result := div(prod0, denominator)
-                } else {
-                    result := add(div(prod0, denominator), gt(remainder, prod0))
-                }
-                return result
-            }
-            
-            // Make sure the result is less than 2**256
-            if or(gt(denominator, prod1), iszero(prod1)) {
-                // Divide [prod1 prod0] by the factors of two
-                let twos := and(sub(0, denominator), denominator)
-                denominator := div(denominator, twos)
-                prod0 := div(prod0, twos)
-                twos := add(div(sub(0, twos), twos), 1)
-                prod0 := or(prod0, mul(prod1, twos))
-                
-                // Invert denominator mod 2**256
-                let inv := xor(mul(3, denominator), 2)
-                inv := mul(inv, sub(2, mul(denominator, inv)))
-                inv := mul(inv, sub(2, mul(denominator, inv)))
-                inv := mul(inv, sub(2, mul(denominator, inv)))
-                inv := mul(inv, sub(2, mul(denominator, inv)))
-                inv := mul(inv, sub(2, mul(denominator, inv)))
-                inv := mul(inv, sub(2, mul(denominator, inv)))
-                
-                // Because the division is now exact we can divide by multiplying
-                result := mul(prod0, inv)
-                return result
-            }
-        }
-        
-        // Fallback for very large numbers (should never happen in practice)
-        uint256 prod0 = x * y;
-        uint256 prod1;
-        assembly {
-            let mm := mulmod(x, y, not(0))
-            prod1 := sub(sub(mm, prod0), lt(mm, prod0))
-        }
-        
-        require(denominator > prod1, "Math: mulDiv overflow");
-        
-        uint256 remainder;
-        assembly {
-            remainder := mulmod(x, y, denominator)
-        }
-        
-        prod1 = prod1 - (remainder > prod0 ? 1 : 0);
-        prod0 = prod0 - remainder;
-        
-        uint256 twos = denominator & (~denominator + 1);
-        assembly {
-            denominator := div(denominator, twos)
-            prod0 := div(prod0, twos)
-            twos := add(div(sub(0, twos), twos), 1)
-        }
-        
-        prod0 |= prod1 * twos;
-        
-        uint256 inverse = (3 * denominator) ^ 2;
-        inverse *= 2 - denominator * inverse;
-        inverse *= 2 - denominator * inverse;
-        inverse *= 2 - denominator * inverse;
-        inverse *= 2 - denominator * inverse;
-        inverse *= 2 - denominator * inverse;
-        
-        result = prod0 * inverse;
+        return Math.mulDiv(x, y, denominator);
     }
     
     /**

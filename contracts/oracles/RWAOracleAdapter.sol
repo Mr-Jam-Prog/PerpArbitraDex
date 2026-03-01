@@ -18,7 +18,7 @@ contract RWAOracleAdapter is IRWAOracleAdapter, Ownable, Pausable {
     uint256 private constant MAX_UPDATE_INTERVAL = 7 days; // Weekly updates max
     uint256 private constant MIN_UPDATE_INTERVAL = 1 hours; // Hourly updates min
     uint256 private constant MAX_VOLATILITY_BPS = 1000; // 10% max daily volatility
-    private constant MAX_PRICE_CHANGE_BPS = 5000; // 50% max change between updates
+    uint256 private constant MAX_PRICE_CHANGE_BPS = 5000; // 50% max change between updates
     
     // ============ STRUCTS ============
     
@@ -415,5 +415,14 @@ contract RWAOracleAdapter is IRWAOracleAdapter, Ownable, Pausable {
         require(balance > 0, "RWAOracleAdapter: no balance");
         
         payable(owner()).transfer(balance);
+    }
+
+    function getPrice(bytes32 assetId) external view override returns (uint256) {
+        (, uint256 price, , ) = this.getPriceData(assetId);
+        return price;
+    }
+
+    function updatePrice(bytes32 assetId, uint256 price, uint256 timestamp) external override onlyUpdater assetExists(assetId) returns (bool success) {
+        return this.updatePrice(assetId, price, timestamp, bytes32(0), "");
     }
 }

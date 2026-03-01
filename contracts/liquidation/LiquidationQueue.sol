@@ -306,9 +306,8 @@ contract LiquidationQueue {
         uint256 basePeriod = (minGracePeriod + maxGracePeriod) / 2;
         
         // Add jitter (± jitterRange)
-        uint256 jitter = (randomSeed % (2 * jitterRange + 1)) - jitterRange;
-        
-        uint256 gracePeriod = basePeriod + jitter;
+        uint256 jitterMod = 2 * jitterRange + 1;
+        uint256 gracePeriod = basePeriod + (randomSeed % jitterMod) - jitterRange;
         
         // Ensure within bounds
         if (gracePeriod < minGracePeriod) gracePeriod = minGracePeriod;
@@ -373,10 +372,9 @@ contract LiquidationQueue {
         uint256[] memory positions = positionQueue.values();
         
         for (uint256 i = 0; i < positions.length; i++) {
-            delete queueItems[positions[i]];
+            _remove(positions[i]);
         }
         
-        positionQueue.clear();
         queueSize = 0;
         queueHead = 0;
         queueTail = 0;
