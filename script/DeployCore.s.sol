@@ -25,8 +25,8 @@ contract DeployCore is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // 1. Infrastructure - Tokens
-        MockERC20 quoteToken = new MockERC20("USD Stable", "USDC");
-        MockERC20 baseToken = new MockERC20("Protocol Base", "PERP");
+        MockERC20 quoteToken = new MockERC20("USD Stable", "USDC", 18);
+        MockERC20 baseToken = new MockERC20("Protocol Base", "PERP", 18);
 
         // 2. Address Prediction
         uint256 nonce = vm.getNonce(deployer);
