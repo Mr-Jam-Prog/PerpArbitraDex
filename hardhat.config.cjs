@@ -1,13 +1,26 @@
-// Configuration for Hardhat
+import "@nomicfoundation/hardhat-toolbox";
 
-require('@nomiclabs/hardhat-waffle');
-
-module.exports = {
-  solidity: "0.8.4",
+/** @type import('hardhat/config').HardhatUserConfig */
+export default {
+  solidity: {
+    version: "0.8.19",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
+      viaIR: false,
+    },
+  },
   networks: {
-    rinkeby: {
-      url: process.env.INFURA_URL,
-      accounts: [process.env.PRIVATE_KEY]
-    }
-  }
+    hardhat: {
+      allowUnlimitedContractSize: true,
+    },
+  },
+  paths: {
+    sources: "./contracts",
+    tests: "./test",
+    cache: "./cache",
+    artifacts: "./artifacts"
+  },
 };
