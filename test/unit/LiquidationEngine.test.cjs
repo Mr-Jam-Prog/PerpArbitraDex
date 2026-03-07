@@ -86,10 +86,10 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
     await incentiveDistributor.setLiquidationEngine(liquidationEngine.target);
     
     const MockOracle = await ethers.getContractFactory("MockOracle");
-    oracle1 = await MockOracle.deploy();
-    oracle2 = await MockOracle.deploy();
-    await oracle1.setPrice(INITIAL_PRICE);
-    await oracle2.setPrice(INITIAL_PRICE);
+    oracle1 = await MockOracle.deploy("Oracle1", 8);
+    oracle2 = await MockOracle.deploy("Oracle2", 8);
+    await oracle1.getFunction("setPrice")(INITIAL_PRICE);
+    await oracle2.getFunction("setPrice")(INITIAL_PRICE);
     
     await oracleAggregator.addOracleSource(FEED_ID, {
         oracleAddress: oracle1.target,
@@ -113,9 +113,7 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
 
     await quoteToken.mint(liquidationEngine.target, ethers.parseUnits("10000", 18));
     await quoteToken.mint(incentiveDistributor.target, ethers.parseUnits("10000", 18));
-    // Mint some to distributor for payout
     await quoteToken.mint(incentiveDistributor.target, ethers.parseUnits("1000000", 18));
-    // Actually reward comes from LiquidationEngine to liquidator, and then penalty to distributor
     await quoteToken.mint(liquidationEngine.target, ethers.parseUnits("1000000", 18));
   });
   
@@ -124,19 +122,7 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
       const positionId = 1n;
       const size = ethers.parseUnits("5", 18);
       
-      await perpEngine.setPosition(positionId, {
-        trader: user.address,
-        marketId: MARKET_ID,
-        isLong: true,
-        size: size,
-        margin: COLLATERAL_AMOUNT,
-        entryPrice: INITIAL_PRICE,
-        leverage: 5n * 10n**18n,
-        lastFundingAccrued: await time.latest(),
-        openTime: await time.latest(),
-        lastUpdated: await time.latest(),
-        isActive: true
-      });
+      const now = await time.latest();
 
       await perpEngine.setPositionView(positionId, {
         positionId: positionId,
@@ -151,8 +137,8 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
         healthFactor: ethers.parseUnits("0.8", 18),
         unrealizedPnl: 0n,
         fundingAccrued: 0n,
-        openTime: await time.latest(),
-        lastUpdated: await time.latest()
+        openTime: now,
+        lastUpdated: now
       });
 
       await ethers.provider.send("hardhat_setBalance", [perpEngine.target, "0x1000000000000000000"]);
@@ -161,8 +147,8 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
       await liquidationEngine.connect(perpSigner).queueLiquidation(positionId, ethers.parseUnits("0.8", 18));
       
       await time.increase(2000);
-      await oracle1.setPrice(INITIAL_PRICE);
-      await oracle2.setPrice(INITIAL_PRICE);
+      await oracle1.getFunction("setPrice")(INITIAL_PRICE);
+      await oracle2.getFunction("setPrice")(INITIAL_PRICE);
       await oracleAggregator.updatePrice(FEED_ID);
 
       const tx = await liquidationEngine.connect(liquidator1).executeLiquidation(positionId, 0n);
@@ -173,6 +159,9 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
 
     it("Should revert if position is not in queue", async function () {
         const positionId = 2n;
+        // Make sure it's valid but not in queue
+        await perpEngine.setHealthFactor(positionId, ethers.parseUnits("0.5", 18));
+
         await expect(
             liquidationEngine.executeLiquidation(positionId, 0n)
         ).to.be.revertedWith("Not in queue");
@@ -180,6 +169,7 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
 
     it("Should revert if grace period not passed", async function () {
         const positionId = 3n;
+        const now = await time.latest();
         await perpEngine.setPositionView(positionId, {
             positionId: positionId,
             trader: user.address,
@@ -193,8 +183,8 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
             healthFactor: ethers.parseUnits("0.5", 18),
             unrealizedPnl: 0n,
             fundingAccrued: 0n,
-            openTime: await time.latest(),
-            lastUpdated: await time.latest()
+            openTime: now,
+            lastUpdated: now
         });
 
         await ethers.provider.send("hardhat_setBalance", [perpEngine.target, "0x1000000000000000000"]);
