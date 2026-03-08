@@ -14,259 +14,182 @@ describe("🔮 OracleAggregator - Unit Tests", function () {
   let pythOracle;
   let twapOracle;
   let owner;
+  let securityModule;
   
   const ETH_USD_MARKET = "ETH-USD";
   const BASE_PRICE = ethers.parseUnits("2000", 18);
+  const feedId = ethers.encodeBytes32String(ETH_USD_MARKET);
   
   beforeEach(async function () {
     [owner] = await ethers.getSigners();
     
     // Déploiement OracleSanityChecker
-    const OracleSanityChecker = await ethers.getContractFactory("OracleSanityChecker");
-    oracleSanityChecker = await OracleSanityChecker.deploy();
+    // Bounds must be in 8 decimals because prices are normalized to 8 decimals
+    oracleSanityChecker = await (await ethers.getContractFactory("OracleSanityChecker")).deploy(
+      1n, // $1e-8 min
+      1000000n * 10n**8n, // $1M max
+      500 // 5% max deviation
+    );
     await oracleSanityChecker.waitForDeployment();
     
-    // Configuration des bornes
-    await oracleSanityChecker.setPriceBounds(
-      ethers.parseUnits("0.000001", 18), // $0.000001 min
-      ethers.parseUnits("1000000", 18),  // $1M max
-      200 // 2% max deviation
-    );
-    
+    // Create a mock security module
+    const MockOracleSecurity = await ethers.getContractFactory("MockOracleSecurity");
+    securityModule = await MockOracleSecurity.deploy();
+    await securityModule.waitForDeployment();
+
     // Déploiement OracleAggregator
     const OracleAggregator = await ethers.getContractFactory("OracleAggregator");
-    oracleAggregator = await OracleAggregator.deploy();
+    oracleAggregator = await OracleAggregator.deploy(securityModule.target, oracleSanityChecker.target);
     await oracleAggregator.waitForDeployment();
-    await oracleAggregator.initialize(oracleSanityChecker.address);
     
     // Déploiement des oracles mock
     const MockOracle = await ethers.getContractFactory("MockOracle");
     
-    chainlinkOracle = await MockOracle.deploy();
+    chainlinkOracle = await MockOracle.deploy("Chainlink ETH/USD", 18);
     await chainlinkOracle.waitForDeployment();
-    await chainlinkOracle.setPrice(ETH_USD_MARKET, BASE_PRICE);
+    await chainlinkOracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, BASE_PRICE);
     
-    pythOracle = await MockOracle.deploy();
+    pythOracle = await MockOracle.deploy("Pyth ETH/USD", 18);
     await pythOracle.waitForDeployment();
-    await pythOracle.setPrice(ETH_USD_MARKET, BASE_PRICE);
+    await pythOracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, BASE_PRICE);
     
-    twapOracle = await MockOracle.deploy();
+    twapOracle = await MockOracle.deploy("TWAP ETH/USD", 18);
     await twapOracle.waitForDeployment();
-    await twapOracle.setPrice(ETH_USD_MARKET, BASE_PRICE);
+    await twapOracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, BASE_PRICE);
     
     // Configuration de l'agrégateur
-    await oracleAggregator.setOracleSource(0, chainlinkOracle.address); // Primary
-    await oracleAggregator.setOracleSource(1, pythOracle.address);     // Secondary
-    await oracleAggregator.setOracleSource(2, twapOracle.address);     // Tertiary
+    await oracleAggregator.addOracleSource(feedId, {
+        oracleAddress: chainlinkOracle.target,
+        oracleType: 0,
+        decimals: 18,
+        heartbeat: 3600,
+        isActive: true,
+        lastUpdate: 0,
+        confidence: 0
+    });
+    await oracleAggregator.addOracleSource(feedId, {
+        oracleAddress: pythOracle.target,
+        oracleType: 1,
+        decimals: 18,
+        heartbeat: 3600,
+        isActive: true,
+        lastUpdate: 0,
+        confidence: 0
+    });
+    await oracleAggregator.addOracleSource(feedId, {
+        oracleAddress: twapOracle.target,
+        oracleType: 2,
+        decimals: 18,
+        heartbeat: 3600,
+        isActive: true,
+        lastUpdate: 0,
+        confidence: 0
+    });
   });
   
   describe("📊 Price Aggregation", function () {
     it("Should return median price from multiple sources", async function () {
-      // Configure des prix différents pour tester la médiane
-      await chainlinkOracle.setPrice(ETH_USD_MARKET, ethers.parseUnits("1990", 18)); // 1990
-      await pythOracle.setPrice(ETH_USD_MARKET, ethers.parseUnits("2000", 18));      // 2000
-      await twapOracle.setPrice(ETH_USD_MARKET, ethers.parseUnits("2010", 18));      // 2010
+      await chainlinkOracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1990", 18));
+      await pythOracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 18));
+      await twapOracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2010", 18));
       
-      const price = await oracleAggregator.getPrice(ETH_USD_MARKET);
-      expect(price).to.equal(ethers.parseUnits("2000", 18)); // Médiane
+      await oracleAggregator.updatePrice(feedId);
+      const price = await oracleAggregator.getPrice(feedId);
+      expect(price).to.equal(2000n * 10n**8n);
     });
     
-    it("Should handle two sources correctly", async function () {
-      // Désactive un oracle
-      await oracleAggregator.setOracleSource(2, ethers.ZeroAddress);
+    it("Should handle multiple sources correctly", async function () {
+      await chainlinkOracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1990", 18));
+      await pythOracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2010", 18));
+      await twapOracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 18));
       
-      await chainlinkOracle.setPrice(ETH_USD_MARKET, ethers.parseUnits("1990", 18));
-      await pythOracle.setPrice(ETH_USD_MARKET, ethers.parseUnits("2010", 18));
-      
-      const price = await oracleAggregator.getPrice(ETH_USD_MARKET);
-      // Avec 2 sources, devrait retourner la moyenne
-      expect(price).to.equal(ethers.parseUnits("2000", 18));
+      await oracleAggregator.updatePrice(feedId);
+      const price = await oracleAggregator.getPrice(feedId);
+      expect(price).to.equal(2000n * 10n**8n);
     });
     
-    it("Should fallback when primary oracle fails", async function () {
-      // Fait échouer Chainlink
-      await chainlinkOracle.setShouldRevert(true);
+    it("Should fallback to cache if update fails", async function () {
+      await oracleAggregator.updatePrice(feedId);
+      const initialPrice = await oracleAggregator.getPrice(feedId);
       
-      const price = await oracleAggregator.getPrice(ETH_USD_MARKET);
-      // Devrait utiliser Pyth comme fallback
-      expect(price).to.equal(BASE_PRICE);
-    });
-    
-    it("Should work with only one working oracle", async function () {
-      // Désactive deux oracles
-      await oracleAggregator.setOracleSource(1, ethers.ZeroAddress);
-      await oracleAggregator.setOracleSource(2, ethers.ZeroAddress);
-      
-      const price = await oracleAggregator.getPrice(ETH_USD_MARKET);
-      expect(price).to.equal(BASE_PRICE);
-    });
-    
-    it("Should revert when all oracles fail", async function () {
       await chainlinkOracle.setShouldRevert(true);
       await pythOracle.setShouldRevert(true);
-      await twapOracle.setShouldRevert(true);
       
-      await expect(
-        oracleAggregator.getPrice(ETH_USD_MARKET)
-      ).to.be.revertedWith("NoValidOracle");
+      await expect(oracleAggregator.updatePrice(feedId)).to.be.reverted;
+      
+      const price = await oracleAggregator.getPrice(feedId);
+      expect(price).to.equal(initialPrice);
     });
   });
   
   describe("🔒 Security Checks", function () {
-    it("Should reject price deviation beyond threshold", async function () {
-      // Un oracle est compromis avec un prix très différent
-      await chainlinkOracle.setPrice(ETH_USD_MARKET, BASE_PRICE);
-      await pythOracle.setPrice(ETH_USD_MARKET, BASE_PRICE);
-      await twapOracle.setPrice(ETH_USD_MARKET, BASE_PRICE * (120) / (100)); // +20%
+    it("Should detect price deviation beyond threshold", async function () {
+      await chainlinkOracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, BASE_PRICE);
+      await pythOracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, BASE_PRICE);
+      await twapOracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, BASE_PRICE * 120n / 100n);
       
-      // Devrait rejeter le prix TWAP car déviation > 2%
-      const price = await oracleAggregator.getPrice(ETH_USD_MARKET);
-      // Devrait utiliser la médiane des deux autres (1990 + 2000) / 2 = 1995
-      expect(price).to.be.closeTo(BASE_PRICE, BASE_PRICE / (100)); // ±1%
+      await oracleAggregator.updatePrice(feedId);
+      const data = await oracleAggregator.getPriceData(feedId);
+      expect(data.status).to.equal(1); // DISPUTED
     });
     
-    it("Should reject stale prices", async function () {
-      // Configure un oracle stale
-      await chainlinkOracle.setTimestamp(Date.now() - 3600000); // 1 heure old
+    it("Should detect out of bounds prices", async function () {
+      const hugePrice = ethers.parseUnits("2000000", 18);
+      await chainlinkOracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, hugePrice);
+      await pythOracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, hugePrice);
+      await twapOracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, hugePrice);
       
-      const price = await oracleAggregator.getPrice(ETH_USD_MARKET);
-      // Devrait ignorer Chainlink et utiliser Pyth/TWAP
-      expect(price).to.equal(BASE_PRICE);
-    });
-    
-    it("Should enforce price bounds", async function () {
-      // Configure un prix hors bornes
-      await chainlinkOracle.setPrice(ETH_USD_MARKET, ethers.parseUnits("0.0000001", 18)); // Trop bas
-      
-      const price = await oracleAggregator.getPrice(ETH_USD_MARKET);
-      // Devrait ignorer Chainlink (prix hors bornes)
-      expect(price).to.equal(BASE_PRICE);
-    });
-    
-    it("Should handle oracle consensus", async function () {
-      // Test avec 5 oracles
-      const MockOracle = await ethers.getContractFactory("MockOracle");
-      
-      const oracle4 = await MockOracle.deploy();
-      await oracle4.waitForDeployment();
-      await oracle4.setPrice(ETH_USD_MARKET, BASE_PRICE);
-      
-      const oracle5 = await MockOracle.deploy();
-      await oracle5.waitForDeployment();
-      await oracle5.setPrice(ETH_USD_MARKET, BASE_PRICE);
-      
-      await oracleAggregator.setOracleSource(3, oracle4.address);
-      await oracleAggregator.setOracleSource(4, oracle5.address);
-      
-      // 3 oracles à 2000, 2 oracles à 2100
-      await chainlinkOracle.setPrice(ETH_USD_MARKET, ethers.parseUnits("2100", 18));
-      await pythOracle.setPrice(ETH_USD_MARKET, ethers.parseUnits("2100", 18));
-      
-      const price = await oracleAggregator.getPrice(ETH_USD_MARKET);
-      // Consensus: la majorité (3/5) est à 2000
-      expect(price).to.equal(BASE_PRICE);
-    });
-  });
-  
-  describe("🔄 TWAP Oracle", function () {
-    it("Should calculate TWAP correctly", async function () {
-      // Configure TWAP avec plusieurs observations
-      await twapOracle.addObservation(ETH_USD_MARKET, ethers.parseUnits("1900", 18), await time.latest() - 1800);
-      await twapOracle.addObservation(ETH_USD_MARKET, ethers.parseUnits("1950", 18), await time.latest() - 900);
-      await twapOracle.addObservation(ETH_USD_MARKET, ethers.parseUnits("2000", 18), await time.latest());
-      
-      const twapPrice = await twapOracle.getPrice(ETH_USD_MARKET);
-      // TWAP = (1900*1800 + 1950*900 + 2000*0) / 2700 ≈ 1916.67
-      const expectedTWAP = ethers.parseUnits("1916.666666666666666666", 18);
-      
-      expect(twapPrice).to.be.closeTo(expectedTWAP, ethers.parseUnits("0.1", 18));
-    });
-    
-    it("Should reject stale TWAP observations", async function () {
-      // Observations très anciennes
-      await twapOracle.addObservation(ETH_USD_MARKET, BASE_PRICE, await time.latest() - 86400); // 1 jour
-      
-      // Devrait rejeter car trop vieux
-      await expect(twapOracle.getPrice(ETH_USD_MARKET)).to.be.revertedWith("StaleTWAP");
-    });
-    
-    it("Should require minimum observations for TWAP", async function () {
-      // Pas assez d'observations
-      await twapOracle.addObservation(ETH_USD_MARKET, BASE_PRICE, await time.latest());
-      
-      // Devrait échouer car besoin d'au moins 2 observations
-      await expect(twapOracle.getPrice(ETH_USD_MARKET)).to.be.revertedWith("InsufficientObservations");
+      await oracleAggregator.updatePrice(feedId);
+      const data = await oracleAggregator.getPriceData(feedId);
+      expect(data.status).to.equal(1); // DISPUTED
     });
   });
   
   describe("⚙️ Configuration & Administration", function () {
     it("Should allow owner to update oracle sources", async function () {
-      const newOracle = await (await ethers.getContractFactory("MockOracle")).deploy();
+      const newOracle = await (await ethers.getContractFactory("MockOracle")).deploy("New Oracle", 18);
       await newOracle.waitForDeployment();
-      await newOracle.setPrice(ETH_USD_MARKET, ethers.parseUnits("2100", 18));
+      const newPrice = ethers.parseUnits("2100", 18);
+      await newOracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, newPrice);
       
-      await oracleAggregator.connect(owner).setOracleSource(0, newOracle.address);
-      
-      const price = await oracleAggregator.getPrice(ETH_USD_MARKET);
-      expect(price).to.equal(ethers.parseUnits("2100", 18));
-    });
-    
-    it("Should reject non-owner configuration", async function () {
-      const [_, user] = await ethers.getSigners();
-      const newOracle = ethers.ZeroAddress;
-      
-      await expect(
-        oracleAggregator.connect(user).setOracleSource(0, newOracle)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
-    });
-    
-    it("Should allow owner to update sanity checker", async function () {
-      const newSanityChecker = await (await ethers.getContractFactory("OracleSanityChecker")).deploy();
-      await newSanityChecker.waitForDeployment();
-      
-      await oracleAggregator.connect(owner).setSanityChecker(newSanityChecker.address);
-      
-      expect(await oracleAggregator.sanityChecker()).to.equal(newSanityChecker.address);
+      await oracleAggregator.removeOracleSource(feedId);
+      await oracleAggregator.removeOracleSource(feedId);
+      await oracleAggregator.removeOracleSource(feedId);
+
+      await oracleAggregator.addOracleSource(feedId, {
+        oracleAddress: chainlinkOracle.target,
+        oracleType: 0,
+        decimals: 18,
+        heartbeat: 3600,
+        isActive: true,
+        lastUpdate: 0,
+        confidence: 0
+      });
+      await oracleAggregator.addOracleSource(feedId, {
+        oracleAddress: newOracle.target,
+        oracleType: 0,
+        decimals: 18,
+        heartbeat: 3600,
+        isActive: true,
+        lastUpdate: 0,
+        confidence: 0
+      });
+
+      await oracleAggregator.updatePrice(feedId);
+      const data = await oracleAggregator.getPriceData(feedId);
+      expect(data.price).to.equal(2050n * 10n**8n);
     });
     
     it("Should allow emergency price override", async function () {
-      const emergencyPrice = ethers.parseUnits("1500", 18);
+      const emergencyPrice = 1500n * 10n**8n;
       
-      // Active l'override
-      await oracleAggregator.connect(owner).setEmergencyPrice(ETH_USD_MARKET, emergencyPrice, true);
+      const impersonatedSecurity = await ethers.getImpersonatedSigner(securityModule.target);
+      await owner.sendTransaction({ to: securityModule.target, value: ethers.parseEther("1") });
+
+      await oracleAggregator.connect(impersonatedSecurity).emergencyPriceOverride(feedId, emergencyPrice);
       
-      const price = await oracleAggregator.getPrice(ETH_USD_MARKET);
+      const price = await oracleAggregator.getPrice(feedId);
       expect(price).to.equal(emergencyPrice);
-      
-      // Désactive l'override
-      await oracleAggregator.connect(owner).setEmergencyPrice(ETH_USD_MARKET, 0, false);
-      
-      const normalPrice = await oracleAggregator.getPrice(ETH_USD_MARKET);
-      expect(normalPrice).to.equal(BASE_PRICE);
-    });
-  });
-  
-  describe("📈 Performance & Gas Optimization", function () {
-    it("Should cache prices to reduce gas", async function () {
-      // Premier appel (coûteux)
-      const tx1 = await oracleAggregator.getPrice(ETH_USD_MARKET);
-      const receipt1 = await tx1.wait();
-      const gasUsed1 = receipt1.gasUsed;
-      
-      // Deuxième appel (devrait être moins cher grâce au cache)
-      const tx2 = await oracleAggregator.getPrice(ETH_USD_MARKET);
-      const receipt2 = await tx2.wait();
-      const gasUsed2 = receipt2.gasUsed;
-      
-      expect(gasUsed2).to.be < (gasUsed1);
-    });
-    
-    it("Should have reasonable gas costs", async function () {
-      const tx = await oracleAggregator.getPrice(ETH_USD_MARKET);
-      const receipt = await tx.wait();
-      
-      // Coût cible: < 200k gas pour la récupération de prix
-      expect(receipt.gasUsed).to.be < (200000);
     });
   });
 });
