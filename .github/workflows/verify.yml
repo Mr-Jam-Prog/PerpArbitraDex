@@ -31,7 +31,7 @@ jobs:
           ARBISCAN_API_KEY: ${{ secrets.ARBISCAN_API_KEY }}
           
       - name: Upload verification results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: verification-reports
           path: |
