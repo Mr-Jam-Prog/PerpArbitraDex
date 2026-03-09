@@ -38,7 +38,7 @@ export const VotingInterface = ({ proposalId }) => {
 
   useEffect(() => {
     if (userVotingPower) {
-      setVotingWeight(ethers.utils.formatUnits(userVotingPower, 18));
+      setVotingWeight(ethers.formatUnits(userVotingPower, 18));
     }
   }, [userVotingPower]);
 
@@ -129,10 +129,10 @@ export const VotingInterface = ({ proposalId }) => {
   const calculateQuorumProgress = () => {
     if (!proposal) return 0;
 
-    const forVotes = parseFloat(ethers.utils.formatUnits(proposal.forVotes, 18));
-    const againstVotes = parseFloat(ethers.utils.formatUnits(proposal.againstVotes, 18));
+    const forVotes = parseFloat(ethers.formatUnits(proposal.forVotes, 18));
+    const againstVotes = parseFloat(ethers.formatUnits(proposal.againstVotes, 18));
     const totalVotes = forVotes + againstVotes;
-    const quorum = parseFloat(ethers.utils.formatUnits(proposal.quorumVotes || 0, 18));
+    const quorum = parseFloat(ethers.formatUnits(proposal.quorumVotes || 0, 18));
 
     if (quorum === 0) return 0;
     return Math.min(100, (totalVotes / quorum) * 100);
@@ -196,10 +196,10 @@ export const VotingInterface = ({ proposalId }) => {
   }
 
   // Calcul des pourcentages
-  const totalVotes = parseFloat(ethers.utils.formatUnits(proposal.forVotes.add(proposal.againstVotes).add(proposal.abstainVotes), 18));
-  const forPercentage = totalVotes > 0 ? (parseFloat(ethers.utils.formatUnits(proposal.forVotes, 18)) / totalVotes) * 100 : 0;
-  const againstPercentage = totalVotes > 0 ? (parseFloat(ethers.utils.formatUnits(proposal.againstVotes, 18)) / totalVotes) * 100 : 0;
-  const abstainPercentage = totalVotes > 0 ? (parseFloat(ethers.utils.formatUnits(proposal.abstainVotes, 18)) / totalVotes) * 100 : 0;
+  const totalVotes = parseFloat(ethers.formatUnits(proposal.forVotes + (proposal.againstVotes) + (proposal.abstainVotes), 18));
+  const forPercentage = totalVotes > 0 ? (parseFloat(ethers.formatUnits(proposal.forVotes, 18)) / totalVotes) * 100 : 0;
+  const againstPercentage = totalVotes > 0 ? (parseFloat(ethers.formatUnits(proposal.againstVotes, 18)) / totalVotes) * 100 : 0;
+  const abstainPercentage = totalVotes > 0 ? (parseFloat(ethers.formatUnits(proposal.abstainVotes, 18)) / totalVotes) * 100 : 0;
 
   return (
     <div className="voting-interface">
@@ -249,7 +249,7 @@ export const VotingInterface = ({ proposalId }) => {
             </div>
           </div>
           <div className="status-note">
-            Quorum requis: {formatCurrency(proposal.quorumVotes || ethers.BigNumber.from(0))}
+            Quorum requis: {formatCurrency(proposal.quorumVotes || BigInt(0))}
           </div>
         </div>
 
@@ -257,7 +257,7 @@ export const VotingInterface = ({ proposalId }) => {
           <div className="status-label">Total Votes</div>
           <div className="status-value">
             {formatCurrency(
-              proposal.forVotes.add(proposal.againstVotes).add(proposal.abstainVotes)
+              proposal.forVotes + (proposal.againstVotes) + (proposal.abstainVotes)
             )}
           </div>
         </div>
@@ -319,7 +319,7 @@ export const VotingInterface = ({ proposalId }) => {
           <div className="voting-power-card">
             <div className="power-label">Votre Voting Power</div>
             <div className="power-value">
-              {formatCurrency(userVotingPower || ethers.BigNumber.from(0))}
+              {formatCurrency(userVotingPower || BigInt(0))}
             </div>
             
             {!isDelegating ? (
@@ -500,7 +500,7 @@ export const VotingInterface = ({ proposalId }) => {
                   </a>
                 </div>
                 <div className="action-value">
-                  Value: {formatCurrency(proposal.values?.[index] || ethers.BigNumber.from(0))}
+                  Value: {formatCurrency(proposal.values?.[index] || BigInt(0))}
                 </div>
               </div>
             ))}

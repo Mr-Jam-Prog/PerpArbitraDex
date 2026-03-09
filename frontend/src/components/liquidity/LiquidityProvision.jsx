@@ -22,7 +22,7 @@ export const LiquidityProvision = () => {
   const [action, setAction] = useState('deposit'); // 'deposit' or 'withdraw'
   const [selectedToken, setSelectedToken] = useState('USDC');
   const [slippage, setSlippage] = useState('0.5');
-  const [estimatedShares, setEstimatedShares] = useState(ethers.BigNumber.from(0));
+  const [estimatedShares, setEstimatedShares] = useState(BigInt(0));
   const [impermanentLoss, setImpermanentLoss] = useState(null);
 
   // Tokens supportés
@@ -41,11 +41,11 @@ export const LiquidityProvision = () => {
 
   const calculateEstimatedShares = () => {
     if (!amount || !poolData || !poolData.totalLiquidity || !poolData.totalShares) {
-      setEstimatedShares(ethers.BigNumber.from(0));
+      setEstimatedShares(BigInt(0));
       return;
     }
 
-    const amountBN = ethers.utils.parseUnits(
+    const amountBN = ethers.parseUnits(
       amount, 
       SUPPORTED_TOKENS.find(t => t.symbol === selectedToken)?.decimals || 18
     );
@@ -53,14 +53,14 @@ export const LiquidityProvision = () => {
     if (action === 'deposit') {
       // Estimation des shares reçues
       const estimated = amountBN
-        .mul(poolData.totalShares)
-        .div(poolData.totalLiquidity);
+         * (poolData.totalShares)
+         / (poolData.totalLiquidity);
       setEstimatedShares(estimated);
     } else {
       // Estimation des tokens reçus pour le retrait
-      const userShares = userLpBalance || ethers.BigNumber.from(0);
-      const sharePercentage = amountBN.mul(10000).div(userShares); // en bps
-      const estimated = poolData.totalLiquidity.mul(sharePercentage).div(10000);
+      const userShares = userLpBalance || BigInt(0);
+      const sharePercentage = amountBN * (10000) / (userShares); // en bps
+      const estimated = poolData.totalLiquidity * (sharePercentage) / (10000);
       // Pour l'affichage, on garde en shares
       setEstimatedShares(amountBN);
     }
@@ -104,7 +104,7 @@ export const LiquidityProvision = () => {
 
     try {
       const token = SUPPORTED_TOKENS.find(t => t.symbol === selectedToken);
-      const amountBN = ethers.utils.parseUnits(amount, token.decimals);
+      const amountBN = ethers.parseUnits(amount, token.decimals);
 
       if (action === 'deposit') {
         await deposit(token.address, amountBN, slippage);
@@ -128,8 +128,8 @@ export const LiquidityProvision = () => {
       setAmount('1000');
     } else {
       // Retrait max = toutes les LP shares
-      const maxShares = ethers.utils.formatUnits(
-        userLpBalance || ethers.BigNumber.from(0),
+      const maxShares = ethers.formatUnits(
+        userLpBalance || BigInt(0),
         18
       );
       setAmount(maxShares);
@@ -166,7 +166,7 @@ export const LiquidityProvision = () => {
           <div className="stat">
             <div className="stat-label">Vos Parts</div>
             <div className="stat-value">
-              {userLpBalance ? ethers.utils.formatUnits(userLpBalance, 18) : '0'}
+              {userLpBalance ? ethers.formatUnits(userLpBalance, 18) : '0'}
             </div>
           </div>
         </div>
@@ -243,17 +243,17 @@ export const LiquidityProvision = () => {
             <div className="amount-conversion">
               {action === 'deposit' ? (
                 <span>
-                  ≈ {estimatedShares.gt(0) 
-                    ? ethers.utils.formatUnits(estimatedShares, 18) 
+                  ≈ {estimatedShares > (0)
+                    ? ethers.formatUnits(estimatedShares, 18)
                     : '0'} LP shares
                 </span>
               ) : (
                 <span>
-                  ≈ {estimatedShares.gt(0) 
+                  ≈ {estimatedShares > (0)
                     ? formatCurrency(
                         estimatedShares
-                          .mul(poolData?.totalLiquidity || ethers.BigNumber.from(0))
-                          .div(poolData?.totalShares || ethers.BigNumber.from(1))
+                           * (poolData?.totalLiquidity || BigInt(0))
+                           / (poolData?.totalShares || BigInt(1))
                       )
                     : '0'} en valeur
                 </span>
@@ -312,11 +312,11 @@ export const LiquidityProvision = () => {
               <span>Reçu estimé</span>
               <span>
                 {action === 'deposit' 
-                  ? `${ethers.utils.formatUnits(estimatedShares, 18) || '0'} LP`
+                  ? `${ethers.formatUnits(estimatedShares, 18) || '0'} LP`
                   : `${formatCurrency(
                       estimatedShares
-                        .mul(poolData?.totalLiquidity || ethers.BigNumber.from(0))
-                        .div(poolData?.totalShares || ethers.BigNumber.from(1))
+                         * (poolData?.totalLiquidity || BigInt(0))
+                         / (poolData?.totalShares || BigInt(1))
                     )}`
                 }
               </span>

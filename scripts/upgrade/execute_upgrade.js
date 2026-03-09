@@ -33,7 +33,7 @@ module.exports = async (proposalId) => {
     [proposal.proxy],
     [0],
     [proposal.calldata],
-    ethers.utils.keccak256(ethers.utils.toUtf8Bytes(proposal.description))
+    ethers.keccak256(ethers.utils.toUtf8Bytes(proposal.description))
   );
   
   await executeTx.wait();

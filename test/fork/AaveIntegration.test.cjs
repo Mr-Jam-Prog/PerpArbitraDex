@@ -60,7 +60,7 @@ describe("🏦 Aave V3 Mainnet Fork Integration", function () {
     // Transfert de USDC au deployer
     await usdc.connect(whaleSigner).transfer(
       deployer.address,
-      whaleBalance.div(10) // 10% du balance
+      whaleBalance / (10) // 10% du balance
     );
     
     // Stop impersonation
@@ -89,7 +89,7 @@ describe("🏦 Aave V3 Mainnet Fork Integration", function () {
       
       // Vérification du aToken balance
       const aTokenBalance = await aUsdc.balanceOf(deployer.address);
-      expect(aTokenBalance).to.be.gt(0);
+      expect(aTokenBalance).to.be > (0);
     });
     
     it("Devrait retirer des fonds d'Aave", async function () {
@@ -118,11 +118,11 @@ describe("🏦 Aave V3 Mainnet Fork Integration", function () {
       
       // Vérification des paramètres du flash loan
       const flashLoanAvailable = await aavePool.getFlashLoanAvailable(asset);
-      expect(flashLoanAvailable).to.be.gt(amount);
+      expect(flashLoanAvailable).to.be > (amount);
       
       // Exécution via l'intégrateur
       const premium = await aavePool.flashLoanPremiumTotal();
-      const totalPremium = amount.mul(premium).div(10000);
+      const totalPremium = amount * (premium) / (10000);
       
       const tx = await aaveIntegrator.executeFlashLoan(
         asset,
@@ -141,7 +141,7 @@ describe("🏦 Aave V3 Mainnet Fork Integration", function () {
       const amount = parseUnits("5000", 6);
       
       const expectedFee = await aavePool.flashLoanPremiumTotal();
-      const expectedPremium = amount.mul(expectedFee).div(10000);
+      const expectedPremium = amount * (expectedFee) / (10000);
       
       const premium = await aaveIntegrator.calculateFlashLoanFee(asset, amount);
       
@@ -180,9 +180,9 @@ describe("🏦 Aave V3 Mainnet Fork Integration", function () {
       const reserveData = await aavePool.getReserveData(USDC);
       
       // Vérification que les données sont valides
-      expect(reserveData.currentLiquidityRate).to.be.gt(0);
-      expect(reserveData.currentVariableBorrowRate).to.be.gt(0);
-      expect(reserveData.currentStableBorrowRate).to.be.gt(0);
+      expect(reserveData.currentLiquidityRate).to.be > (0);
+      expect(reserveData.currentVariableBorrowRate).to.be > (0);
+      expect(reserveData.currentStableBorrowRate).to.be > (0);
     });
     
     it("Devrait calculer le health factor d'un utilisateur", async function () {
@@ -204,9 +204,9 @@ describe("🏦 Aave V3 Mainnet Fork Integration", function () {
       // Récupération du health factor
       const userAccountData = await aavePool.getUserAccountData(deployer.address);
       
-      expect(userAccountData.healthFactor).to.be.gt(0);
-      expect(userAccountData.totalCollateralBase).to.be.gt(0);
-      expect(userAccountData.totalDebtBase).to.be.gt(0);
+      expect(userAccountData.healthFactor).to.be > (0);
+      expect(userAccountData.totalCollateralBase).to.be > (0);
+      expect(userAccountData.totalDebtBase).to.be > (0);
     });
   });
   
@@ -216,7 +216,7 @@ describe("🏦 Aave V3 Mainnet Fork Integration", function () {
       const maxBorrow = userAccountData.availableBorrowsBase;
       
       // Tentative d'emprunt au-dessus de la limite
-      const excessBorrow = maxBorrow.add(1);
+      const excessBorrow = maxBorrow + (1);
       
       await expect(
         aavePool.connect(deployer).borrow(
@@ -236,7 +236,7 @@ describe("🏦 Aave V3 Mainnet Fork Integration", function () {
       // Vérification que la liquidation est possible
       const liquidationParams = await aavePool.getUserAccountData(user.address);
       
-      if (liquidationParams.healthFactor.lt(parseUnits("1", 18))) {
+      if (liquidationParams.healthFactor < (parseUnits("1", 18))) {
         // La position est liquidable
         const tx = await aavePool.liquidationCall(
           USDC,

@@ -18,7 +18,7 @@ module.exports = async () => {
     kind: 'uups',
     initializer: 'initialize'
   });
-  await aggregator.deployed();
+  await aggregator.waitForDeployment();
   console.log(`✅ OracleAggregator: ${aggregator.address}`);
   
   // 2. Déploiement OracleSanityChecker
@@ -27,7 +27,7 @@ module.exports = async () => {
     kind: 'uups',
     initializer: 'initialize'
   });
-  await sanityChecker.deployed();
+  await sanityChecker.waitForDeployment();
   console.log(`✅ OracleSanityChecker: ${sanityChecker.address}`);
   
   // 3. Configuration des bornes de sécurité
@@ -46,7 +46,7 @@ module.exports = async () => {
     kind: 'uups',
     initializer: 'initialize'
   });
-  await chainlinkOracle.deployed();
+  await chainlinkOracle.waitForDeployment();
   console.log(`✅ ChainlinkOracle: ${chainlinkOracle.address}`);
   
   // 5. Déploiement PythOracle (Secondary)
@@ -58,7 +58,7 @@ module.exports = async () => {
     kind: 'uups',
     initializer: 'initialize'
   });
-  await pythOracle.deployed();
+  await pythOracle.waitForDeployment();
   console.log(`✅ PythOracle: ${pythOracle.address}`);
   
   // 6. Déploiement TWAPOracle (Tertiary)
@@ -70,7 +70,7 @@ module.exports = async () => {
     kind: 'uups',
     initializer: 'initialize'
   });
-  await twapOracle.deployed();
+  await twapOracle.waitForDeployment();
   console.log(`✅ TWAPOracle: ${twapOracle.address}`);
   
   // 7. Configuration de l'agrégateur

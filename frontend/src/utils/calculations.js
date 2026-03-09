@@ -5,9 +5,9 @@
 import { ethers } from 'ethers';
 
 // Constants (must match Solidity)
-const PRECISION = ethers.BigNumber.from(10).pow(18); // 1e18
+const PRECISION = BigInt(10).pow(18); // 1e18
 const ONE = PRECISION;
-const MAX_UINT256 = ethers.constants.MaxUint256;
+const MAX_UINT256 = ethers.MaxUint256;
 
 /**
  * Calculate PnL for a position
@@ -15,20 +15,20 @@ const MAX_UINT256 = ethers.constants.MaxUint256;
  */
 export const calculatePnL = (size, entryPrice, exitPrice, isLong) => {
   // Convert to BigNumber with appropriate decimals
-  const sizeBN = ethers.utils.parseUnits(size.toString(), 18);
-  const entryBN = ethers.utils.parseUnits(entryPrice.toString(), 8);
-  const exitBN = ethers.utils.parseUnits(exitPrice.toString(), 8);
+  const sizeBN = ethers.parseUnits(size.toString(), 18);
+  const entryBN = ethers.parseUnits(entryPrice.toString(), 8);
+  const exitBN = ethers.parseUnits(exitPrice.toString(), 8);
   
   if (isLong) {
     // PnL = size * (exitPrice - entryPrice) / entryPrice
-    const priceDiff = exitBN.sub(entryBN);
-    const pnl = sizeBN.mul(priceDiff).div(entryBN);
-    return parseFloat(ethers.utils.formatUnits(pnl, 18));
+    const priceDiff = exitBN - (entryBN);
+    const pnl = sizeBN * (priceDiff) / (entryBN);
+    return parseFloat(ethers.formatUnits(pnl, 18));
   } else {
     // PnL = size * (entryPrice - exitPrice) / entryPrice
-    const priceDiff = entryBN.sub(exitBN);
-    const pnl = sizeBN.mul(priceDiff).div(entryBN);
-    return parseFloat(ethers.utils.formatUnits(pnl, 18));
+    const priceDiff = entryBN - (exitBN);
+    const pnl = sizeBN * (priceDiff) / (entryBN);
+    return parseFloat(ethers.formatUnits(pnl, 18));
   }
 };
 
@@ -37,34 +37,34 @@ export const calculatePnL = (size, entryPrice, exitPrice, isLong) => {
  * MUST match PositionMath.calculateHealthFactor exactly
  */
 export const calculateHealthFactor = (collateral, size, price, isLong) => {
-  const collateralBN = ethers.utils.parseUnits(collateral.toString(), 6); // USDC has 6 decimals
-  const sizeBN = ethers.utils.parseUnits(size.toString(), 18);
-  const priceBN = ethers.utils.parseUnits(price.toString(), 8);
+  const collateralBN = ethers.parseUnits(collateral.toString(), 6); // USDC has 6 decimals
+  const sizeBN = ethers.parseUnits(size.toString(), 18);
+  const priceBN = ethers.parseUnits(price.toString(), 8);
   
   // Position value = size
   const positionValue = sizeBN;
   
   // Collateral value in USD (collateral is already in USD for USDC)
-  const collateralValue = collateralBN.mul(PRECISION).div(ethers.BigNumber.from(10).pow(6));
+  const collateralValue = collateralBN * (PRECISION) / (BigInt(10).pow(6));
   
   if (isLong) {
     // For long: HF = (collateral + (size * (price - entryPrice) / entryPrice)) / (size * maintenanceMargin)
     // Simplified: HF = collateral / (size * maintenanceMargin) when price = entryPrice
     
     // Using 8% maintenance margin
-    const maintenanceMargin = ethers.BigNumber.from(8).mul(PRECISION).div(100); // 0.08 * 1e18
+    const maintenanceMargin = BigInt(8) * (PRECISION) / (100); // 0.08 * 1e18
     
-    const requiredMargin = positionValue.mul(maintenanceMargin).div(PRECISION);
-    const healthFactor = collateralValue.mul(PRECISION).div(requiredMargin);
+    const requiredMargin = positionValue * (maintenanceMargin) / (PRECISION);
+    const healthFactor = collateralValue * (PRECISION) / (requiredMargin);
     
-    return parseFloat(ethers.utils.formatUnits(healthFactor, 18));
+    return parseFloat(ethers.formatUnits(healthFactor, 18));
   } else {
     // For short: similar but inverted
-    const maintenanceMargin = ethers.BigNumber.from(8).mul(PRECISION).div(100);
-    const requiredMargin = positionValue.mul(maintenanceMargin).div(PRECISION);
-    const healthFactor = collateralValue.mul(PRECISION).div(requiredMargin);
+    const maintenanceMargin = BigInt(8) * (PRECISION) / (100);
+    const requiredMargin = positionValue * (maintenanceMargin) / (PRECISION);
+    const healthFactor = collateralValue * (PRECISION) / (requiredMargin);
     
-    return parseFloat(ethers.utils.formatUnits(healthFactor, 18));
+    return parseFloat(ethers.formatUnits(healthFactor, 18));
   }
 };
 
@@ -73,29 +73,29 @@ export const calculateHealthFactor = (collateral, size, price, isLong) => {
  * MUST match PositionMath.calculateLiquidationPrice exactly
  */
 export const calculateLiquidationPrice = (collateral, size, isLong, maintenanceMarginRatio = 0.08) => {
-  const collateralBN = ethers.utils.parseUnits(collateral.toString(), 6);
-  const sizeBN = ethers.utils.parseUnits(size.toString(), 18);
-  const mmrBN = ethers.utils.parseUnits(maintenanceMarginRatio.toString(), 18);
+  const collateralBN = ethers.parseUnits(collateral.toString(), 6);
+  const sizeBN = ethers.parseUnits(size.toString(), 18);
+  const mmrBN = ethers.parseUnits(maintenanceMarginRatio.toString(), 18);
   
   if (isLong) {
     // For long: liquidationPrice = entryPrice * (1 - maintenanceMarginRatio / leverage)
     // But we calculate from current state: liquidationPrice = price where HF = 1
     
     // Simplified formula: liqPrice = entryPrice * (1 - (maintenanceMarginRatio * size / collateral))
-    const entryPrice = sizeBN.div(collateralBN); // Assuming 1x leverage
+    const entryPrice = sizeBN / (collateralBN); // Assuming 1x leverage
     
-    const factor = PRECISION.sub(mmrBN.mul(sizeBN).div(collateralBN));
-    const liquidationPrice = entryPrice.mul(factor).div(PRECISION);
+    const factor = PRECISION - (mmrBN * (sizeBN) / (collateralBN));
+    const liquidationPrice = entryPrice * (factor) / (PRECISION);
     
-    return parseFloat(ethers.utils.formatUnits(liquidationPrice, 8));
+    return parseFloat(ethers.formatUnits(liquidationPrice, 8));
   } else {
     // For short: liquidationPrice = entryPrice * (1 + maintenanceMarginRatio / leverage)
-    const entryPrice = sizeBN.div(collateralBN);
+    const entryPrice = sizeBN / (collateralBN);
     
-    const factor = PRECISION.add(mmrBN.mul(sizeBN).div(collateralBN));
-    const liquidationPrice = entryPrice.mul(factor).div(PRECISION);
+    const factor = PRECISION + (mmrBN * (sizeBN) / (collateralBN));
+    const liquidationPrice = entryPrice * (factor) / (PRECISION);
     
-    return parseFloat(ethers.utils.formatUnits(liquidationPrice, 8));
+    return parseFloat(ethers.formatUnits(liquidationPrice, 8));
   }
 };
 
@@ -104,15 +104,15 @@ export const calculateLiquidationPrice = (collateral, size, isLong, maintenanceM
  * MUST match FundingRateCalculator.calculateFundingPayment exactly
  */
 export const calculateFundingPayment = (size, fundingRate, timeElapsed) => {
-  const sizeBN = ethers.utils.parseUnits(size.toString(), 18);
-  const rateBN = ethers.utils.parseUnits(fundingRate.toString(), 18);
-  const timeBN = ethers.BigNumber.from(timeElapsed);
+  const sizeBN = ethers.parseUnits(size.toString(), 18);
+  const rateBN = ethers.parseUnits(fundingRate.toString(), 18);
+  const timeBN = BigInt(timeElapsed);
   
   // fundingPayment = size * fundingRate * timeElapsed / (365 * 24 * 3600)
-  const secondsPerYear = ethers.BigNumber.from(365 * 24 * 3600);
-  const payment = sizeBN.mul(rateBN).mul(timeBN).div(secondsPerYear).div(PRECISION);
+  const secondsPerYear = BigInt(365 * 24 * 3600);
+  const payment = sizeBN * (rateBN) * (timeBN) / (secondsPerYear) / (PRECISION);
   
-  return parseFloat(ethers.utils.formatUnits(payment, 18));
+  return parseFloat(ethers.formatUnits(payment, 18));
 };
 
 /**

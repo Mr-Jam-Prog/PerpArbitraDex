@@ -63,10 +63,10 @@ export const PnLChart = ({ positions, timeframe = '1M' }) => {
     // Générer des données synthétiques basées sur les positions actuelles
     for (let i = points - 1; i >= 0; i--) {
       const timestamp = now - (i * 86400); // Un jour par point
-      let totalPnL = ethers.BigNumber.from(0);
-      let totalCollateral = ethers.BigNumber.from(0);
-      let totalPositionValue = ethers.BigNumber.from(0);
-      let avgHealthFactor = ethers.BigNumber.from(0);
+      let totalPnL = BigInt(0);
+      let totalCollateral = BigInt(0);
+      let totalPositionValue = BigInt(0);
+      let avgHealthFactor = BigInt(0);
       let positionCount = 0;
 
       // Calculer les métriques pour ce point dans le temps
@@ -74,16 +74,16 @@ export const PnLChart = ({ positions, timeframe = '1M' }) => {
         if (position.openedAt <= timestamp) {
           // Simulation de PnL basée sur le temps écoulé
           const timeElapsed = timestamp - position.openedAt;
-          const dailyReturn = ethers.utils.parseUnits('0.001', 18); // 0.1% par jour
+          const dailyReturn = ethers.parseUnits('0.001', 18); // 0.1% par jour
           const simulatedPnL = position.positionValue
-            .mul(dailyReturn)
-            .mul(timeElapsed)
-            .div(86400)
-            .div(ethers.utils.parseUnits('1', 18));
+             * (dailyReturn)
+             * (timeElapsed)
+             / (86400)
+             / (ethers.parseUnits('1', 18));
 
-          totalPnL = totalPnL.add(simulatedPnL);
-          totalCollateral = totalCollateral.add(position.collateral);
-          totalPositionValue = totalPositionValue.add(position.positionValue);
+          totalPnL = totalPnL + (simulatedPnL);
+          totalCollateral = totalCollateral + (position.collateral);
+          totalPositionValue = totalPositionValue + (position.positionValue);
           positionCount++;
         }
       });
@@ -91,17 +91,17 @@ export const PnLChart = ({ positions, timeframe = '1M' }) => {
       // Calcul du health factor moyen
       if (positionCount > 0) {
         avgHealthFactor = totalCollateral
-          .mul(ethers.utils.parseUnits('1', 18))
-          .div(totalPositionValue);
+           * (ethers.parseUnits('1', 18))
+           / (totalPositionValue);
       }
 
       data.push({
         timestamp,
         date: formatTimestamp(timestamp, 'short'),
-        totalPnL: parseFloat(ethers.utils.formatUnits(totalPnL, 18)),
-        collateral: parseFloat(ethers.utils.formatUnits(totalCollateral, 18)),
-        positionValue: parseFloat(ethers.utils.formatUnits(totalPositionValue, 18)),
-        healthFactor: parseFloat(ethers.utils.formatUnits(avgHealthFactor, 18))
+        totalPnL: parseFloat(ethers.formatUnits(totalPnL, 18)),
+        collateral: parseFloat(ethers.formatUnits(totalCollateral, 18)),
+        positionValue: parseFloat(ethers.formatUnits(totalPositionValue, 18)),
+        healthFactor: parseFloat(ethers.formatUnits(avgHealthFactor, 18))
       });
     }
 
@@ -119,7 +119,7 @@ export const PnLChart = ({ positions, timeframe = '1M' }) => {
               {entry.dataKey === 'healthFactor' 
                 ? entry.value.toFixed(2)
                 : formatCurrency(
-                    ethers.utils.parseUnits(entry.value.toString(), 18)
+                    ethers.parseUnits(entry.value.toString(), 18)
                   )
               }
             </p>
@@ -190,7 +190,7 @@ export const PnLChart = ({ positions, timeframe = '1M' }) => {
                   return value.toFixed(2);
                 }
                 return formatCurrency(
-                  ethers.utils.parseUnits(value.toString(), 18),
+                  ethers.parseUnits(value.toString(), 18),
                   true,
                   0
                 );
@@ -241,7 +241,7 @@ export const PnLChart = ({ positions, timeframe = '1M' }) => {
           <div className="stat-label">PnL Total</div>
           <div className="stat-value">
             {formatCurrency(
-              ethers.utils.parseUnits(
+              ethers.parseUnits(
                 chartData[chartData.length - 1]?.totalPnL?.toString() || '0',
                 18
               ),
@@ -254,7 +254,7 @@ export const PnLChart = ({ positions, timeframe = '1M' }) => {
           <div className="stat-label">High</div>
           <div className="stat-value">
             {formatCurrency(
-              ethers.utils.parseUnits(
+              ethers.parseUnits(
                 Math.max(...chartData.map(d => d[selectedMetric] || 0)).toString(),
                 18
               ),
@@ -267,7 +267,7 @@ export const PnLChart = ({ positions, timeframe = '1M' }) => {
           <div className="stat-label">Low</div>
           <div className="stat-value">
             {formatCurrency(
-              ethers.utils.parseUnits(
+              ethers.parseUnits(
                 Math.min(...chartData.map(d => d[selectedMetric] || 0)).toString(),
                 18
               ),

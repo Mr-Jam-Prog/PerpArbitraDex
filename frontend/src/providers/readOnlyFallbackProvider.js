@@ -46,7 +46,7 @@ class ReadOnlyFallbackProvider extends EventEmitter {
           ]);
           
           // Mark provider as healthy
-          this.healthyProviders.add(index);
+          this.healthyProviders + (index);
           return result;
         } catch (error) {
           // Mark provider as unhealthy
@@ -108,7 +108,7 @@ class ReadOnlyFallbackProvider extends EventEmitter {
           )
         ]);
         
-        this.healthyProviders.add(i);
+        this.healthyProviders + (i);
         
         // If we have healthy providers and were in read-only mode, switch back
         if (this.readOnlyMode && this.healthyProviders.size > 0) {

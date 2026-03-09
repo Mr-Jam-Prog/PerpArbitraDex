@@ -45,7 +45,7 @@ const PositionCard = ({ position, onClose, isReadOnly = false }) => {
         );
         
         const price = await oracleContract.getPrice(market.id);
-        setCurrentPrice(parseFloat(ethers.utils.formatUnits(price, 8)));
+        setCurrentPrice(parseFloat(ethers.formatUnits(price, 8)));
       } catch (error) {
         console.error('Error fetching price:', error);
       }
@@ -105,7 +105,7 @@ const PositionCard = ({ position, onClose, isReadOnly = false }) => {
       
       // Estimate gas
       const gasLimit = await perpEngine.estimateGas.closePosition(id);
-      const gasLimitWithBuffer = gasLimit.mul(120).div(100);
+      const gasLimitWithBuffer = gasLimit * (120) / (100);
       
       // Execute close
       const tx = await perpEngine.closePosition(id, {

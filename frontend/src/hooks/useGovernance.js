@@ -137,7 +137,7 @@ export function useGovernance() {
       const veTotalSupply = await contracts.votingEscrow.totalSupply();
       
       // Total voting power = token votes + veToken balance
-      const total = tokenVotes.add(veBalance);
+      const total = tokenVotes + (veBalance);
       
       return {
         token: formatUnits(tokenVotes, 18),
@@ -207,7 +207,7 @@ export function useGovernance() {
         proposal.targets,
         proposal.values,
         proposal.calldatas,
-        ethers.utils.keccak256(ethers.utils.toUtf8Bytes(proposal.description))
+        ethers.keccak256(ethers.utils.toUtf8Bytes(proposal.description))
       );
 
       const receipt = await tx.wait();
@@ -235,7 +235,7 @@ export function useGovernance() {
         proposal.targets,
         proposal.values,
         proposal.calldatas,
-        ethers.utils.keccak256(ethers.utils.toUtf8Bytes(proposal.description))
+        ethers.keccak256(ethers.utils.toUtf8Bytes(proposal.description))
       );
 
       const receipt = await tx.wait();

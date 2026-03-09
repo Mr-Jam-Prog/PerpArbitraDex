@@ -24,7 +24,7 @@ class GasEstimator {
       const feeData = await this.getOptimizedFeeData();
       
       // 4. Coût total estimé
-      const estimatedCost = feeData.maxFeePerGas.mul(safeGasLimit);
+      const estimatedCost = feeData.maxFeePerGas * (safeGasLimit);
       
       this.recordEstimation({
         gasLimit: safeGasLimit,
@@ -68,7 +68,7 @@ class GasEstimator {
     // Arbitrum recommande maxFeePerGas = gasPrice, maxPriorityFeePerGas = 0
     return {
       maxFeePerGas: gasPrice,
-      maxPriorityFeePerGas: ethers.BigNumber.from(0)
+      maxPriorityFeePerGas: BigInt(0)
     };
   }
   
@@ -88,7 +88,7 @@ class GasEstimator {
     
     return {
       maxFeePerGas: gasPrice,
-      maxPriorityFeePerGas: ethers.BigNumber.from(0)
+      maxPriorityFeePerGas: BigInt(0)
     };
   }
   
@@ -107,7 +107,7 @@ class GasEstimator {
       gasLimit: 1000000, // 1M gas
       maxFeePerGas: GAS_CONFIG.MAX_FEE_PER_GAS,
       maxPriorityFeePerGas: GAS_CONFIG.MAX_PRIORITY_FEE_PER_GAS,
-      estimatedCost: GAS_CONFIG.MAX_FEE_PER_GAS.mul(1000000).toString()
+      estimatedCost: GAS_CONFIG.MAX_FEE_PER_GAS * (1000000).toString()
     };
   }
   
@@ -126,7 +126,7 @@ class GasEstimator {
   getEstimationStats() {
     if (this.history.length === 0) return null;
     
-    const costs = this.history.map(h => parseFloat(ethers.utils.formatEther(h.estimatedCost)));
+    const costs = this.history.map(h => parseFloat(ethers.formatEther(h.estimatedCost)));
     
     return {
       averageCost: costs.reduce((a, b) => a + b, 0) / costs.length,
@@ -139,18 +139,18 @@ class GasEstimator {
   // Utilitaires pour batch transactions
   async estimateBatch(transactions) {
     const estimations = [];
-    let totalCost = ethers.BigNumber.from(0);
+    let totalCost = BigInt(0);
     
     for (const tx of transactions) {
       const estimation = await this.estimateTransaction(tx);
       estimations.push(estimation);
-      totalCost = totalCost.add(estimation.estimatedCost);
+      totalCost = totalCost + (estimation.estimatedCost);
     }
     
     return {
       estimations,
       totalCost: totalCost.toString(),
-      averageCost: totalCost.div(estimations.length).toString()
+      averageCost: totalCost / (estimations.length).toString()
     };
   }
 }

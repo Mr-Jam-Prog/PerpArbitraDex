@@ -42,7 +42,7 @@ describe("🔗 Chainlink Oracle Mainnet Fork", function () {
     const ChainlinkOracle = await ethers.getContractFactory("ChainlinkOracle");
     chainlinkOracle = await ChainlinkOracle.deploy(
       CHAINLINK_REGISTRY,
-      ethers.constants.AddressZero // aggregator à configurer
+      ethers.ZeroAddress // aggregator à configurer
     );
     
     // Déploiement de l'agrégateur
@@ -55,10 +55,10 @@ describe("🔗 Chainlink Oracle Mainnet Fork", function () {
       const roundData = await ethUsdAggregator.latestRoundData();
       
       // Vérification des données
-      expect(roundData.answer).to.be.gt(0);
-      expect(roundData.startedAt).to.be.gt(0);
-      expect(roundData.updatedAt).to.be.gt(0);
-      expect(roundData.answeredInRound).to.be.gt(0);
+      expect(roundData.answer).to.be > (0);
+      expect(roundData.startedAt).to.be > (0);
+      expect(roundData.updatedAt).to.be > (0);
+      expect(roundData.answeredInRound).to.be > (0);
       
       console.log(`📊 ETH/USD Price: $${parseUnits(roundData.answer.toString(), 8)}`);
     });
@@ -69,11 +69,11 @@ describe("🔗 Chainlink Oracle Mainnet Fork", function () {
       const staleness = currentTime - roundData.updatedAt.toNumber();
       
       // Le prix doit être mis à jour dans les dernières 24h
-      expect(staleness).to.be.lt(24 * 3600);
+      expect(staleness).to.be < (24 * 3600);
       
       // Heartbeat check (Chainlink recommande 1h pour ETH/USD)
       const heartbeat = 3600;
-      expect(staleness).to.be.lt(heartbeat);
+      expect(staleness).to.be < (heartbeat);
     });
     
     it("Devrait valider la décimale du prix", async function () {
@@ -122,7 +122,7 @@ describe("🔗 Chainlink Oracle Mainnet Fork", function () {
       // Dans la réalité, ajouter d'autres sources (Pyth, Uniswap TWAP)
       
       const price = await oracleAggregator.getPrice("ETH-USD");
-      expect(price).to.be.gt(0);
+      expect(price).to.be > (0);
     });
     
     it("Devrait rejeter les déviations excessives", async function () {
@@ -154,7 +154,7 @@ describe("🔗 Chainlink Oracle Mainnet Fork", function () {
       
       // La source secondaire devrait prendre le relais
       const price = await oracleAggregator.getPrice("ETH-USD");
-      expect(price).to.be.gt(0);
+      expect(price).to.be > (0);
     });
   });
   
@@ -190,10 +190,10 @@ describe("🔗 Chainlink Oracle Mainnet Fork", function () {
     it("Devrait gérer les mises à jour de round", async function () {
       // Vérification du mécanisme de round de Chainlink
       const latestRound = await ethUsdAggregator.latestRoundData();
-      const previousRound = await ethUsdAggregator.getRoundData(latestRound.roundId.sub(1));
+      const previousRound = await ethUsdAggregator.getRoundData(latestRound.roundId - (1));
       
-      expect(latestRound.roundId).to.be.gt(previousRound.roundId);
-      expect(latestRound.updatedAt).to.be.gte(previousRound.updatedAt);
+      expect(latestRound.roundId).to.be > (previousRound.roundId);
+      expect(latestRound.updatedAt).to.be >= (previousRound.updatedAt);
     });
   });
 });

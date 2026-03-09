@@ -42,7 +42,7 @@ describe("🚀 FlashLoans Integration", function () {
   describe("📦 Basic Flash Loan Operations", function () {
     it("Devrait exécuter un flash loan simple", async function () {
       const loanAmount = parseUnits("10000", 6); // 10k USDC
-      const premium = loanAmount.mul(9).div(10000); // 0.09% premium
+      const premium = loanAmount * (9) / (10000); // 0.09% premium
       
       const tx = await aaveIntegrator.executeFlashLoan(
         usdc.address,
@@ -58,10 +58,10 @@ describe("🚀 FlashLoans Integration", function () {
     
     it("Devrait rejeter un flash loan non remboursé", async function () {
       const loanAmount = parseUnits("10000", 6);
-      const premium = loanAmount.mul(9).div(10000);
+      const premium = loanAmount * (9) / (10000);
       
       // Encodage d'une opération qui ne rembourse pas
-      const maliciousData = ethers.utils.defaultAbiCoder.encode(
+      const maliciousData = ethers.AbiCoder.defaultAbiCoder().encode(
         ["bool"],
         [false] // Ne pas rembourser
       );
@@ -78,7 +78,7 @@ describe("🚀 FlashLoans Integration", function () {
     
     it("Devrait calculer correctement les frais de flash loan", async function () {
       const loanAmount = parseUnits("50000", 6);
-      const expectedPremium = loanAmount.mul(9).div(10000); // 0.09%
+      const expectedPremium = loanAmount * (9) / (10000); // 0.09%
       
       const premium = await aaveIntegrator.calculateFlashLoanFee(
         usdc.address,
@@ -137,9 +137,9 @@ describe("🚀 FlashLoans Integration", function () {
       );
       
       const finalBalance = await usdc.balanceOf(liquidator.address);
-      const profit = finalBalance.sub(initialBalance);
+      const profit = finalBalance - (initialBalance);
       
-      expect(profit).to.be.gt(0); // Profit positif
+      expect(profit).to.be > (0); // Profit positif
     });
     
     it("Devrait échouer si le flash loan n'est pas rentable", async function () {
@@ -172,7 +172,7 @@ describe("🚀 FlashLoans Integration", function () {
     
     it("Devrait rejeter les montants trop élevés", async function () {
       const maxLoan = await aaveIntegrator.getMaxFlashLoan(usdc.address);
-      const excessiveAmount = maxLoan.add(1);
+      const excessiveAmount = maxLoan + (1);
       
       await expect(
         aaveIntegrator.executeFlashLoan(
@@ -197,7 +197,7 @@ describe("🚀 FlashLoans Integration", function () {
   describe("📊 Gas & Performance", function () {
     it("Devrait optimiser le gas pour les flash loans", async function () {
       const loanAmount = parseUnits("10000", 6);
-      const premium = loanAmount.mul(9).div(10000);
+      const premium = loanAmount * (9) / (10000);
       
       const tx = await aaveIntegrator.executeFlashLoan(
         usdc.address,
@@ -210,7 +210,7 @@ describe("🚀 FlashLoans Integration", function () {
       const gasUsed = receipt.gasUsed;
       
       // Gas target pour L2 (Arbitrum)
-      expect(gasUsed).to.be.lt(500000); // Max 500k gas
+      expect(gasUsed).to.be < (500000); // Max 500k gas
     });
     
     it("Devrait batch multiple flash loans", async function () {
@@ -219,7 +219,7 @@ describe("🚀 FlashLoans Integration", function () {
         parseUnits("5000", 6),
         parseUnits("10", 18)
       ];
-      const premiums = amounts.map(amount => amount.mul(9).div(10000));
+      const premiums = amounts.map(amount => amount * (9) / (10000));
       
       const tx = await aaveIntegrator.executeBatchFlashLoan(
         tokens,

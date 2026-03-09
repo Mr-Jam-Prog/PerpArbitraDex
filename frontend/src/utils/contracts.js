@@ -279,7 +279,7 @@ function getContractAddress(contractName, chainId) {
   
   const address = addresses[contractName];
   
-  if (!address || address === ethers.constants.AddressZero) {
+  if (!address || address === ethers.ZeroAddress) {
     throw new ContractError(
       `Contract ${contractName} not found on chainId: ${chainId}`,
       'CONTRACT_NOT_FOUND'
@@ -510,7 +510,7 @@ export async function batchContractCalls(calls, provider, chainId) {
   const multicallCalls = await Promise.all(
     calls.map(async (call) => {
       const contract = getContract(call.contract, provider, chainId);
-      const iface = new ethers.utils.Interface(CONTRACT_REGISTRY[call.contract].abi);
+      const iface = new ethers.Interface(CONTRACT_REGISTRY[call.contract].abi);
       const callData = iface.encodeFunctionData(call.method, call.args);
       
       return {
@@ -528,7 +528,7 @@ export async function batchContractCalls(calls, provider, chainId) {
       
       try {
         const call = calls[index];
-        const iface = new ethers.utils.Interface(CONTRACT_REGISTRY[call.contract].abi);
+        const iface = new ethers.Interface(CONTRACT_REGISTRY[call.contract].abi);
         return iface.decodeFunctionResult(call.method, data);
       } catch (error) {
         console.warn(`Failed to decode result for call ${index}:`, error.message);

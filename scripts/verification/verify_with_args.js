@@ -192,7 +192,7 @@ function encodeConstructorArgs(args, types = []) {
   const finalTypes = types.length > 0 ? types : defaultTypes;
   
   try {
-    const encoded = ethers.utils.defaultAbiCoder.encode(finalTypes, args);
+    const encoded = ethers.AbiCoder.defaultAbiCoder().encode(finalTypes, args);
     return encoded;
   } catch (error) {
     console.error('Erreur lors de l\'encodage des arguments:', error);

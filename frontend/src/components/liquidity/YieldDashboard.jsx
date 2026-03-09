@@ -116,23 +116,23 @@ export const YieldDashboard = () => {
     if (!userLpBalance || !poolData) return null;
 
     const userShare = userLpBalance
-      .mul(ethers.utils.parseUnits('1', 18))
-      .div(poolData.totalShares || ethers.BigNumber.from(1));
+       * (ethers.parseUnits('1', 18))
+       / (poolData.totalShares || BigInt(1));
 
     const userTVL = poolData.totalLiquidity
-      .mul(userShare)
-      .div(ethers.utils.parseUnits('1', 18));
+       * (userShare)
+       / (ethers.parseUnits('1', 18));
 
     const dailyYield = userTVL
-      .mul(ethers.utils.parseUnits((poolData.apy || 0).toString(), 16))
-      .div(ethers.utils.parseUnits('100', 18))
-      .div(ethers.BigNumber.from(365));
+       * (ethers.parseUnits((poolData.apy || 0).toString(), 16))
+       / (ethers.parseUnits('100', 18))
+       / (BigInt(365));
 
-    const monthlyYield = dailyYield.mul(30);
-    const yearlyYield = dailyYield.mul(365);
+    const monthlyYield = dailyYield * (30);
+    const yearlyYield = dailyYield * (365);
 
     return {
-      userShare: parseFloat(ethers.utils.formatUnits(userShare, 16)),
+      userShare: parseFloat(ethers.formatUnits(userShare, 16)),
       userTVL,
       dailyYield,
       monthlyYield,
@@ -248,7 +248,7 @@ export const YieldDashboard = () => {
                 {formatCurrency(userStats.dailyYield)}
               </div>
               <div className="stat-subtext">
-                ${(parseFloat(ethers.utils.formatUnits(userStats.dailyYield, 18)) * 365).toFixed(2)}/an
+                ${(parseFloat(ethers.formatUnits(userStats.dailyYield, 18)) * 365).toFixed(2)}/an
               </div>
             </div>
 
@@ -494,8 +494,8 @@ export const YieldDashboard = () => {
               <h4>Efficacité</h4>
               <p>
                 Le ratio Fees/TVL est de {poolData 
-                  ? ((parseFloat(ethers.utils.formatUnits(poolData.dailyFees || 0, 18)) * 365 / 
-                     parseFloat(ethers.utils.formatUnits(poolData.totalLiquidity || 1, 18)) * 100).toFixed(2)
+                  ? ((parseFloat(ethers.formatUnits(poolData.dailyFees || 0, 18)) * 365 /
+                     parseFloat(ethers.formatUnits(poolData.totalLiquidity || 1, 18)) * 100).toFixed(2)
                   ) : '--'
                 }%, supérieur à la moyenne du marché.
               </p>
