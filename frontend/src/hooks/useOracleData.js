@@ -51,8 +51,8 @@ export function useOracleData(marketId = 'ETH-USD') {
       const priceData = await contracts.oracleAggregator.getPriceWithDetails(marketId);
       
       const price = priceData.price;
-      const timestamp = priceData.timestamp.toNumber();
-      const sourceCount = priceData.sourceCount.toNumber();
+      const timestamp = Number(priceData.timestamp);
+      const sourceCount = Number(priceData.sourceCount);
       const sources = priceData.sources;
       
       // Get TWAP price if available
@@ -139,7 +139,7 @@ export function useOracleData(marketId = 'ETH-USD') {
         const chainlinkOracle = getContract('ChainlinkOracle', library, chainId);
         const priceData = await chainlinkOracle.latestRoundData();
         const price = formatUnits(priceData.answer, 8);
-        const timestamp = priceData.updatedAt.toNumber();
+        const timestamp = Number(priceData.updatedAt);
         
         const currentTime = Math.floor(Date.now() / 1000);
         const isStale = (currentTime - timestamp) > ORACLE_FRESHNESS_THRESHOLD;

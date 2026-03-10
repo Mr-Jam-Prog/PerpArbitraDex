@@ -249,7 +249,7 @@ describe("🏛️ Governance End-to-End", function () {
         [protocolConfig.address],
         [0],
         [protocolConfig.interface.encodeFunctionData("setProtocolFee", [parseUnits("0.0015", 18)])],
-        ethers.keccak256(ethers.utils.toUtf8Bytes("Timelock execution test"))
+        ethers.keccak256(ethers.toUtf8Bytes("Timelock execution test"))
       );
       
       // Vérification que l'action est dans le timelock
@@ -261,7 +261,7 @@ describe("🏛️ Governance End-to-End", function () {
               [protocolConfig.address],
               [0],
               [protocolConfig.interface.encodeFunctionData("setProtocolFee", [parseUnits("0.0015", 18)])],
-              ethers.keccak256(ethers.utils.toUtf8Bytes("Timelock execution test"))
+              ethers.keccak256(ethers.toUtf8Bytes("Timelock execution test"))
             ]
           )
         )
@@ -275,7 +275,7 @@ describe("🏛️ Governance End-to-End", function () {
           [protocolConfig.address],
           [0],
           [protocolConfig.interface.encodeFunctionData("setProtocolFee", [parseUnits("0.0015", 18)])],
-          ethers.keccak256(ethers.utils.toUtf8Bytes("Timelock execution test"))
+          ethers.keccak256(ethers.toUtf8Bytes("Timelock execution test"))
         )
       ).to.be.revertedWith("TimelockController: operation is not ready");
     });
@@ -286,7 +286,7 @@ describe("🏛️ Governance End-to-End", function () {
         [protocolConfig.address],
         [0],
         [protocolConfig.interface.encodeFunctionData("setProtocolFee", [parseUnits("0.0015", 18)])],
-        ethers.keccak256(ethers.utils.toUtf8Bytes("Timelock execution test"))
+        ethers.keccak256(ethers.toUtf8Bytes("Timelock execution test"))
       );
       
       // Attente du délai
@@ -297,7 +297,7 @@ describe("🏛️ Governance End-to-End", function () {
         [protocolConfig.address],
         [0],
         [protocolConfig.interface.encodeFunctionData("setProtocolFee", [parseUnits("0.0015", 18)])],
-        ethers.keccak256(ethers.utils.toUtf8Bytes("Timelock execution test"))
+        ethers.keccak256(ethers.toUtf8Bytes("Timelock execution test"))
       );
       
       await expect(tx)
@@ -347,7 +347,7 @@ describe("🏛️ Governance End-to-End", function () {
           0,
           protocolConfig.interface.encodeFunctionData("setProtocolFee", [parseUnits("0.002", 18)]),
           0,
-          ethers.keccak256(ethers.utils.toUtf8Bytes("Direct execution attempt"))
+          ethers.keccak256(ethers.toUtf8Bytes("Direct execution attempt"))
         )
       ).to.be.reverted;
     });

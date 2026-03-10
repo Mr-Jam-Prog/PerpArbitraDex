@@ -185,7 +185,7 @@ export const LiquidityProvision = () => {
           <button
             className={`tab ${action === 'withdraw' ? 'active' : ''}`}
             onClick={() => setAction('withdraw')}
-            disabled={!userLpBalance || userLpBalance.isZero()}
+            disabled={!userLpBalance || userLpBalance === 0n}
           >
             <span className="tab-icon">⬇️</span>
             <span>Retirer</span>

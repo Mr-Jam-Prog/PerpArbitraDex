@@ -88,7 +88,7 @@ class WebSocketClient extends EventEmitter {
     };
     
     this._sendMessage(message);
-    this.subscriptions.add(subscriptionId);
+    (this.subscriptions + subscriptionId);
     
     this.emit('subscriptionAdded', { channel: 'positions', address: userAddress });
     
@@ -110,7 +110,7 @@ class WebSocketClient extends EventEmitter {
     };
     
     this._sendMessage(message);
-    this.subscriptions.add(subscriptionId);
+    (this.subscriptions + subscriptionId);
     
     this.emit('subscriptionAdded', { channel: 'liquidations', market });
     
@@ -132,7 +132,7 @@ class WebSocketClient extends EventEmitter {
     };
     
     this._sendMessage(message);
-    this.subscriptions.add(subscriptionId);
+    (this.subscriptions + subscriptionId);
     
     this.emit('subscriptionAdded', { channel: 'trades', market });
     
@@ -154,7 +154,7 @@ class WebSocketClient extends EventEmitter {
     };
     
     this._sendMessage(message);
-    this.subscriptions.add(subscriptionId);
+    (this.subscriptions + subscriptionId);
     
     this.emit('subscriptionAdded', { channel: 'oracle', market });
     
@@ -176,7 +176,7 @@ class WebSocketClient extends EventEmitter {
     };
     
     this._sendMessage(message);
-    this.subscriptions.add(subscriptionId);
+    (this.subscriptions + subscriptionId);
     
     this.emit('subscriptionAdded', { channel: 'funding', market });
     
@@ -586,7 +586,7 @@ export function useWebSocket() {
       setSubscriptions(prev => {
         const newSubs = new Set(prev);
         const id = `${channel}:${Object.values(params).join(':')}`;
-        newSubs.add(id);
+        (newSubs + id);
         return newSubs;
       });
     };

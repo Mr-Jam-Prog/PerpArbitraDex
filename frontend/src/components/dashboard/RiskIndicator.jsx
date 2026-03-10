@@ -36,36 +36,24 @@ export const RiskIndicator = ({ healthFactor, positionsAtRisk, totalPositions })
     let color;
     let description;
 
-    if (healthFactor < (RISK_THRESHOLDS.critical)) {
+    if (healthFactor < RISK_THRESHOLDS.critical) {
       percentage = 95 + Math.random() * 5; // 95-100%
       color = '#EF4444';
       description = 'CRITIQUE - Liquidation imminente';
-    } else if (healthFactor < (RISK_THRESHOLDS.warning)) {
-      percentage = 70 + (healthFactor - (RISK_THRESHOLDS.critical))
-         * (25)
-         / (RISK_THRESHOLDS.warning - (RISK_THRESHOLDS.critical))
-        .toNumber() / 100;
+    } else if (healthFactor < RISK_THRESHOLDS.warning) {
+      percentage = 70 + Number((healthFactor - RISK_THRESHOLDS.critical) * 25n / (RISK_THRESHOLDS.warning - RISK_THRESHOLDS.critical));
       color = '#F59E0B';
       description = 'ATTENTION - Risque élevé de liquidation';
-    } else if (healthFactor < (RISK_THRESHOLDS.moderate)) {
-      percentage = 30 + (healthFactor - (RISK_THRESHOLDS.warning))
-         * (40)
-         / (RISK_THRESHOLDS.moderate - (RISK_THRESHOLDS.warning))
-        .toNumber() / 100;
+    } else if (healthFactor < RISK_THRESHOLDS.moderate) {
+      percentage = 30 + Number((healthFactor - RISK_THRESHOLDS.warning) * 40n / (RISK_THRESHOLDS.moderate - RISK_THRESHOLDS.warning));
       color = '#FBBF24';
       description = 'MODÉRÉ - Surveillez vos positions';
-    } else if (healthFactor < (RISK_THRESHOLDS.safe)) {
-      percentage = 10 + (healthFactor - (RISK_THRESHOLDS.moderate))
-         * (20)
-         / (RISK_THRESHOLDS.safe - (RISK_THRESHOLDS.moderate))
-        .toNumber() / 100;
+    } else if (healthFactor < RISK_THRESHOLDS.safe) {
+      percentage = 10 + Number((healthFactor - RISK_THRESHOLDS.moderate) * 20n / (RISK_THRESHOLDS.safe - RISK_THRESHOLDS.moderate));
       color = '#10B981';
       description = 'SÛR - Niveau de risque acceptable';
     } else {
-      percentage = 0 + (healthFactor - (RISK_THRESHOLDS.safe))
-         * (10)
-         / (ethers.parseUnits('5', 18)) // Jusqu'à HF 8.0
-        .toNumber() / 100;
+      percentage = 0 + Number((healthFactor - RISK_THRESHOLDS.safe) * 10n / ethers.parseUnits('5', 18));
       color = '#059669';
       description = 'TRÈS SÛR - Marge de sécurité élevée';
     }

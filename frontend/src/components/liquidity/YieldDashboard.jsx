@@ -264,7 +264,7 @@ export const YieldDashboard = () => {
           </div>
 
           {/* Rewards accumulés */}
-          {userRewards && !userRewards.isZero() && (
+          {userRewards && !userRewards === 0n && (
             <div className="rewards-card">
               <div className="rewards-icon">🎁</div>
               <div className="rewards-content">

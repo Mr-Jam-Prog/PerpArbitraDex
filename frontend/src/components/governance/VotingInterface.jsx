@@ -81,7 +81,7 @@ export const VotingInterface = ({ proposalId }) => {
       return;
     }
 
-    if (!ethers.utils.isAddress(delegateAddress)) {
+    if (!ethers.isAddress(delegateAddress)) {
       alert('Adresse invalide');
       return;
     }
@@ -112,7 +112,7 @@ export const VotingInterface = ({ proposalId }) => {
     if (!proposal) return null;
 
     const now = Math.floor(Date.now() / 1000);
-    const endTime = proposal.endTime.toNumber();
+    const endTime = Number(proposal.endTime);
 
     if (now >= endTime) {
       return 'Terminé';
@@ -217,13 +217,13 @@ export const VotingInterface = ({ proposalId }) => {
           <div className="timeline-item">
             <div className="timeline-label">Début</div>
             <div className="timeline-value">
-              {formatTimestamp(proposal.startTime.toNumber())}
+              {Number(formatTimestamp(proposal.startTime))}
             </div>
           </div>
           <div className="timeline-item">
             <div className="timeline-label">Fin</div>
             <div className="timeline-value">
-              {formatTimestamp(proposal.endTime.toNumber())}
+              {Number(formatTimestamp(proposal.endTime))}
             </div>
           </div>
           <div className="timeline-item">
@@ -265,7 +265,7 @@ export const VotingInterface = ({ proposalId }) => {
         <div className="status-card">
           <div className="status-label">Voters</div>
           <div className="status-value">
-            {proposal.voterCount?.toNumber() || '--'}
+            {proposal.voterCount ? Number(proposal.voterCount) : '--'}
           </div>
         </div>
       </div>
@@ -475,7 +475,7 @@ export const VotingInterface = ({ proposalId }) => {
             <div className="detail-label">Exécution ETA</div>
             <div className="detail-value">
               {proposal.state === 4 ? // Succeeded
-                formatTimestamp(proposal.endTime.toNumber() + (proposal.timelockDelay || 0))
+                Number(formatTimestamp(proposal.endTime) + (proposal.timelockDelay || 0))
                 : '--'
               }
             </div>
@@ -548,7 +548,7 @@ export const VotingInterface = ({ proposalId }) => {
                       {formatCurrency(vote.votes)}
                     </td>
                     <td>
-                      {formatTimestamp(vote.timestamp.toNumber())}
+                      {Number(formatTimestamp(vote.timestamp))}
                     </td>
                   </tr>
                 ))}

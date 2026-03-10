@@ -239,7 +239,7 @@ class PositionService {
       
       const result = {
         accruedFunding: formatUnits(funding.accruedFunding, 18),
-        lastFundingUpdate: funding.lastFundingUpdate.toNumber(),
+        lastFundingUpdate: Number(funding.lastFundingUpdate),
         cumulativeFunding: formatUnits(funding.cumulativeFunding, 18)
       };
       
@@ -421,7 +421,7 @@ class PositionService {
       const balance = await positionManager.balanceOf(userAddress);
       const positions = [];
       
-      for (let i = 0; i < balance.toNumber(); i++) {
+      for (let i = 0; i < Number(balance); i++) {
         try {
           const tokenId = await positionManager.tokenOfOwnerByIndex(userAddress, i);
           const position = await this._getPositionFromContract(tokenId, userAddress);
@@ -463,8 +463,8 @@ class PositionService {
         collateral: formatUnits(position.collateral, 6),
         entryPrice: formatUnits(position.entryPrice, 8),
         leverage: formatUnits(position.leverage, 18),
-        openedAt: position.openedAt.toNumber(),
-        lastUpdated: position.lastUpdated.toNumber(),
+        openedAt: Number(position.openedAt),
+        lastUpdated: Number(position.lastUpdated),
         isClosed: position.size === 0n
       };
     } catch (error) {

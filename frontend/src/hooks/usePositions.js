@@ -137,7 +137,7 @@ export const usePositions = () => {
       const balance = await contracts.positionManager.balanceOf(ownerAddress);
       
       // Fetch each position
-      for (let i = 0; i < balance.toNumber(); i++) {
+      for (let i = 0; i < Number(balance); i++) {
         try {
           const tokenId = await contracts.positionManager.tokenOfOwnerByIndex(ownerAddress, i);
           const positionData = await contracts.perpEngine.getPosition(tokenId);
@@ -154,8 +154,8 @@ export const usePositions = () => {
             entryPrice: parseFloat(ethers.formatUnits(positionData.entryPrice, 8)),
             isLong: positionData.isLong,
             healthFactor: parseFloat(ethers.formatUnits(positionData.healthFactor, 18)),
-            createdAt: positionData.createdAt.toNumber(),
-            lastFundingTime: positionData.lastFundingTime.toNumber(),
+            createdAt: Number(positionData.createdAt),
+            lastFundingTime: Number(positionData.lastFundingTime),
             isLiquidated: positionData.isLiquidated
           };
           

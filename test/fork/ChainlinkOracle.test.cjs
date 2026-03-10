@@ -66,7 +66,7 @@ describe("🔗 Chainlink Oracle Mainnet Fork", function () {
     it("Devrait vérifier la fraîcheur du prix", async function () {
       const roundData = await ethUsdAggregator.latestRoundData();
       const currentTime = Math.floor(Date.now() / 1000);
-      const staleness = currentTime - roundData.updatedAt.toNumber();
+      const staleness = currentTime - Number(roundData.updatedAt);
       
       // Le prix doit être mis à jour dans les dernières 24h
       expect(staleness).to.be < (24 * 3600);

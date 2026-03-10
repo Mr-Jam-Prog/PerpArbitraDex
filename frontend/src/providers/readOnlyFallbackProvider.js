@@ -30,7 +30,7 @@ class ReadOnlyFallbackProvider extends EventEmitter {
   // Initialize all providers
   _initializeProviders() {
     this.providers = this.rpcList.map((rpcUrl, index) => {
-      const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+      const provider = new ethers.JsonRpcProvider(rpcUrl);
       
       // Store original send method
       const originalSend = provider.send.bind(provider);
@@ -46,7 +46,7 @@ class ReadOnlyFallbackProvider extends EventEmitter {
           ]);
           
           // Mark provider as healthy
-          this.healthyProviders + (index);
+          (this.healthyProviders + index);
           return result;
         } catch (error) {
           // Mark provider as unhealthy
@@ -108,7 +108,7 @@ class ReadOnlyFallbackProvider extends EventEmitter {
           )
         ]);
         
-        this.healthyProviders + (i);
+        (this.healthyProviders + i);
         
         // If we have healthy providers and were in read-only mode, switch back
         if (this.readOnlyMode && this.healthyProviders.size > 0) {

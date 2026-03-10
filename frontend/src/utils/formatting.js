@@ -167,9 +167,9 @@ export function formatPnL(pnl, decimals = PRECISION) {
     const bn = validateBigNumber(pnl, 'pnl');
     validateDecimals(decimals);
     
-    const formatted = formatUnits(bn.abs(), decimals);
+    const formatted = ethers.formatUnits(bn < 0n ? -bn : bn, decimals);
     const number = parseFloat(formatted);
-    const isPositive = bn >= (0);
+    const isPositive = bn >= 0n;
     
     // Format absolute value
     const absFormatted = new Intl.NumberFormat('en-US', {
@@ -185,8 +185,8 @@ export function formatPnL(pnl, decimals = PRECISION) {
       formatted: signedFormatted,
       raw: bn.toString(),
       isPositive,
-      isNegative: bn < (0),
-      isZero: bn.isZero(),
+      isNegative: bn < 0n,
+      isZero: bn === 0n,
       absoluteValue: absFormatted,
       colorClass: isPositive ? 'pnl-positive' : 'pnl-negative',
     };
@@ -216,7 +216,7 @@ export function formatFunding(fundingRate, period = 3600) {
     const bn = validateBigNumber(fundingRate, 'fundingRate');
     
     // Convert to percentage per period
-    const periodPercentage = bn * (100) / (ethers.constants.WeiPerEther);
+    const periodPercentage = bn * (100) / (ethers.WeiPerEther);
     
     // Annualize (assuming 365 days)
     const secondsPerYear = 365 * 24 * 3600;
@@ -546,19 +546,19 @@ export function calculatePercentageChange(oldValue, newValue) {
     const oldBn = validateBigNumber(oldValue, 'oldValue');
     const newBn = validateBigNumber(newValue, 'newValue');
     
-    if (oldBn.isZero()) {
-      return ethers.constants.Zero;
+    if (oldBn === 0n) {
+      return 0n;
     }
     
     // Calculate percentage: ((new - old) / old) * 100 * 1e18
-    const diff = newBn - (oldBn);
-    const percentage = diff * (ethers.constants.WeiPerEther) / (oldBn) * (100);
+    const diff = newBn - oldBn;
+    const percentage = diff * ethers.WeiPerEther / oldBn * 100n;
     
     return percentage;
     
   } catch (error) {
     console.error('Percentage calculation error:', error.message);
-    return ethers.constants.Zero;
+    return 0n;
   }
 }
 
