@@ -4,7 +4,7 @@ const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("🛡️ Final Oracle Safety Audit", function () {
     let perpEngine, oracleAggregator, securityModule, mockOracle1, mockOracle2;
-    let owner, trader, insuranceFund, liquidationEngine;
+    let owner, trader, insuranceFund, liquidationEngine, govSigner;
     let quoteToken, baseToken, positionManager, protocolConfig, ammPool, riskManager;
 
     const FEED_ID = ethers.encodeBytes32String("ETH/USD");
@@ -55,25 +55,32 @@ describe("🛡️ Final Oracle Safety Audit", function () {
         const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
         protocolConfig = await ProtocolConfig.deploy(owner.address, owner.address);
 
-        const MockAMMPool = await ethers.getContractFactory("MockAMMPool");
-        ammPool = await MockAMMPool.deploy();
-
         const MockRiskManager = await ethers.getContractFactory("MockRiskManager");
         riskManager = await MockRiskManager.deploy();
 
         const deployerAddr = owner.address;
         const nonce = await ethers.provider.getTransactionCount(deployerAddr);
-        const perpAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 1 });
+
+        // Nonce plan:
+        // nonce: posMgr
+        // nonce + 1: ammPool
+        // nonce + 2: perpEngine
+        const posMgrAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce });
+        const ammAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 1 });
+        const perpAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 2 });
 
         const PositionManager = await ethers.getContractFactory("PositionManager");
         positionManager = await PositionManager.deploy(perpAddr);
 
+        const AMMPool = await ethers.getContractFactory("AMMPool");
+        ammPool = await AMMPool.deploy(perpAddr, oracleAggregator.target);
+
         const PerpEngine = await ethers.getContractFactory("PerpEngine");
         perpEngine = await PerpEngine.deploy(
-            positionManager.target,
-            ammPool.target,
+            posMgrAddr,
+            ammAddr,
             oracleAggregator.target,
-            liquidationEngine.address, // Real address for test
+            liquidationEngine.address,
             riskManager.target,
             protocolConfig.target,
             insuranceFund.address,
@@ -81,7 +88,7 @@ describe("🛡️ Final Oracle Safety Audit", function () {
             quoteToken.target
         );
 
-        const govSigner = await ethers.getImpersonatedSigner(insuranceFund.address);
+        govSigner = await ethers.getImpersonatedSigner(insuranceFund.address);
         await owner.sendTransaction({ to: insuranceFund.address, value: ethers.parseEther("1") });
 
         await perpEngine.connect(govSigner).initializeMarket(
@@ -94,7 +101,15 @@ describe("🛡️ Final Oracle Safety Audit", function () {
             10n**15n  // 0.1%
         );
 
-        await quoteToken.mint(trader.address, ethers.parseUnits("10000", 18));
+        // Also initialize AMMPool market
+        await ammPool.connect(owner).initializeMarket(
+            MARKET_ID,
+            100000n * 10n**18n, // skewScale
+            10n**16n, // maxFundingRate
+            3600 // fundingInterval
+        );
+
+        await quoteToken.mint(trader.address, ethers.parseUnits("1000000", 18));
         await quoteToken.connect(trader).approve(perpEngine.target, ethers.MaxUint256);
     });
 
@@ -247,6 +262,66 @@ describe("🛡️ Final Oracle Safety Audit", function () {
     });
 
     describe("5. Simulations", function () {
+        it("95% Long Skew (Max Market Skew Protection)", async function () {
+            const now = await time.latest();
+            const price = 2000n * 10n**8n;
+
+            await oracleAggregator.connect(securityModule).getFunction("updatePrice(bytes32,uint256,uint256,uint256)")(
+                FEED_ID, price, now, 0
+            );
+
+            // Set maxMarketSkew to 500 ETH
+            const maxMarketSkewETH = ethers.parseUnits("500", 18);
+            const MARKET_SKEW_ID = 3n;
+
+            await perpEngine.connect(govSigner).initializeMarketWithSkew(
+                MARKET_SKEW_ID,
+                FEED_ID,
+                ethers.parseUnits("100", 18), // 100x leverage
+                10n**15n, // 0.1% min margin
+                10n**15n,
+                10n**16n,
+                10n**15n,
+                maxMarketSkewETH
+            );
+
+            await ammPool.connect(owner).initializeMarket(
+                MARKET_SKEW_ID,
+                ethers.parseUnits("100000", 18), // skewScale
+                10n**16n,
+                3600
+            );
+
+            // Open position of 475 ETH (95% of 500)
+            const size95 = ethers.parseUnits("475", 18);
+            const marginVal = (size95 * price * 10n**10n / 10n**18n) / 10n; // 10x leverage
+
+            await perpEngine.connect(trader).openPosition({
+                marketId: MARKET_SKEW_ID,
+                isLong: true,
+                size: size95,
+                margin: marginVal,
+                acceptablePrice: 2100n * 10n**8n,
+                deadline: now + 3600,
+                referralCode: ethers.ZeroHash
+            });
+
+            // Try to open 50 ETH more (total 525 ETH > 500 ETH) -> should fail
+            const size50 = ethers.parseUnits("50", 18);
+
+            await expect(
+                perpEngine.connect(trader).openPosition({
+                    marketId: MARKET_SKEW_ID,
+                    isLong: true,
+                    size: size50,
+                    margin: marginVal,
+                    acceptablePrice: 2100n * 10n**8n,
+                    deadline: now + 3600,
+                    referralCode: ethers.ZeroHash
+                })
+            ).to.be.revertedWith("PerpEngine: max market skew reached");
+        });
+
         it("Conflicting Oracle Sources (Deviation Attack)", async function () {
             const now = await time.latest();
             // Source 1: 2000

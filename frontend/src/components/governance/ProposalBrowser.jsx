@@ -92,9 +92,9 @@ export const ProposalBrowser = () => {
 
   const ProposalCard = ({ proposal }) => {
     const status = getProposalStatus(proposal.state);
-    const totalVotes = (proposal.forVotes + proposal.againstVotes).add(proposal.abstainVotes);
-    const forPercentage = totalVotes.gt(0) 
-      ? Number((proposal.forVotes * 100).div(totalVotes))
+    const totalVotes = proposal.forVotes + proposal.againstVotes + proposal.abstainVotes;
+    const forPercentage = totalVotes > 0n
+      ? Number((proposal.forVotes * 100n) / totalVotes)
       : 0;
 
     return (
@@ -127,14 +127,14 @@ export const ProposalBrowser = () => {
           <div className="meta-item">
             <div className="meta-label">Start</div>
             <div className="meta-value">
-              {Number(formatTimestamp(proposal.startTime), 'short')}
+              {formatTimestamp(Number(proposal.startTime), 'short')}
             </div>
           </div>
 
           <div className="meta-item">
             <div className="meta-label">End</div>
             <div className="meta-value">
-              {Number(formatTimestamp(proposal.endTime), 'short')}
+              {formatTimestamp(Number(proposal.endTime), 'short')}
             </div>
           </div>
         </div>

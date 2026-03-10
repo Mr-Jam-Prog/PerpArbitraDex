@@ -222,7 +222,7 @@ class MarketService {
         isStale,
         sourceCount: Number(priceData.sourceCount),
         sources: sources,
-        lastUpdate: new Number(Date(priceData.timestamp) * 1000).toISOString()
+        lastUpdate: new Date(Number(priceData.timestamp) * 1000).toISOString()
       };
     } catch (error) {
       console.error(`Failed to get oracle status for ${marketId}:`, error);
@@ -253,7 +253,7 @@ class MarketService {
 
   // Subscribe to market updates
   subscribe(listener) {
-    (this.listeners + listener);
+    this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
 

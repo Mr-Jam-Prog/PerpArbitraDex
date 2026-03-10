@@ -188,6 +188,8 @@ interface IPerpEngine is IPositionViewer {
      */
     function getPositionInternal(uint256 positionId) external view returns (Position memory position);
 
+    function getTotalOpenInterest(uint256 marketId) external view returns (uint256);
+
     // ============ VIEW FUNCTIONS (from IPositionViewer) ============
     
     /**

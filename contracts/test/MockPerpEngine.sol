@@ -177,5 +177,9 @@ contract MockPerpEngine is IPerpEngine {
         uint256
     ) external override {}
 
+    function getTotalOpenInterest(uint256) external view override returns (uint256) {
+        return 0;
+    }
+
     receive() external payable {}
 }
