@@ -150,7 +150,8 @@ contract PropertyTests is Test {
             entryPrice,
             PositionMath.PositionRiskParams({
                 maintenanceMarginBps: 100, // 1%
-                liquidationThresholdBps: 10000 // 100%
+                liquidationThresholdBps: 10000,
+                skewBps: 0
             })
         );
 
@@ -166,7 +167,8 @@ contract PropertyTests is Test {
             entryPrice.mulDiv(PRECISION - priceDrop, PRECISION),
             PositionMath.PositionRiskParams({
                 maintenanceMarginBps: 100,
-                liquidationThresholdBps: 10000
+                liquidationThresholdBps: 10000,
+                skewBps: 0
             })
         );
 
@@ -191,7 +193,8 @@ contract PropertyTests is Test {
             }),
             PositionMath.PositionRiskParams({
                 maintenanceMarginBps: 100,
-                liquidationThresholdBps: 10000
+                liquidationThresholdBps: 10000,
+                skewBps: 0
             })
         );
 

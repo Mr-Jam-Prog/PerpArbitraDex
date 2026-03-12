@@ -4,7 +4,7 @@
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits } = ethers.utils;
+const { parseUnits } = ethers;
 
 describe("🔗 Chainlink Oracle Mainnet Fork", function () {
   // Adresses Chainlink Arbitrum

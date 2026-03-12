@@ -4,7 +4,7 @@
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits, formatUnits } = ethers.utils;
+const { parseUnits, formatUnits } = ethers;
 
 describe("🚀 FlashLoans Integration", function () {
   let deployer, user1, liquidator;

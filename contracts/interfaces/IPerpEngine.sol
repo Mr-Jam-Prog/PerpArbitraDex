@@ -289,4 +289,15 @@ interface IPerpEngine is IPositionViewer {
         uint256 liquidationFeeRatio,
         uint256 protocolFeeRatio
     ) external;
+
+    function initializeMarketWithSkew(
+        uint256 marketId,
+        bytes32 oracleFeedId,
+        uint256 maxLeverage,
+        uint256 minMarginRatio,
+        uint256 minPositionSize,
+        uint256 liquidationFeeRatio,
+        uint256 protocolFeeRatio,
+        uint256 maxMarketSkew
+    ) external;
 }

@@ -131,7 +131,7 @@ async function main() {
 
 function encodeConstructorArgs(args) {
   // Encodage ABI des arguments
-  const abiCoder = new ethers.utils.AbiCoder();
+  const abiCoder = new ethers.AbiCoder();
   // Adaptez cette fonction selon votre contrat
   return "0x...";
 }
@@ -177,7 +177,7 @@ function encodeConstructorArgs(args, types = []) {
   
   // Types par défaut pour les arguments communs
   const defaultTypes = args.map(arg => {
-    if (typeof arg === 'string' && ethers.utils.isAddress(arg)) {
+    if (typeof arg === 'string' && ethers.isAddress(arg)) {
       return 'address';
     } else if (typeof arg === 'string') {
       return 'string';

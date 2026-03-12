@@ -4,7 +4,7 @@
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits } = ethers.utils;
+const { parseUnits } = ethers;
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("🎭 Advanced Oracle Manipulation Attacks", function () {
