@@ -159,6 +159,22 @@ interface IPositionViewer {
         view
         returns (uint256 maxAdditionalSize);
 
+    /**
+     * @notice Get current status of a position
+     * @param positionId Position ID
+     * @return isActive True if position is active
+     * @return isLiquidatable True if position is liquidatable
+     * @return healthFactor Current health factor
+     */
+    function getPositionStatus(uint256 positionId)
+        external
+        view
+        returns (
+            bool isActive,
+            bool isLiquidatable,
+            uint256 healthFactor
+        );
+
     // ============ BATCH VIEW FUNCTIONS ============
 
     /**

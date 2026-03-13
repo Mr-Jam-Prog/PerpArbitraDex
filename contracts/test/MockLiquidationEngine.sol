@@ -11,10 +11,12 @@ contract MockLiquidationEngine is ILiquidationEngine {
     function executeBatchLiquidation(uint256[] calldata, uint256[] calldata) external override returns (LiquidationResult[] memory) {
         return new LiquidationResult[](0);
     }
+    function liquidateBatch(uint256[] calldata) external override {}
     function flashLiquidate(uint256, uint256, uint256) external override returns (LiquidationResult memory) {
         return LiquidationResult(0, address(0), 0, 0, 0, 0, false);
     }
     function processQueue(uint256) external override returns (uint256) { return 0; }
+    function processLiquidations(uint256) external override returns (uint256) { return 0; }
     function previewLiquidation(uint256, uint256) external view override returns (uint256, uint256, uint256) {
         return (0, 0, 0);
     }

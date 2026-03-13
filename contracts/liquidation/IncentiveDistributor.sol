@@ -85,7 +85,6 @@ contract IncentiveDistributor is ReentrancyGuard, Ownable {
     }
     
     modifier onlyValidDistribution(uint256 totalAmount) {
-        require(totalAmount > 0, "Invalid distribution amount");
         require(distributionConfig.totalShares == SHARE_SCALE, "Invalid share configuration");
         _;
     }
@@ -143,7 +142,11 @@ contract IncentiveDistributor is ReentrancyGuard, Ownable {
         onlyValidDistribution(totalPenalty)
     {
         require(!distributedPositions[positionId], "Already distributed");
-        require(totalPenalty > 0, "No penalty to distribute");
+
+        if (totalPenalty == 0) {
+            distributedPositions[positionId] = true;
+            return;
+        }
         
         // Calculate distribution amounts
         (uint256 toLiquidator, uint256 toProtocol, uint256 toInsurance, uint256 toStaking) = 

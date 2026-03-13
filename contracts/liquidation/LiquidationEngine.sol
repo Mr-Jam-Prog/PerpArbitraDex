@@ -12,6 +12,7 @@ import {IConfigRegistry} from "../interfaces/IConfigRegistry.sol";
 import {IOracleAggregator} from "../interfaces/IOracleAggregator.sol";
 import {LiquidationQueue} from "./LiquidationQueue.sol";
 import {IncentiveDistributor} from "./IncentiveDistributor.sol";
+import {SafeDecimalMath} from "../libraries/SafeDecimalMath.sol";
 
 /**
  * @title LiquidationEngine
@@ -20,6 +21,7 @@ import {IncentiveDistributor} from "./IncentiveDistributor.sol";
  */
 contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
+    using SafeDecimalMath for uint256;
 
     // ============ CONSTANTS ============
     uint256 public constant HEALTH_FACTOR_SCALE = 1e18;
@@ -53,7 +55,8 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
 
     modifier onlyValidPosition(uint256 positionId) {
         require(!isPositionLiquidated[positionId], "Position already liquidated");
-        require(perpEngine.getHealthFactor(positionId) > 0, "Invalid position");
+        (bool isActive, , ) = perpEngine.getPositionStatus(positionId);
+        require(isActive, "Invalid position");
         _;
     }
 
@@ -98,7 +101,9 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         onlyPerpEngine
         whenNotPaused
     {
-        require(healthFactor < HEALTH_FACTOR_SCALE, "Not liquidatable");
+        (bool isActive, bool isLiquidatable, ) = perpEngine.getPositionStatus(positionId);
+        require(isActive, "Position inactive");
+        require(isLiquidatable, "Not liquidatable");
         require(!isPositionLiquidated[positionId], "Already liquidated");
         
         liquidationQueue.enqueue(
@@ -127,19 +132,44 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         onlyValidPosition(positionId)
         returns (LiquidationResult memory result)
     {
+        return _executeLiquidationInternal(positionId, minReward);
+    }
+
+    /**
+     * @notice Helper for batch liquidations to avoid reentrancy guard collisions
+     * @dev Restricted to address(this) to ensure it's only called via batch entry points that have the guard
+     */
+    function executeLiquidationInternal(uint256 positionId, uint256 minReward)
+        external
+        whenNotPaused
+        onlyValidPosition(positionId)
+        returns (LiquidationResult memory result)
+    {
+        require(msg.sender == address(this), "Internal only");
+        return _executeLiquidationInternal(positionId, minReward);
+    }
+
+    /**
+     * @dev Internal implementation of liquidation logic
+     */
+    function _executeLiquidationInternal(uint256 positionId, uint256 minReward)
+        internal
+        returns (LiquidationResult memory result)
+    {
         // Check position is in queue and grace period passed
         require(liquidationQueue.isQueued(positionId), "Not in queue");
         require(
-            block.timestamp >= liquidationQueue.getQueueTime(positionId) + liquidatorConfig.gracePeriod,
+            block.timestamp >= liquidationQueue.getQueueTime(positionId),
             "Grace period not passed"
         );
 
-        // Get current price and health factor
-        uint256 marketId = perpEngine.getPosition(positionId).marketId;
+        // Get current status and health
+        (bool isActive, bool isLiquidatable, uint256 healthFactor) = perpEngine.getPositionStatus(positionId);
+        require(isActive, "Position inactive");
+        require(isLiquidatable, "Position healthy");
+
+        uint256 marketId = perpEngine.getPositionInternal(positionId).marketId;
         uint256 currentPrice = _getValidatedPrice(marketId);
-        uint256 healthFactor = perpEngine.getHealthFactor(positionId);
-        
-        require(healthFactor < HEALTH_FACTOR_SCALE, "Position healthy");
         
         // Calculate liquidation details
         (uint256 reward, uint256 penalty, uint256 newHealthFactor) = _calculateLiquidation(
@@ -152,14 +182,14 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         require(reward <= liquidatorConfig.maxReward, "Reward exceeds maximum");
         
         // Execute liquidation via PerpEngine
-        uint256 positionSizeBefore = perpEngine.getPosition(positionId).size;
+        uint256 positionSizeBefore = perpEngine.getPositionInternal(positionId).size;
         uint256 remainingSize = _executePerpLiquidation(positionId, currentPrice, penalty);
         
         // Update state
         isPositionLiquidated[positionId] = remainingSize == 0;
         lastLiquidationTime[positionId] = block.timestamp;
         totalLiquidations++;
-        totalLiquidationVolume += positionSizeBefore - remainingSize;
+        totalLiquidationVolume += (positionSizeBefore - remainingSize);
         
         // Distribute rewards
         _distributeLiquidationRewards(positionId, reward, penalty, msg.sender);
@@ -196,7 +226,7 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         results = new LiquidationResult[](positionIds.length);
         
         for (uint256 i = 0; i < positionIds.length; i++) {
-            try this.executeLiquidation(positionIds[i], minRewards[i]) returns (LiquidationResult memory result) {
+            try this.executeLiquidationInternal(positionIds[i], minRewards[i]) returns (LiquidationResult memory result) {
                 results[i] = result;
             } catch {
                 // Skip failed liquidations but continue with batch
@@ -210,6 +240,30 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
                     fullyLiquidated: false
                 });
                 emit LiquidationSkipped(positionIds[i], msg.sender, 3); // Other reason
+            }
+        }
+    }
+
+    /**
+     * @inheritdoc ILiquidationEngine
+     */
+    function liquidateBatch(uint256[] calldata positionIds)
+        external
+        override
+        nonReentrant
+        whenNotPaused
+    {
+        uint256 length = positionIds.length;
+        require(length <= liquidatorConfig.batchSize, "Exceeds batch size");
+
+        for (uint256 i = 0; i < length; i++) {
+            uint256 positionId = positionIds[i];
+            if (!isPositionLiquidated[positionId]) {
+                try this.executeLiquidationInternal(positionId, liquidatorConfig.minReward) {
+                    // Success
+                } catch {
+                    emit LiquidationSkipped(positionId, msg.sender, 3);
+                }
             }
         }
     }
@@ -235,26 +289,34 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
     /**
      * @inheritdoc ILiquidationEngine
      */
-    function processQueue(uint256 maxProcess) external override nonReentrant whenNotPaused returns (uint256 numProcessed) {
-        require(maxProcess > 0, "Invalid max process");
-        
-        for (uint256 i = 0; i < maxProcess; i++) {
+    function processQueue(uint256 maxProcess) external override returns (uint256 numProcessed) {
+        return processLiquidations(maxProcess);
+    }
+
+    /**
+     * @inheritdoc ILiquidationEngine
+     */
+    function processLiquidations(uint256 maxCount)
+        public
+        override
+        nonReentrant
+        whenNotPaused
+        returns (uint256 numProcessed)
+    {
+        require(maxCount > 0, "Invalid max count");
+        uint256 limit = maxCount > liquidatorConfig.batchSize ? liquidatorConfig.batchSize : maxCount;
+
+        for (uint256 i = 0; i < limit; i++) {
             (bool hasNext, uint256 nextPositionId) = liquidationQueue.getNext();
             if (!hasNext) break;
             
-            // Skip if still in grace period
-            if (block.timestamp < liquidationQueue.getQueueTime(nextPositionId) + liquidatorConfig.gracePeriod) {
-                continue;
-            }
-            
-            try this.executeLiquidation(nextPositionId, liquidatorConfig.minReward) {
+            try this.executeLiquidationInternal(nextPositionId, liquidatorConfig.minReward) {
                 numProcessed++;
             } catch {
-                // Skip and continue
+                // Skip non-liquidatable or failing positions to prevent queue blockage
+                emit LiquidationSkipped(nextPositionId, msg.sender, 3);
                 continue;
             }
-            
-            if (numProcessed >= liquidatorConfig.batchSize) break;
         }
         
         return numProcessed;
@@ -285,15 +347,14 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         uint256 liquidatedSize,
         uint256 liquidationPrice
     ) public view override returns (uint256 reward) {
-        // Get position details
-        IPerpEngine.PositionView memory position = perpEngine.getPosition(positionId);
-        
-        // Calculate penalty based on liquidated size
-        uint256 penalty = (liquidatedSize * liquidatorConfig.penaltyRatio) / HEALTH_FACTOR_SCALE;
+        // Calculate penalty based on liquidated notional value
+        // Note: price is normalized to 18 decimals internally
+        uint256 liquidatedNotional = liquidatedSize.mulDiv(liquidationPrice * 10**10, HEALTH_FACTOR_SCALE);
+        uint256 penalty = liquidatedNotional.mulDiv(liquidatorConfig.penaltyRatio, HEALTH_FACTOR_SCALE);
         
         // Calculate reward (penalty + incentive)
         uint256 baseReward = penalty;
-        uint256 incentive = (baseReward * _getIncentiveMultiplier()) / HEALTH_FACTOR_SCALE;
+        uint256 incentive = baseReward.mulDiv(_getIncentiveMultiplier(), HEALTH_FACTOR_SCALE);
         
         reward = baseReward + incentive;
         
@@ -351,19 +412,24 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         
         // Calculate how much to liquidate to bring health factor to MIN_HEALTH_FACTOR
         uint256 targetHealthFactor = MIN_HEALTH_FACTOR;
-        uint256 liquidationRatio = (HEALTH_FACTOR_SCALE - healthFactor) * HEALTH_FACTOR_SCALE / 
-                                  (HEALTH_FACTOR_SCALE - targetHealthFactor);
+        uint256 liquidationRatio;
+        if (healthFactor >= HEALTH_FACTOR_SCALE) {
+            liquidationRatio = 0;
+        } else {
+            liquidationRatio = (HEALTH_FACTOR_SCALE - healthFactor).mulDiv(HEALTH_FACTOR_SCALE, HEALTH_FACTOR_SCALE - targetHealthFactor);
+        }
         
         // Cap at 100%
         liquidationRatio = liquidationRatio > HEALTH_FACTOR_SCALE ? HEALTH_FACTOR_SCALE : liquidationRatio;
         
-        uint256 liquidatedSize = (position.size * liquidationRatio) / HEALTH_FACTOR_SCALE;
+        uint256 liquidatedSize = position.size.mulDiv(liquidationRatio, HEALTH_FACTOR_SCALE);
         
-        // Calculate penalty (based on liquidated size)
-        penalty = (liquidatedSize * liquidatorConfig.penaltyRatio) / HEALTH_FACTOR_SCALE;
-        
-        // Calculate reward
+        // Calculate reward and penalty
         reward = estimateReward(positionId, liquidatedSize, currentPrice);
+        // Penalty should be what we expect to receive from PerpEngine (liquidationReward * 2)
+        // or just match what PerpEngine calculates.
+        uint256 liquidatedNotional = liquidatedSize.mulDiv(currentPrice * 10**10, HEALTH_FACTOR_SCALE);
+        penalty = liquidatedNotional.mulDiv(liquidatorConfig.penaltyRatio, HEALTH_FACTOR_SCALE);
         
         // Estimate new health factor after partial liquidation
         if (liquidatedSize < position.size) {
@@ -429,8 +495,8 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
      * @dev Get validated price from oracle with safety checks
      */
     function _getValidatedPrice(uint256 marketId) internal view returns (uint256) {
-        // Convert marketId to feedId (implementation specific)
-        bytes32 feedId = bytes32(marketId);
+        // Get feedId from PerpEngine
+        bytes32 feedId = perpEngine.getMarketOracleFeed(marketId);
         
         // Get price with validation
         uint256 price = oracleAggregator.getPrice(feedId);
@@ -449,8 +515,9 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
      */
     function _estimateLiquidationReward(uint256 positionId, uint256 healthFactor) internal view returns (uint256) {
         // Get current price for estimation
-        uint256 marketId = perpEngine.getPosition(positionId).marketId;
-        uint256 currentPrice = oracleAggregator.getPrice(bytes32(marketId));
+        uint256 marketId = perpEngine.getPositionInternal(positionId).marketId;
+        bytes32 feedId = perpEngine.getMarketOracleFeed(marketId);
+        uint256 currentPrice = oracleAggregator.getPrice(feedId);
         
         (, uint256 estimatedPenalty, ) = _calculateLiquidation(positionId, currentPrice, healthFactor);
         

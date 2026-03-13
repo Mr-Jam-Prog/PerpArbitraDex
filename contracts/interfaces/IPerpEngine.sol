@@ -190,6 +190,13 @@ interface IPerpEngine is IPositionViewer {
 
     function getTotalOpenInterest(uint256 marketId) external view returns (uint256);
 
+    /**
+     * @notice Get oracle feed ID for a market
+     * @param marketId Market ID
+     * @return oracleFeedId Oracle feed ID
+     */
+    function getMarketOracleFeed(uint256 marketId) external view returns (bytes32 oracleFeedId);
+
     // ============ VIEW FUNCTIONS (from IPositionViewer) ============
     
     /**
@@ -246,6 +253,22 @@ interface IPerpEngine is IPositionViewer {
         external
         view
         returns (uint256 reward, uint256 penalty, uint256 newHealthFactor);
+
+    /**
+     * @notice Get current status of a position
+     * @param positionId Position ID
+     * @return isActive True if position is active
+     * @return isLiquidatable True if position is liquidatable
+     * @return healthFactor Current health factor
+     */
+    function getPositionStatus(uint256 positionId)
+        external
+        view
+        returns (
+            bool isActive,
+            bool isLiquidatable,
+            uint256 healthFactor
+        );
 
     // ============ ADMIN FUNCTIONS ============
 

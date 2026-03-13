@@ -170,6 +170,11 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     }
 
     /**
+     * @dev Required for impersonation and ETH transfers during testing
+     */
+    receive() external payable {}
+
+    /**
      * @notice Update governance address
      * @param newGovernance New governance address
      */
@@ -648,8 +653,8 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             penalty = remainingAfterPnl;
         }
         
-        // Calculate liquidation reward
-        liquidationReward = penalty / 2; // 50% to liquidator, 50% to insurance fund
+        // Calculate liquidation reward (full penalty goes to LiquidationEngine for distribution)
+        liquidationReward = penalty;
         
         // Update global metrics
         totalPositionValue -= liquidatedSize;
@@ -685,10 +690,8 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         
         // Distribute liquidation rewards
         if (liquidationReward > 0) {
-            // Transfer to liquidator
+            // Transfer total penalty to LiquidationEngine
             quoteToken.safeTransfer(msg.sender, liquidationReward);
-            // Transfer to insurance fund
-            quoteToken.safeTransfer(insuranceFund, liquidationReward);
         }
         
         emit PositionLiquidated(
@@ -1325,6 +1328,13 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     }
 
     /**
+     * @inheritdoc IPerpEngine
+     */
+    function getMarketOracleFeed(uint256 marketId) external view override returns (bytes32) {
+        return _markets[marketId].oracleFeedId;
+    }
+
+    /**
      * @notice Get funding state for market
      */
     function getFundingState(uint256 marketId) external view returns (FundingState memory) {
@@ -1444,5 +1454,33 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             liquidatable[i] = isPositionLiquidatable(positionIds[i], currentPrices[i]);
         }
         return liquidatable;
+    }
+
+    /**
+     * @inheritdoc IPositionViewer
+     */
+    function getPositionStatus(uint256 positionId)
+        external
+        view
+        override
+        returns (
+            bool isActive,
+            bool isLiquidatable,
+            uint256 healthFactor
+        )
+    {
+        IPerpEngine.Position storage position = _positions[positionId];
+        isActive = position.isActive;
+        if (!isActive) {
+            return (false, false, 0);
+        }
+
+        (uint256 currentPrice, bool priceValid) = _getMarketPrice(position.marketId);
+        if (!priceValid) {
+            return (true, false, 0); // Price invalid, can't liquidate
+        }
+
+        healthFactor = getHealthFactor(positionId);
+        isLiquidatable = healthFactor < LIQUIDATION_THRESHOLD;
     }
 }
