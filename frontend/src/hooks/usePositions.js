@@ -137,25 +137,25 @@ export const usePositions = () => {
       const balance = await contracts.positionManager.balanceOf(ownerAddress);
       
       // Fetch each position
-      for (let i = 0; i < balance.toNumber(); i++) {
+      for (let i = 0; i < Number(balance); i++) {
         try {
           const tokenId = await contracts.positionManager.tokenOfOwnerByIndex(ownerAddress, i);
           const positionData = await contracts.perpEngine.getPosition(tokenId);
           
           // Skip if size is 0 (closed position)
-          if (positionData.size.eq(0)) continue;
+          if (positionData.size == (0)) continue;
           
           // Get position details
           const positionDetails = {
             id: tokenId.toString(),
             owner: ownerAddress,
-            size: parseFloat(ethers.utils.formatUnits(positionData.size, 18)),
-            collateral: parseFloat(ethers.utils.formatUnits(positionData.collateral, 6)),
-            entryPrice: parseFloat(ethers.utils.formatUnits(positionData.entryPrice, 8)),
+            size: parseFloat(ethers.formatUnits(positionData.size, 18)),
+            collateral: parseFloat(ethers.formatUnits(positionData.collateral, 6)),
+            entryPrice: parseFloat(ethers.formatUnits(positionData.entryPrice, 8)),
             isLong: positionData.isLong,
-            healthFactor: parseFloat(ethers.utils.formatUnits(positionData.healthFactor, 18)),
-            createdAt: positionData.createdAt.toNumber(),
-            lastFundingTime: positionData.lastFundingTime.toNumber(),
+            healthFactor: parseFloat(ethers.formatUnits(positionData.healthFactor, 18)),
+            createdAt: Number(positionData.createdAt),
+            lastFundingTime: Number(positionData.lastFundingTime),
             isLiquidated: positionData.isLiquidated
           };
           
@@ -195,7 +195,7 @@ export const usePositions = () => {
       try {
         // Get current price
         const priceData = await contracts.oracleAggregator.getPrice(position.market.id);
-        const currentPrice = parseFloat(ethers.utils.formatUnits(priceData, 8));
+        const currentPrice = parseFloat(ethers.formatUnits(priceData, 8));
         
         // Calculate PnL
         const pnl = calculatePnL(
@@ -257,8 +257,8 @@ export const usePositions = () => {
     }
     
     try {
-      const collateralInWei = ethers.utils.parseUnits(collateral.toString(), 6);
-      const sizeInWei = ethers.utils.parseUnits(size.toString(), 18);
+      const collateralInWei = ethers.parseUnits(collateral.toString(), 6);
+      const sizeInWei = ethers.parseUnits(size.toString(), 18);
       
       const tx = await contracts.perpEngine.openPosition(
         marketId,
@@ -321,7 +321,7 @@ export const usePositions = () => {
     }
     
     try {
-      const amountInWei = ethers.utils.parseUnits(amount.toString(), 6);
+      const amountInWei = ethers.parseUnits(amount.toString(), 6);
       
       const tx = await contracts.perpEngine.addCollateral(
         positionId,

@@ -4,7 +4,7 @@
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits } = ethers.utils;
+const { parseUnits } = ethers;
 const { mine } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("🔥 Massif Stress Testing", function () {
@@ -38,12 +38,12 @@ describe("🔥 Massif Stress Testing", function () {
       const collateral = parseUnits("100", 6); // $100 par position
       const positionSize = parseUnits("500", 6); // $500 (5x)
       
-      await usdc.approve(perpEngine.address, collateral.mul(NUM_POSITIONS));
+      await usdc.approve(perpEngine.address, collateral * (NUM_POSITIONS));
       
       console.log(`🎯 Création de ${NUM_POSITIONS} positions...`);
       
       const startTime = Date.now();
-      let totalGas = ethers.BigNumber.from(0);
+      let totalGas = BigInt(0);
       
       // Création par batches pour éviter les limites de gas
       for (let batch = 0; batch < NUM_POSITIONS / BATCH_SIZE; batch++) {
@@ -65,7 +65,7 @@ describe("🔥 Massif Stress Testing", function () {
         // Calcul du gas utilisé
         for (const tx of batchResults) {
           const receipt = await tx.wait();
-          totalGas = totalGas.add(receipt.gasUsed);
+          totalGas = totalGas + (receipt.gasUsed);
         }
         
         console.log(`✅ Batch ${batch + 1} terminé (${(batch + 1) * BATCH_SIZE} positions)`);
@@ -82,7 +82,7 @@ describe("🔥 Massif Stress Testing", function () {
       console.log(`   Temps total: ${duration}s`);
       console.log(`   Positions/s: ${(NUM_POSITIONS / duration).toFixed(2)}`);
       console.log(`   Gas total: ${totalGas.toString()}`);
-      console.log(`   Gas moyen par position: ${totalGas.div(NUM_POSITIONS).toString()}`);
+      console.log(`   Gas moyen par position: ${totalGas / (NUM_POSITIONS).toString()}`);
       
       // Vérification
       const totalPositions = await positionManager.totalSupply();
@@ -95,7 +95,7 @@ describe("🔥 Massif Stress Testing", function () {
       
       for (let page = 0; page < totalPages; page++) {
         const positions = await positionManager.getPositionsPaginated(page * pageSize, pageSize);
-        expect(positions.length).to.be.lte(pageSize);
+        expect(positions.length).to.be <= (pageSize);
       }
     });
   });
@@ -124,7 +124,7 @@ describe("🔥 Massif Stress Testing", function () {
       console.log(`✅ Liquidations réussies: ${successful}`);
       console.log(`❌ Liquidations échouées: ${failed}`);
       
-      expect(successful).to.be.gt(0);
+      expect(successful).to.be > (0);
     });
     
     it("Devrait optimiser le gas pour les liquidations batch", async function () {
@@ -134,11 +134,11 @@ describe("🔥 Massif Stress Testing", function () {
       const tx = await perpEngine.batchLiquidatePositions(liquidatablePositions);
       const receipt = await tx.wait();
       
-      const gasPerPosition = receipt.gasUsed.div(liquidatablePositions.length);
+      const gasPerPosition = receipt.gasUsed / (liquidatablePositions.length);
       console.log(`Gas par liquidation (batch): ${gasPerPosition.toString()}`);
       
       // Devrait être plus efficace que les liquidations individuelles
-      expect(gasPerPosition).to.be.lt(250000); // Max 250k gas par liquidation
+      expect(gasPerPosition).to.be < (250000); // Max 250k gas par liquidation
     });
   });
   
@@ -161,7 +161,7 @@ describe("🔥 Massif Stress Testing", function () {
       const tps = iterations / ((endTime - startTime) / 1000);
       
       console.log(`📈 Throughput: ${tps.toFixed(2)} ops/s`);
-      expect(tps).to.be.gt(10); // Minimum 10 ops/s
+      expect(tps).to.be > (10); // Minimum 10 ops/s
     });
     
     it("Devrait mesurer l'utilisation mémoire", async function () {
@@ -188,7 +188,7 @@ describe("🔥 Massif Stress Testing", function () {
       
       // Pas de fuite mémoire excessive
       const memoryIncrease = memAfter.heapUsed - memBefore.heapUsed;
-      expect(memoryIncrease).to.be.lt(500 * 1024 * 1024); // < 500MB
+      expect(memoryIncrease).to.be < (500 * 1024 * 1024); // < 500MB
     });
   });
   
@@ -208,7 +208,7 @@ describe("🔥 Massif Stress Testing", function () {
         console.log(`${op.name}: ${receipt.gasUsed.toString()} gas`);
         
         // Limites pour L2 (Arbitrum)
-        expect(receipt.gasUsed).to.be.lt(2000000); // Max 2M gas
+        expect(receipt.gasUsed).to.be < (2000000); // Max 2M gas
       }
     });
     
@@ -217,7 +217,7 @@ describe("🔥 Massif Stress Testing", function () {
       const positionStructSize = await perpEngine.getPositionStructSize();
       console.log(`📦 Taille structure position: ${positionStructSize} bytes`);
       
-      expect(positionStructSize).to.be.lt(256); // Doit tenir dans un slot
+      expect(positionStructSize).to.be < (256); // Doit tenir dans un slot
     });
   });
   

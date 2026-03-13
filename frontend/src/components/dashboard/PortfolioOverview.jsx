@@ -23,16 +23,16 @@ export const PortfolioOverview = () => {
 
   const calculatePortfolioMetrics = async () => {
     try {
-      let totalCollateral = ethers.BigNumber.from(0);
-      let totalPositionValue = ethers.BigNumber.from(0);
-      let totalPnL = ethers.BigNumber.from(0);
-      let minHealthFactor = ethers.BigNumber.from(ethers.constants.MaxUint256);
+      let totalCollateral = BigInt(0);
+      let totalPositionValue = BigInt(0);
+      let totalPnL = BigInt(0);
+      let minHealthFactor = BigInt(ethers.MaxUint256);
       let positionsAtRisk = 0;
 
       for (const position of positions) {
-        totalCollateral = totalCollateral.add(position.collateral);
-        totalPositionValue = totalPositionValue.add(position.positionValue);
-        totalPnL = totalPnL.add(position.unrealizedPnL);
+        totalCollateral = totalCollateral + (position.collateral);
+        totalPositionValue = totalPositionValue + (position.positionValue);
+        totalPnL = totalPnL + (position.unrealizedPnL);
 
         const hf = calculateHealthFactor(
           position.collateral,
@@ -41,27 +41,27 @@ export const PortfolioOverview = () => {
           position.isLong
         );
 
-        if (hf.lt(minHealthFactor)) {
+        if (hf < (minHealthFactor)) {
           minHealthFactor = hf;
         }
 
-        if (hf.lt(ethers.utils.parseUnits('1.5', 18))) {
+        if (hf < (ethers.parseUnits('1.5', 18))) {
           positionsAtRisk++;
         }
       }
 
       // Calcul du levier moyen
-      const avgLeverage = totalPositionValue.gt(0)
-        ? totalPositionValue.mul(ethers.utils.parseUnits('1', 18)).div(totalCollateral)
-        : ethers.BigNumber.from(0);
+      const avgLeverage = totalPositionValue > (0)
+        ? totalPositionValue * (ethers.parseUnits('1', 18)) / (totalCollateral)
+        : BigInt(0);
 
       // Détermination du niveau de risque
       let newRiskLevel = 'safe';
-      if (minHealthFactor.lt(ethers.utils.parseUnits('1.1', 18))) {
+      if (minHealthFactor < (ethers.parseUnits('1.1', 18))) {
         newRiskLevel = 'critical';
-      } else if (minHealthFactor.lt(ethers.utils.parseUnits('1.5', 18))) {
+      } else if (minHealthFactor < (ethers.parseUnits('1.5', 18))) {
         newRiskLevel = 'warning';
-      } else if (minHealthFactor.lt(ethers.utils.parseUnits('2', 18))) {
+      } else if (minHealthFactor < (ethers.parseUnits('2', 18))) {
         newRiskLevel = 'moderate';
       }
 
@@ -141,7 +141,7 @@ export const PortfolioOverview = () => {
           <div className="stat-card">
             <div className="stat-label">PnL Non-Réalisé</div>
             <div className={`stat-value ${
-              portfolioMetrics?.totalPnL.gte(0) ? 'positive' : 'negative'
+              portfolioMetrics?.totalPnL >= (0) ? 'positive' : 'negative'
             }`}>
               {portfolioMetrics ? formatCurrency(portfolioMetrics.totalPnL, true) : '--'}
             </div>
@@ -198,7 +198,7 @@ export const PortfolioOverview = () => {
       )}
 
       {/* Avertissement si levier élevé */}
-      {portfolioMetrics?.avgLeverage.gt(ethers.utils.parseUnits('5', 18)) && (
+      {portfolioMetrics?.avgLeverage > (ethers.parseUnits('5', 18)) && (
         <div className="leverage-warning">
           <div className="warning-icon">⚡</div>
           <div className="warning-content">

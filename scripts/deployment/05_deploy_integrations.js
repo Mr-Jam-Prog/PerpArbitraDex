@@ -25,7 +25,7 @@ module.exports = async () => {
       kind: 'uups',
       initializer: 'initialize'
     });
-    await aaveIntegrator.deployed();
+    await aaveIntegrator.waitForDeployment();
     console.log(`✅ AaveFlashLoanIntegrator: ${aaveIntegrator.address}`);
     deployments.AaveFlashLoanIntegrator = aaveIntegrator.address;
   }
@@ -40,7 +40,7 @@ module.exports = async () => {
       kind: 'uups',
       initializer: 'initialize'
     });
-    await lidoIntegrator.deployed();
+    await lidoIntegrator.waitForDeployment();
     console.log(`✅ LidoStETHIntegrator: ${lidoIntegrator.address}`);
     deployments.LidoStETHIntegrator = lidoIntegrator.address;
   }
@@ -55,7 +55,7 @@ module.exports = async () => {
       kind: 'uups',
       initializer: 'initialize'
     });
-    await crossChainMessenger.deployed();
+    await crossChainMessenger.waitForDeployment();
     console.log(`✅ CrossChainMessenger: ${crossChainMessenger.address}`);
     deployments.CrossChainMessenger = crossChainMessenger.address;
   }
@@ -70,7 +70,7 @@ module.exports = async () => {
       kind: 'uups',
       initializer: 'initialize'
     });
-    await aaAdapter.deployed();
+    await aaAdapter.waitForDeployment();
     console.log(`✅ AccountAbstractionAdapter: ${aaAdapter.address}`);
     deployments.AccountAbstractionAdapter = aaAdapter.address;
   }

@@ -279,7 +279,7 @@ function getContractAddress(contractName, chainId) {
   
   const address = addresses[contractName];
   
-  if (!address || address === ethers.constants.AddressZero) {
+  if (!address || address === ethers.ZeroAddress) {
     throw new ContractError(
       `Contract ${contractName} not found on chainId: ${chainId}`,
       'CONTRACT_NOT_FOUND'
@@ -391,7 +391,7 @@ export function getReadOnlyContract(contractName, chainId) {
       );
     }
     
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl, chainId);
+    const provider = new ethers.JsonRpcProvider(rpcUrl, chainId);
     
     return getContract(contractName, provider, chainId);
     
@@ -405,7 +405,7 @@ export function getReadOnlyContract(contractName, chainId) {
 /**
  * Create fallback provider for read-only operations
  * @param {number} chainId - Ethereum chain ID
- * @returns {ethers.providers.FallbackProvider} Fallback provider
+ * @returns {ethers.FallbackProvider} Fallback provider
  */
 function createFallbackProvider(chainId) {
   const network = getNetworkConfig(chainId);
@@ -437,7 +437,7 @@ function createFallbackProvider(chainId) {
   
   const providers = endpoints.map(url => {
     try {
-      return new ethers.providers.JsonRpcProvider(
+      return new ethers.JsonRpcProvider(
         url.replace('${INFURA_KEY}', process.env.NEXT_PUBLIC_INFURA_KEY || ''),
         chainId
       );
@@ -454,7 +454,7 @@ function createFallbackProvider(chainId) {
     );
   }
   
-  return new ethers.providers.FallbackProvider(providers);
+  return new ethers.FallbackProvider(providers);
 }
 
 /**
@@ -510,7 +510,7 @@ export async function batchContractCalls(calls, provider, chainId) {
   const multicallCalls = await Promise.all(
     calls.map(async (call) => {
       const contract = getContract(call.contract, provider, chainId);
-      const iface = new ethers.utils.Interface(CONTRACT_REGISTRY[call.contract].abi);
+      const iface = new ethers.Interface(CONTRACT_REGISTRY[call.contract].abi);
       const callData = iface.encodeFunctionData(call.method, call.args);
       
       return {
@@ -528,7 +528,7 @@ export async function batchContractCalls(calls, provider, chainId) {
       
       try {
         const call = calls[index];
-        const iface = new ethers.utils.Interface(CONTRACT_REGISTRY[call.contract].abi);
+        const iface = new ethers.Interface(CONTRACT_REGISTRY[call.contract].abi);
         return iface.decodeFunctionResult(call.method, data);
       } catch (error) {
         console.warn(`Failed to decode result for call ${index}:`, error.message);

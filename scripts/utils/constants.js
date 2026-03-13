@@ -15,21 +15,21 @@ module.exports = {
     
     // Protocol Parameters (initial)
     PROTOCOL_PARAMS: {
-      initialMarginRatio: ethers.utils.parseUnits("0.1", 18), // 10%
-      maintenanceMarginRatio: ethers.utils.parseUnits("0.08", 18), // 8%
-      liquidationFee: ethers.utils.parseUnits("0.02", 18), // 2%
-      protocolFee: ethers.utils.parseUnits("0.001", 18), // 0.1%
-      maxLeverage: ethers.utils.parseUnits("10", 18), // 10x
+      initialMarginRatio: ethers.parseUnits("0.1", 18), // 10%
+      maintenanceMarginRatio: ethers.parseUnits("0.08", 18), // 8%
+      liquidationFee: ethers.parseUnits("0.02", 18), // 2%
+      protocolFee: ethers.parseUnits("0.001", 18), // 0.1%
+      maxLeverage: ethers.parseUnits("10", 18), // 10x
       fundingRateInterval: 3600, // 1 hour
-      liquidationBuffer: ethers.utils.parseUnits("0.05", 18), // 5%
-      maxLiquidationSize: ethers.utils.parseUnits("1000000", 18), // 1M
+      liquidationBuffer: ethers.parseUnits("0.05", 18), // 5%
+      maxLiquidationSize: ethers.parseUnits("1000000", 18), // 1M
       liquidationDelay: 300 // 5 minutes
     },
     
     // Oracle Configuration
     ORACLE_CONFIG: {
-      MIN_PRICE_BOUND: ethers.utils.parseUnits("0.000001", 18), // $0.000001
-      MAX_PRICE_BOUND: ethers.utils.parseUnits("1000000", 18), // $1,000,000
+      MIN_PRICE_BOUND: ethers.parseUnits("0.000001", 18), // $0.000001
+      MAX_PRICE_BOUND: ethers.parseUnits("1000000", 18), // $1,000,000
       MAX_DEVIATION_BPS: 200, // 2%
       
       // Chainlink
@@ -58,11 +58,11 @@ module.exports = {
     TOKENOMICS: {
       NAME: "PerpArbitraDEX Token",
       SYMBOL: "PERP",
-      INITIAL_SUPPLY: ethers.utils.parseUnits("1000000000", 18), // 1B
+      INITIAL_SUPPLY: ethers.parseUnits("1000000000", 18), // 1B
       TIMELOCK_DELAY: 172800, // 2 days
       VOTING_DELAY: 7200, // 1 day in blocks
       VOTING_PERIOD: 50400, // 1 week in blocks
-      PROPOSAL_THRESHOLD: ethers.utils.parseUnits("100000", 18), // 100K tokens
+      PROPOSAL_THRESHOLD: ethers.parseUnits("100000", 18), // 100K tokens
       QUORUM_PERCENTAGE: 4, // 4%
       VE_MAX_TIME: 4 * 365 * 24 * 3600 // 4 years
     },
@@ -74,9 +74,9 @@ module.exports = {
         name: "Ethereum / USD",
         baseToken: "0x0000000000000000000000000000000000000000", // ETH
         quoteToken: "0x0000000000000000000000000000000000000000", // USD
-        maxPositionSize: ethers.utils.parseUnits("10000", 18),
-        minPositionSize: ethers.utils.parseUnits("10", 18),
-        tickSize: ethers.utils.parseUnits("0.01", 18),
+        maxPositionSize: ethers.parseUnits("10000", 18),
+        minPositionSize: ethers.parseUnits("10", 18),
+        tickSize: ethers.parseUnits("0.01", 18),
         oracleSources: ["chainlink", "pyth", "twap"]
       },
       {
@@ -84,9 +84,9 @@ module.exports = {
         name: "Bitcoin / USD",
         baseToken: "0x0000000000000000000000000000000000000000", // BTC
         quoteToken: "0x0000000000000000000000000000000000000000", // USD
-        maxPositionSize: ethers.utils.parseUnits("500", 18),
-        minPositionSize: ethers.utils.parseUnits("0.001", 18),
-        tickSize: ethers.utils.parseUnits("0.1", 18),
+        maxPositionSize: ethers.parseUnits("500", 18),
+        minPositionSize: ethers.parseUnits("0.001", 18),
+        tickSize: ethers.parseUnits("0.1", 18),
         oracleSources: ["chainlink", "pyth"]
       }
     ],
@@ -115,8 +115,8 @@ module.exports = {
     
     // Gas Configuration
     GAS_CONFIG: {
-      MAX_FEE_PER_GAS: ethers.utils.parseUnits("0.1", "gwei"),
-      MAX_PRIORITY_FEE_PER_GAS: ethers.utils.parseUnits("0.01", "gwei"),
+      MAX_FEE_PER_GAS: ethers.parseUnits("0.1", "gwei"),
+      MAX_PRIORITY_FEE_PER_GAS: ethers.parseUnits("0.01", "gwei"),
       GAS_LIMIT_MULTIPLIER: 1.2
     }
   };

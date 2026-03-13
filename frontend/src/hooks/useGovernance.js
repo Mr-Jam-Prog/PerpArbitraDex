@@ -91,7 +91,7 @@ export function useGovernance() {
       const proposalCount = await contracts.governor.proposalCount();
       const proposals = [];
 
-      for (let i = 0; i < Math.min(proposalCount.toNumber(), 100); i++) {
+      for (let i = 0; i < Math.min(Number(proposalCount), 100); i++) {
         const proposalId = await contracts.governor.proposalIds(i);
         const proposal = await contracts.governor.proposals(proposalId);
         const state = await contracts.governor.state(proposalId);
@@ -100,13 +100,13 @@ export function useGovernance() {
           id: proposalId.toString(),
           proposer: proposal.proposer,
           description: proposal.description,
-          startBlock: proposal.startBlock.toNumber(),
-          endBlock: proposal.endBlock.toNumber(),
+          startBlock: Number(proposal.startBlock),
+          endBlock: Number(proposal.endBlock),
           forVotes: formatUnits(proposal.forVotes, 18),
           againstVotes: formatUnits(proposal.againstVotes, 18),
           abstainVotes: formatUnits(proposal.abstainVotes, 18),
           state: PROPOSAL_STATES[state],
-          eta: proposal.eta.toNumber(),
+          eta: Number(proposal.eta),
           targets: [],
           values: [],
           signatures: [],
@@ -137,7 +137,7 @@ export function useGovernance() {
       const veTotalSupply = await contracts.votingEscrow.totalSupply();
       
       // Total voting power = token votes + veToken balance
-      const total = tokenVotes.add(veBalance);
+      const total = tokenVotes + (veBalance);
       
       return {
         token: formatUnits(tokenVotes, 18),
@@ -207,7 +207,7 @@ export function useGovernance() {
         proposal.targets,
         proposal.values,
         proposal.calldatas,
-        ethers.utils.keccak256(ethers.utils.toUtf8Bytes(proposal.description))
+        ethers.keccak256(ethers.toUtf8Bytes(proposal.description))
       );
 
       const receipt = await tx.wait();
@@ -235,7 +235,7 @@ export function useGovernance() {
         proposal.targets,
         proposal.values,
         proposal.calldatas,
-        ethers.utils.keccak256(ethers.utils.toUtf8Bytes(proposal.description))
+        ethers.keccak256(ethers.toUtf8Bytes(proposal.description))
       );
 
       const receipt = await tx.wait();

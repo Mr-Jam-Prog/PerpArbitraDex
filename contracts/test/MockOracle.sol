@@ -99,6 +99,33 @@ contract MockOracle {
         return block.timestamp - _timestamp > 1 hours;
     }
 
+    enum PriceStatus {
+        ACTIVE,
+        DISPUTED,
+        FROZEN,
+        INACTIVE
+    }
+
+    struct PriceData {
+        uint256 price;
+        uint256 timestamp;
+        uint256 confidence;
+        PriceStatus status;
+        uint256 minPrice;
+        uint256 maxPrice;
+    }
+
+    function getPriceData(bytes32 /*feedId*/) external view checkRevert returns (PriceData memory) {
+        return PriceData({
+            price: _price,
+            timestamp: _timestamp,
+            confidence: _confidence,
+            status: _valid ? PriceStatus.ACTIVE : PriceStatus.INACTIVE,
+            minPrice: _price * 99 / 100,
+            maxPrice: _price * 101 / 100
+        });
+    }
+
     function getPriceData() external view checkRevert returns (bool valid, uint256 price, uint256 timestamp, uint256 confidence) {
         return (_valid, _price, _timestamp, _confidence);
     }

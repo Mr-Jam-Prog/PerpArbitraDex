@@ -4,7 +4,7 @@
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits } = ethers.utils;
+const { parseUnits } = ethers;
 
 describe("🦹 Economic Attack Simulations", function () {
   let deployer, attacker, victim;
@@ -43,7 +43,7 @@ describe("🦹 Economic Attack Simulations", function () {
       
       // Vérification: L'attaquant ne devrait pas faire de profit excessif
       const attackerProfit = await calculateAttackerProfit(attacker.address);
-      expect(attackerProfit).to.be.lt(parseUnits("10000", 6)); // < $10k profit
+      expect(attackerProfit).to.be < (parseUnits("10000", 6)); // < $10k profit
     });
     
     it("Devrait détecter les écarts de prix anormaux", async function () {
@@ -51,7 +51,7 @@ describe("🦹 Economic Attack Simulations", function () {
       const normalPrice = await oracleAggregator.getPrice("ETH-USD");
       
       // Prix manipulé (50% d'écart)
-      const manipulatedPrice = normalPrice.mul(150).div(100);
+      const manipulatedPrice = normalPrice * (150) / (100);
       
       // Le système devrait rejeter ce prix
       await expect(
@@ -69,10 +69,10 @@ describe("🦹 Economic Attack Simulations", function () {
       const protocolPrice = await perpEngine.getMarketPrice("ETH-USD");
       const dexPrice = await getDexPrice("ETH-USD"); // Prix sur Uniswap
       
-      const priceDifference = protocolPrice.sub(dexPrice).abs();
-      const threshold = protocolPrice.mul(1).div(100); // 1%
+      const priceDifference = protocolPrice - (dexPrice).abs();
+      const threshold = protocolPrice * (1) / (100); // 1%
       
-      if (priceDifference.gt(threshold)) {
+      if (priceDifference > (threshold)) {
         // 2. Prend un flash loan
         const loanAmount = parseUnits("1000000", 6);
         
@@ -86,13 +86,13 @@ describe("🦹 Economic Attack Simulations", function () {
         
         // 4. Le profit devrait être limité par les frais
         const profit = await calculateArbitrageProfit(tx);
-        expect(profit).to.be.lt(loanAmount.mul(5).div(1000)); // < 0.5% du loan
+        expect(profit).to.be < (loanAmount * (5) / (1000)); // < 0.5% du loan
       }
     });
     
     it("Devrait limiter la taille des flash loans", async function () {
       const maxFlashLoan = await perpEngine.getMaxFlashLoan(usdc.address);
-      const excessiveLoan = maxFlashLoan.add(1);
+      const excessiveLoan = maxFlashLoan + (1);
       
       await expect(
         perpEngine.executeFlashLoan(usdc.address, excessiveLoan, "0x")
@@ -127,10 +127,10 @@ describe("🦹 Economic Attack Simulations", function () {
           const receipt = await tx.wait();
           
           // Vérification que la liquidation est rentable
-          const gasCost = receipt.gasUsed.mul(receipt.effectiveGasPrice);
+          const gasCost = receipt.gasUsed * (receipt.effectiveGasPrice);
           const reward = await calculateLiquidationReward(i);
           
-          expect(reward).to.be.gt(gasCost);
+          expect(reward).to.be > (gasCost);
         }
       }
     });
@@ -188,7 +188,7 @@ describe("🦹 Economic Attack Simulations", function () {
       
       // Les retraits devraient être limités
       const maxWithdrawal = await perpEngine.getMaxWithdrawal(deployer.address);
-      expect(maxWithdrawal).to.be.lt(parseUnits("10000", 6));
+      expect(maxWithdrawal).to.be < (parseUnits("10000", 6));
     });
   });
   
@@ -217,7 +217,7 @@ describe("🦹 Economic Attack Simulations", function () {
         perpEngine.openPosition(
           "ETH-USD",
           parseUnits("1000000", 6),
-          maxPositionSize.add(1),
+          maxPositionSize + (1),
           true
         )
       ).to.be.revertedWith("Position size exceeds limit");

@@ -97,7 +97,7 @@ export function useLiquidity(marketId = 'ETH-USD') {
     try {
       // Get market skew (long - short)
       const marketData = await contracts.perpEngine.getMarketData(marketId);
-      const skew = marketData.longSize.sub(marketData.shortSize);
+      const skew = (marketData.longSize - marketData.shortSize);
       
       // Get current funding rate
       const fundingRate = await contracts.perpEngine.getFundingRate(marketId);
@@ -108,8 +108,8 @@ export function useLiquidity(marketId = 'ETH-USD') {
       return {
         skew: formatUnits(skew, 18),
         skewRaw: skew,
-        totalSize: formatUnits(marketData.longSize.add(marketData.shortSize), 18),
-        totalSizeRaw: marketData.longSize.add(marketData.shortSize),
+        totalSize: formatUnits((marketData.longSize + marketData.shortSize), 18),
+        totalSizeRaw: (marketData.longSize + marketData.shortSize),
         fundingRate: formatUnits(fundingRate, 18),
         fundingRateRaw: fundingRate,
         cumulativeFunding: formatUnits(cumulativeFunding, 18),

@@ -188,10 +188,10 @@ class MarketService {
         maxPositionSize: formatUnits(marketConfig.maxPositionSize, 18),
         minPositionSize: formatUnits(marketConfig.minPositionSize, 18),
         maxLeverage: formatUnits(globalParams.maxLeverage, 18),
-        openInterest: formatUnits(marketData.longSize.add(marketData.shortSize), 18),
+        openInterest: formatUnits((marketData.longSize + marketData.shortSize), 18),
         longOpenInterest: formatUnits(marketData.longSize, 18),
         shortOpenInterest: formatUnits(marketData.shortSize, 18),
-        skew: formatUnits(marketData.longSize.sub(marketData.shortSize), 18)
+        skew: formatUnits((marketData.longSize - marketData.shortSize), 18)
       };
     } catch (error) {
       console.error(`Failed to get market limits for ${marketId}:`, error);
@@ -214,15 +214,15 @@ class MarketService {
       ]);
       
       const currentTime = Math.floor(Date.now() / 1000);
-      const isStale = (currentTime - priceData.timestamp.toNumber()) > 3600;
+      const isStale = (currentTime - Number(priceData.timestamp)) > 3600;
       
       return {
         price: formatUnits(priceData.price, 8),
-        timestamp: priceData.timestamp.toNumber(),
+        timestamp: Number(priceData.timestamp),
         isStale,
-        sourceCount: priceData.sourceCount.toNumber(),
+        sourceCount: Number(priceData.sourceCount),
         sources: sources,
-        lastUpdate: new Date(priceData.timestamp.toNumber() * 1000).toISOString()
+        lastUpdate: new Date(Number(priceData.timestamp) * 1000).toISOString()
       };
     } catch (error) {
       console.error(`Failed to get oracle status for ${marketId}:`, error);
@@ -320,7 +320,7 @@ class MarketService {
       const marketCount = await marketRegistry.getMarketCount();
       
       const markets = [];
-      for (let i = 0; i < marketCount.toNumber(); i++) {
+      for (let i = 0; i < Number(marketCount); i++) {
         const marketId = await marketRegistry.getMarketIdByIndex(i);
         const market = await this._getMarketFromContract(marketId);
         if (market) markets.push(market);

@@ -50,6 +50,13 @@ interface IAMMPool {
 
     event MarketDeactivated(uint256 indexed marketId);
 
+    struct MarketConfig {
+        uint256 skewScale;
+        uint256 maxFundingRate;
+        uint256 fundingInterval;
+        bool isActive;
+    }
+
     // ============ STATE-CHANGING FUNCTIONS ============
 
     /**
@@ -152,6 +159,8 @@ interface IAMMPool {
         external
         view
         returns (int256 avgFundingRate);
+
+    function getMarketConfig(uint256 marketId) external view returns (MarketConfig memory);
 
     // ============ ADMIN FUNCTIONS ============
 

@@ -308,11 +308,11 @@ class ContractVerifier {
         contractPath: 'contracts/liquidation/IncentiveDistributor.sol:IncentiveDistributor'
       },
       'PerpDexToken': {
-        constructorArgs: ["PerpArbitraDEX Token", "PERP", ethers.utils.parseUnits("1000000000", 18)],
+        constructorArgs: ["PerpArbitraDEX Token", "PERP", ethers.parseUnits("1000000000", 18)],
         contractPath: 'contracts/governance/PerpDexToken.sol:PerpDexToken'
       },
       'TimelockController': {
-        constructorArgs: [172800, [], [], ethers.constants.AddressZero],
+        constructorArgs: [172800, [], [], ethers.ZeroAddress],
         contractPath: '@openzeppelin/contracts/governance/TimelockController.sol:TimelockController'
       },
       'Governor': {

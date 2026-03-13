@@ -94,6 +94,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         bytes32 oracleFeedId;
         uint256 lastPriceUpdate;
         uint256 lastFundingUpdate;
+        uint256 maxMarketSkew; // Maximum allowed net skew for this market
     }
     
     struct FundingState {
@@ -169,6 +170,11 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     }
 
     /**
+     * @dev Required for impersonation and ETH transfers during testing
+     */
+    receive() external payable {}
+
+    /**
      * @notice Update governance address
      * @param newGovernance New governance address
      */
@@ -222,13 +228,19 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         // Accrue funding before opening
         _accrueFunding(params.marketId);
         
-        // Update AMM pool skew
+        // Update AMM pool skew and validate against limit
         IAMMPool(ammPool).updateSkew(
             params.marketId,
             params.isLong,
             int256(params.size)
         );
         
+        if (_markets[params.marketId].maxMarketSkew > 0) {
+            (,, int256 netSkew) = IAMMPool(ammPool).getMarketSkew(params.marketId);
+            uint256 absSkew = netSkew >= 0 ? uint256(netSkew) : uint256(-netSkew);
+            require(absSkew <= _markets[params.marketId].maxMarketSkew, "PerpEngine: max market skew reached");
+        }
+
         // Create position
         positionId = _nextPositionId++;
         
@@ -318,13 +330,19 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         // Transfer additional margin
         quoteToken.safeTransferFrom(msg.sender, address(this), marginAdded);
         
-        // Update AMM pool skew
+        // Update AMM pool skew and validate against limit
         IAMMPool(ammPool).updateSkew(
             position.marketId,
             position.isLong,
             int256(sizeAdded)
         );
         
+        if (_markets[position.marketId].maxMarketSkew > 0) {
+            (,, int256 netSkew) = IAMMPool(ammPool).getMarketSkew(position.marketId);
+            uint256 absSkew = netSkew >= 0 ? uint256(netSkew) : uint256(-netSkew);
+            require(absSkew <= _markets[position.marketId].maxMarketSkew, "PerpEngine: max market skew reached");
+        }
+
         // Update position
         uint256 oldSize = position.size;
         
@@ -580,9 +598,15 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
                 isLong: position.isLong,
                 fundingAccrued: 0 // Funding already accrued
             });
+
+            (,, int256 netSkew) = IAMMPool(ammPool).getMarketSkew(position.marketId);
+            uint256 skewScale = IAMMPool(ammPool).getMarketConfig(position.marketId).skewScale;
+            int256 skewBps = skewScale > 0 ? (netSkew * 10000) / int256(skewScale) : int256(0);
+
             PositionMath.PositionRiskParams memory riskParams = PositionMath.PositionRiskParams({
                 maintenanceMarginBps: _markets[position.marketId].minMarginRatio / (PRECISION / 10000),
-                liquidationThresholdBps: 10000 // 100%
+                liquidationThresholdBps: 10000, // 100%
+                skewBps: skewBps
             });
             require(
                 PositionMath.isPositionLiquidatable(posParams, currentPrice, riskParams),
@@ -629,8 +653,8 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             penalty = remainingAfterPnl;
         }
         
-        // Calculate liquidation reward
-        liquidationReward = penalty / 2; // 50% to liquidator, 50% to insurance fund
+        // Calculate liquidation reward (full penalty goes to LiquidationEngine for distribution)
+        liquidationReward = penalty;
         
         // Update global metrics
         totalPositionValue -= liquidatedSize;
@@ -666,10 +690,8 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         
         // Distribute liquidation rewards
         if (liquidationReward > 0) {
-            // Transfer to liquidator
+            // Transfer total penalty to LiquidationEngine
             quoteToken.safeTransfer(msg.sender, liquidationReward);
-            // Transfer to insurance fund
-            quoteToken.safeTransfer(insuranceFund, liquidationReward);
         }
         
         emit PositionLiquidated(
@@ -776,9 +798,15 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
                 isLong: position.isLong,
                 fundingAccrued: 0 // Funding already accrued
             });
+
+            (,, int256 netSkew) = IAMMPool(ammPool).getMarketSkew(position.marketId);
+            uint256 skewScale = IAMMPool(ammPool).getMarketConfig(position.marketId).skewScale;
+            int256 skewBps = skewScale > 0 ? (netSkew * 10000) / int256(skewScale) : int256(0);
+
             PositionMath.PositionRiskParams memory riskParams = PositionMath.PositionRiskParams({
                 maintenanceMarginBps: _markets[position.marketId].minMarginRatio / (PRECISION / 10000),
-                liquidationThresholdBps: 10000
+                liquidationThresholdBps: 10000,
+                skewBps: skewBps
             });
             healthFactor = PositionMath.calculateHealthFactor(posParams, currentPrice, riskParams);
         }
@@ -834,9 +862,15 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             isLong: position.isLong,
             fundingAccrued: fundingPayment
         });
+
+        (,, int256 netSkew) = IAMMPool(ammPool).getMarketSkew(position.marketId);
+        uint256 skewScale = IAMMPool(ammPool).getMarketConfig(position.marketId).skewScale;
+        int256 skewBps = skewScale > 0 ? (netSkew * 10000) / int256(skewScale) : int256(0);
+
         PositionMath.PositionRiskParams memory riskParams = PositionMath.PositionRiskParams({
             maintenanceMarginBps: _markets[position.marketId].minMarginRatio / (PRECISION / 10000),
-            liquidationThresholdBps: 10000
+            liquidationThresholdBps: 10000,
+            skewBps: skewBps
         });
         
         healthFactor = PositionMath.calculateHealthFactor(posParams, currentPrice, riskParams);
@@ -874,9 +908,15 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             isLong: position.isLong,
             fundingAccrued: fundingPayment
         });
+
+        (,, int256 netSkew) = IAMMPool(ammPool).getMarketSkew(position.marketId);
+        uint256 skewScale = IAMMPool(ammPool).getMarketConfig(position.marketId).skewScale;
+        int256 skewBps = skewScale > 0 ? (netSkew * 10000) / int256(skewScale) : int256(0);
+
         PositionMath.PositionRiskParams memory riskParams = PositionMath.PositionRiskParams({
             maintenanceMarginBps: _markets[position.marketId].minMarginRatio / (PRECISION / 10000),
-            liquidationThresholdBps: 10000
+            liquidationThresholdBps: 10000,
+            skewBps: skewBps
         });
         
         PositionMath.LiquidationResult memory result = PositionMath.calculateLiquidationPriceSafe(posParams, riskParams);
@@ -956,9 +996,15 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             isLong: position.isLong,
             fundingAccrued: fundingPayment
         });
+
+        (,, int256 netSkew) = IAMMPool(ammPool).getMarketSkew(position.marketId);
+        uint256 skewScale = IAMMPool(ammPool).getMarketConfig(position.marketId).skewScale;
+        int256 skewBps = skewScale > 0 ? (netSkew * 10000) / int256(skewScale) : int256(0);
+
         PositionMath.PositionRiskParams memory riskParams = PositionMath.PositionRiskParams({
             maintenanceMarginBps: _markets[position.marketId].minMarginRatio / (PRECISION / 10000),
-            liquidationThresholdBps: 10000
+            liquidationThresholdBps: 10000,
+            skewBps: skewBps
         });
         
         liquidatable = PositionMath.isPositionLiquidatable(posParams, currentPrice, riskParams);
@@ -978,50 +1024,55 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         IPerpEngine.Position storage position = _positions[positionId];
         if (!position.isActive) return viewData;
 
+        viewData.positionId = positionId;
+        viewData.trader = position.trader;
+        viewData.marketId = position.marketId;
+        viewData.isLong = position.isLong;
+        viewData.size = position.size;
+        viewData.margin = position.margin;
+        viewData.entryPrice = position.entryPrice;
+        viewData.leverage = position.leverage;
+        viewData.openTime = position.openTime;
+        viewData.lastUpdated = position.lastUpdated;
+
         (uint256 currentPrice, ) = _getMarketPrice(position.marketId);
         
-        int256 fundingPaymentBase = IAMMPool(ammPool).calculateFundingPayment(
-            position.marketId,
-            position.size,
-            position.isLong,
-            position.lastFundingAccrued
-        );
-        int256 fundingPayment = int256(uint256(fundingPaymentBase > 0 ? fundingPaymentBase : -fundingPaymentBase)
-            .mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION));
-        if (fundingPaymentBase < 0) fundingPayment = -fundingPayment;
+        int256 fundingPayment;
+        {
+            int256 fundingPaymentBase = IAMMPool(ammPool).calculateFundingPayment(
+                position.marketId,
+                position.size,
+                position.isLong,
+                position.lastFundingAccrued
+            );
+            fundingPayment = int256(uint256(fundingPaymentBase > 0 ? fundingPaymentBase : -fundingPaymentBase)
+                .mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION));
+            if (fundingPaymentBase < 0) fundingPayment = -fundingPayment;
+        }
+        viewData.fundingAccrued = uint256(fundingPayment > 0 ? fundingPayment : int256(0));
 
-        PositionMath.PositionParams memory posParams = PositionMath.PositionParams({
-            size: position.size,
-            collateral: position.margin,
-            entryPrice: position.entryPrice,
-            isLong: position.isLong,
-            fundingAccrued: fundingPayment
-        });
-        PositionMath.PositionRiskParams memory riskParams = PositionMath.PositionRiskParams({
-            maintenanceMarginBps: _markets[position.marketId].minMarginRatio / (PRECISION / 10000),
-            liquidationThresholdBps: 10000
-        });
+        {
+            PositionMath.PositionParams memory posParams = PositionMath.PositionParams({
+                size: position.size,
+                collateral: position.margin,
+                entryPrice: position.entryPrice,
+                isLong: position.isLong,
+                fundingAccrued: fundingPayment
+            });
 
-        PositionMath.LiquidationResult memory liqResult = PositionMath.calculateLiquidationPriceSafe(posParams, riskParams);
-        uint256 healthFactor = PositionMath.calculateHealthFactor(posParams, currentPrice, riskParams);
-        int256 pnl = PositionMath.calculatePnL(position.entryPrice, currentPrice, position.size, position.isLong) + fundingPayment;
+            (,, int256 netSkew) = IAMMPool(ammPool).getMarketSkew(position.marketId);
+            uint256 skewScale = IAMMPool(ammPool).getMarketConfig(position.marketId).skewScale;
 
-        return PositionView({
-            positionId: positionId,
-            trader: position.trader,
-            marketId: position.marketId,
-            isLong: position.isLong,
-            size: position.size,
-            margin: position.margin,
-            entryPrice: position.entryPrice,
-            leverage: position.leverage,
-            liquidationPrice: liqResult.liquidationPrice,
-            healthFactor: healthFactor,
-            unrealizedPnl: pnl,
-            fundingAccrued: uint256(fundingPayment > 0 ? fundingPayment : int256(0)), // Simplified
-            openTime: position.openTime,
-            lastUpdated: position.lastUpdated
-        });
+            PositionMath.PositionRiskParams memory riskParams = PositionMath.PositionRiskParams({
+                maintenanceMarginBps: _markets[position.marketId].minMarginRatio / (PRECISION / 10000),
+                liquidationThresholdBps: 10000,
+                skewBps: skewScale > 0 ? (netSkew * 10000) / int256(skewScale) : int256(0)
+            });
+
+            viewData.liquidationPrice = PositionMath.calculateLiquidationPriceSafe(posParams, riskParams).liquidationPrice;
+            viewData.healthFactor = PositionMath.calculateHealthFactor(posParams, currentPrice, riskParams);
+            viewData.unrealizedPnl = PositionMath.calculatePnL(position.entryPrice, currentPrice, position.size, position.isLong) + fundingPayment;
+        }
     }
 
     // ============ ADMIN FUNCTIONS ============
@@ -1078,6 +1129,28 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         uint256 liquidationFeeRatio,
         uint256 protocolFeeRatio
     ) external override onlyGovernance {
+        initializeMarketWithSkew(
+            marketId,
+            oracleFeedId,
+            maxLeverage,
+            minMarginRatio,
+            minPositionSize,
+            liquidationFeeRatio,
+            protocolFeeRatio,
+            0 // Default no skew limit
+        );
+    }
+
+    function initializeMarketWithSkew(
+        uint256 marketId,
+        bytes32 oracleFeedId,
+        uint256 maxLeverage,
+        uint256 minMarginRatio,
+        uint256 minPositionSize,
+        uint256 liquidationFeeRatio,
+        uint256 protocolFeeRatio,
+        uint256 maxMarketSkew
+    ) public onlyGovernance {
         require(!_markets[marketId].isActive, "PerpEngine: market already active");
         
         _markets[marketId] = Market({
@@ -1089,7 +1162,8 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             protocolFeeRatio: protocolFeeRatio,
             oracleFeedId: oracleFeedId,
             lastPriceUpdate: block.timestamp,
-            lastFundingUpdate: block.timestamp
+            lastFundingUpdate: block.timestamp,
+            maxMarketSkew: maxMarketSkew
         });
         
         emit MarketInitialized(marketId, oracleFeedId);
@@ -1249,8 +1323,15 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     /**
      * @notice Get total open interest for market
      */
-    function getTotalOpenInterest(uint256 marketId) external view returns (uint256) {
+    function getTotalOpenInterest(uint256 marketId) external view override returns (uint256) {
         return _totalOpenInterest[marketId];
+    }
+
+    /**
+     * @inheritdoc IPerpEngine
+     */
+    function getMarketOracleFeed(uint256 marketId) external view override returns (bytes32) {
+        return _markets[marketId].oracleFeedId;
     }
 
     /**
@@ -1373,5 +1454,33 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             liquidatable[i] = isPositionLiquidatable(positionIds[i], currentPrices[i]);
         }
         return liquidatable;
+    }
+
+    /**
+     * @inheritdoc IPositionViewer
+     */
+    function getPositionStatus(uint256 positionId)
+        external
+        view
+        override
+        returns (
+            bool isActive,
+            bool isLiquidatable,
+            uint256 healthFactor
+        )
+    {
+        IPerpEngine.Position storage position = _positions[positionId];
+        isActive = position.isActive;
+        if (!isActive) {
+            return (false, false, 0);
+        }
+
+        (uint256 currentPrice, bool priceValid) = _getMarketPrice(position.marketId);
+        if (!priceValid) {
+            return (true, false, 0); // Price invalid, can't liquidate
+        }
+
+        healthFactor = getHealthFactor(positionId);
+        isLiquidatable = healthFactor < LIQUIDATION_THRESHOLD;
     }
 }

@@ -17,9 +17,9 @@ This document prepares the protocol for a professional external security audit. 
 
 Auditors need a clear understanding of the "intended" behavior to find deviations.
 
-- [ ] **Technical Specification:** Expanded `ARCHITECTURE.md` explaining the flow of quote tokens and NFT ownership.
-- [ ] **Threat Model:** Documenting simulated scenarios (e.g., Pyth/Chainlink price divergence, low-liquidity vAMM skewing).
-- [ ] **Economic Safety Report:** Results from recent Foundry invariant tests (`InvariantEconomic.t.sol`).
+- [x] **Technical Specification:** Expanded `ARCHITECTURE.md` explaining the flow of quote tokens and NFT ownership.
+- [x] **Threat Model:** Documenting simulated scenarios (e.g., Pyth/Chainlink price divergence, low-liquidity vAMM skewing).
+- [x] **Economic Safety Report:** Results from recent Foundry invariant tests (`InvariantEconomic.t.sol`).
 - [ ] **Access Control Map:** Table of all `onlyGovernance`, `onlyTimelock`, and `onlyPerpEngine` modifiers.
 
 ---
@@ -28,8 +28,8 @@ Auditors need a clear understanding of the "intended" behavior to find deviation
 
 ### A. Code Quality
 - [ ] Ensure all `require` statements have corresponding `revert CustomError()`.
-- [ ] Clean up all compilation warnings (unused variables, state mutability).
-- [ ] Ensure 100% test coverage on the math libraries (`PositionMath`, `SafeDecimalMath`).
+- [x] Clean up all compilation warnings (unused variables, state mutability).
+- [x] Ensure 100% test coverage on the math libraries (`PositionMath`, `SafeDecimalMath`).
 
 ### B. Deployment Consistency
 - [ ] Provide a verified mainnet-equivalent deployment on a testnet (Arbitrum Sepolia).

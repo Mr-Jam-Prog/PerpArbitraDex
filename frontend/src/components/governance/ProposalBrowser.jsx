@@ -52,13 +52,13 @@ export const ProposalBrowser = () => {
       // Tri
       switch (sortBy) {
         case 'newest':
-          return b.startTime.toNumber() - a.startTime.toNumber();
+          return Number(b.startTime) - Number(a.startTime);
         case 'oldest':
-          return a.startTime.toNumber() - b.startTime.toNumber();
+          return Number(a.startTime) - Number(b.startTime);
         case 'votes-high':
-          return b.forVotes.add(b.againstVotes).toNumber() - a.forVotes.add(a.againstVotes).toNumber();
+          return Number((b.forVotes + b.againstVotes)) - Number((a.forVotes + a.againstVotes));
         case 'votes-low':
-          return a.forVotes.add(a.againstVotes).toNumber() - b.forVotes.add(b.againstVotes).toNumber();
+          return Number((a.forVotes + a.againstVotes)) - Number((b.forVotes + b.againstVotes));
         default:
           return 0;
       }
@@ -92,9 +92,9 @@ export const ProposalBrowser = () => {
 
   const ProposalCard = ({ proposal }) => {
     const status = getProposalStatus(proposal.state);
-    const totalVotes = proposal.forVotes.add(proposal.againstVotes).add(proposal.abstainVotes);
-    const forPercentage = totalVotes.gt(0) 
-      ? proposal.forVotes.mul(100).div(totalVotes).toNumber()
+    const totalVotes = proposal.forVotes + proposal.againstVotes + proposal.abstainVotes;
+    const forPercentage = totalVotes > 0n
+      ? Number((proposal.forVotes * 100n) / totalVotes)
       : 0;
 
     return (
@@ -127,14 +127,14 @@ export const ProposalBrowser = () => {
           <div className="meta-item">
             <div className="meta-label">Start</div>
             <div className="meta-value">
-              {formatTimestamp(proposal.startTime.toNumber(), 'short')}
+              {formatTimestamp(Number(proposal.startTime), 'short')}
             </div>
           </div>
 
           <div className="meta-item">
             <div className="meta-label">End</div>
             <div className="meta-value">
-              {formatTimestamp(proposal.endTime.toNumber(), 'short')}
+              {formatTimestamp(Number(proposal.endTime), 'short')}
             </div>
           </div>
         </div>

@@ -391,11 +391,10 @@ contract RiskManager is IRiskManager, Ownable {
     function _checkPositionConcentration(
         uint256 marketId,
         uint256 positionSize,
-        address trader
+        address /* trader */
     ) internal view returns (bool ok, string memory reason) {
         // Get total open interest for market
-        // This would require querying PerpEngine
-        uint256 totalOI = 0; // Placeholder
+        uint256 totalOI = IPerpEngine(perpEngine).getTotalOpenInterest(marketId);
         
         if (totalOI > 0) {
             uint256 concentration = positionSize.mulDiv(PRECISION, totalOI);
@@ -403,9 +402,6 @@ contract RiskManager is IRiskManager, Ownable {
                 return (false, "RiskManager: exceeds concentration limit");
             }
         }
-        
-        // Check trader's existing positions
-        // This would require querying PerpEngine for trader's positions
         
         return (true, "");
     }

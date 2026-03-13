@@ -144,8 +144,8 @@ const TradingInterface = () => {
         signer
       );
       
-      const collateralInWei = ethers.utils.parseUnits(collateral, 6); // USDC has 6 decimals
-      const sizeInWei = ethers.utils.parseUnits(size, 18);
+      const collateralInWei = ethers.parseUnits(collateral, 6); // USDC has 6 decimals
+      const sizeInWei = ethers.parseUnits(size, 18);
       
       // Estimate gas first
       const gasLimit = await perpEngine.estimateGas.openPosition(
@@ -159,7 +159,7 @@ const TradingInterface = () => {
       );
       
       // Add 20% buffer
-      const gasLimitWithBuffer = gasLimit.mul(120).div(100);
+      const gasLimitWithBuffer = gasLimit * (120) / (100);
       
       // Submit transaction
       const tx = await perpEngine.openPosition(
@@ -476,7 +476,7 @@ const TradingInterface = () => {
         <div className="status-item">
           <span className="status-label">Gas Price:</span>
           <span className="status-value">
-            {provider?.gasPrice ? `${ethers.utils.formatUnits(provider.gasPrice, 'gwei')} Gwei` : 'Loading...'}
+            {provider?.gasPrice ? `${ethers.formatUnits(provider.gasPrice, 'gwei')} Gwei` : 'Loading...'}
           </span>
         </div>
       </div>

@@ -4,7 +4,7 @@
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits } = ethers.utils;
+const { parseUnits } = ethers;
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("🎭 Advanced Oracle Manipulation Attacks", function () {
@@ -144,7 +144,7 @@ describe("🎭 Advanced Oracle Manipulation Attacks", function () {
     it("Devrait utiliser des intervalles TWAP longs", async function () {
       // Vérification que le TWAP utilise un intervalle suffisamment long
       const twapInterval = await twapOracle.getInterval();
-      expect(twapInterval).to.be.gte(1800); // Au moins 30 minutes
+      expect(twapInterval).to.be >= (1800); // Au moins 30 minutes
       
       // Un flash loan (quelques secondes) ne devrait pas affecter
       // significativement un TWAP de 30 minutes
@@ -161,7 +161,7 @@ describe("🎭 Advanced Oracle Manipulation Attacks", function () {
       
       // Le système devrait continuer avec Pyth et TWAP
       const price = await oracleAggregator.getPrice("ETH-USD");
-      expect(price).to.be.gt(0);
+      expect(price).to.be > (0);
       
       // Vérification que l'oracle down est signalé
       const isChainlinkActive = await oracleAggregator.isOracleActive(chainlinkOracle.address);
@@ -175,11 +175,11 @@ describe("🎭 Advanced Oracle Manipulation Attacks", function () {
       
       // TWAP seul devrait suffire (avec des limites)
       const price = await oracleAggregator.getPrice("ETH-USD");
-      expect(price).to.be.gt(0);
+      expect(price).to.be > (0);
       
       // Mais des limites de position devraient s'appliquer
       const maxPositionSize = await perpEngine.getMaxPositionSize("ETH-USD");
-      expect(maxPositionSize).to.be.lt(parseUnits("100000", 6)); // Position limitée
+      expect(maxPositionSize).to.be < (parseUnits("100000", 6)); // Position limitée
     });
   });
   
@@ -189,7 +189,7 @@ describe("🎭 Advanced Oracle Manipulation Attacks", function () {
       const deviations = await oracleAggregator.getOracleDeviations("ETH-USD");
       
       for (const deviation of deviations) {
-        expect(deviation).to.be.lt(parseUnits("5", 16)); // < 5%
+        expect(deviation).to.be < (parseUnits("5", 16)); // < 5%
       }
     });
     

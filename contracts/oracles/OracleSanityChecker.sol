@@ -64,6 +64,7 @@ contract OracleSanityChecker is IOracleSanityChecker, Ownable {
         uint256 defaultMaxPrice,
         uint256 defaultMaxDeviationBps
     ) {
+        _transferOwnership(msg.sender);
         require(defaultMinPrice < defaultMaxPrice, "OracleSanityChecker: invalid bounds");
         require(defaultMaxDeviationBps <= MAX_DEVIATION_BPS, 
             "OracleSanityChecker: deviation too high");

@@ -44,7 +44,7 @@ export const usePerpDex = () => {
     try {
       // Try to use window.ethereum first
       if (window.ethereum) {
-        const web3Provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
+        const web3Provider = new ethers.BrowserProvider(window.ethereum, 'any');
         return web3Provider;
       }
       
@@ -57,7 +57,7 @@ export const usePerpDex = () => {
         throw new Error(`No RPC URL configured for chain ${DEFAULT_CHAIN_ID}`);
       }
       
-      return new ethers.providers.JsonRpcProvider(rpcUrl);
+      return new ethers.JsonRpcProvider(rpcUrl);
       
     } catch (err) {
       console.error('Failed to initialize provider:', err);
@@ -86,7 +86,7 @@ export const usePerpDex = () => {
         throw new Error('No accounts found');
       }
       
-      const web3Provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
+      const web3Provider = new ethers.BrowserProvider(window.ethereum, 'any');
       
       // Get network
       const network = await web3Provider.getNetwork();
@@ -243,7 +243,7 @@ export const usePerpDex = () => {
           const accounts = await window.ethereum.request({ method: 'eth_accounts' });
           if (accounts.length > 0) {
             // Reconnect
-            const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
+            const web3Provider = new ethers.BrowserProvider(window.ethereum);
             const network = await web3Provider.getNetwork();
             
             setAccount(accounts[0]);

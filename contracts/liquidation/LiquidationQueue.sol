@@ -116,37 +116,34 @@ contract LiquidationQueue {
 
     /**
      * @notice Get next position from queue
+     * @dev O(N) scan to find best candidate to avoid O(N log N) sorting gas costs
      * @return hasNext Whether there is a next position
      * @return nextPositionId Next position ID
      */
     function getNext() external view returns (bool hasNext, uint256 nextPositionId) {
-        if (positionQueue.length() == 0) {
+        uint256 length = positionQueue.length();
+        if (length == 0) {
             return (false, 0);
         }
         
-        // Get all queued positions
         uint256[] memory allPositions = positionQueue.values();
+        uint256 bestHealth = type(uint256).max;
+        uint256 bestId = 0;
+        bool found = false;
         
-        // Filter by grace period and sort by health factor
-        ILiquidationEngine.LiquidationCandidate[] memory candidates = new ILiquidationEngine.LiquidationCandidate[](allPositions.length);
-        uint256 validCount = 0;
-        
-        for (uint256 i = 0; i < allPositions.length; i++) {
-            QueueItem storage item = queueItems[allPositions[i]];
+        for (uint256 i = 0; i < length; i++) {
+            uint256 pid = allPositions[i];
+            QueueItem storage item = queueItems[pid];
             if (block.timestamp >= item.queueTime) {
-                candidates[validCount] = item.candidate;
-                validCount++;
+                if (item.candidate.healthFactor < bestHealth) {
+                    bestHealth = item.candidate.healthFactor;
+                    bestId = pid;
+                    found = true;
+                }
             }
         }
         
-        if (validCount == 0) {
-            return (false, 0);
-        }
-        
-        // Sort by health factor (most unhealthy first)
-        _sortCandidates(candidates, validCount);
-        
-        return (true, candidates[0].positionId);
+        return (found, bestId);
     }
 
     /**

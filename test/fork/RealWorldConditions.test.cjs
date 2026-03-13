@@ -4,7 +4,7 @@
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits } = ethers.utils;
+const { parseUnits } = ethers;
 const { time, mine } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("🌍 Real World Market Conditions", function () {
@@ -41,11 +41,11 @@ describe("🌍 Real World Market Conditions", function () {
     it("Devrait gérer la volatilité élevée du marché", async function () {
       // Simulation d'un mouvement de prix de ±30% en 1h
       const initialPrice = parseUnits("2000", 8);
-      const volatileMove = initialPrice.mul(30).div(100); // 30%
+      const volatileMove = initialPrice * (30) / (100); // 30%
       
       // Ouverture de positions avant la volatilité
       const collateral = parseUnits("1000", 6);
-      const positionSize = collateral.mul(5); // 5x leverage
+      const positionSize = collateral * (5); // 5x leverage
       
       await usdc.connect(trader1).approve(perpEngine.address, collateral);
       const positionId = await perpEngine.connect(trader1).openPosition(
@@ -60,7 +60,7 @@ describe("🌍 Real World Market Conditions", function () {
       
       // Vérification que la position est sous-water
       const healthFactor = await perpEngine.getPositionHealthFactor(positionId);
-      expect(healthFactor).to.be.lt(parseUnits("1", 18));
+      expect(healthFactor).to.be < (parseUnits("1", 18));
       
       // La position devrait être liquidable
       const isLiquidatable = await liquidationEngine.isLiquidatable(positionId);
@@ -90,12 +90,12 @@ describe("🌍 Real World Market Conditions", function () {
       // En période de haute volatilité, les marges devraient augmenter
       const volatilityIndex = await perpEngine.getMarketVolatility("ETH-USD");
       
-      if (volatilityIndex.gt(parseUnits("30", 16))) { // > 30%
+      if (volatilityIndex > (parseUnits("30", 16))) { // > 30%
         const adjustedMargin = await perpEngine.getAdjustedMarginRequirements("ETH-USD");
         const baseMargin = await perpEngine.getBaseMarginRequirements("ETH-USD");
         
-        expect(adjustedMargin.initialMargin).to.be.gt(baseMargin.initialMargin);
-        expect(adjustedMargin.maintenanceMargin).to.be.gt(baseMargin.maintenanceMargin);
+        expect(adjustedMargin.initialMargin).to.be > (baseMargin.initialMargin);
+        expect(adjustedMargin.maintenanceMargin).to.be > (baseMargin.maintenanceMargin);
       }
     });
   });
@@ -107,11 +107,11 @@ describe("🌍 Real World Market Conditions", function () {
       
       // Les tailles de position devraient être limitées
       const maxPositionSize = await perpEngine.getMaxPositionSize("ETH-USD");
-      expect(maxPositionSize).to.be.lt(parseUnits("1000000", 6)); // < $1M
+      expect(maxPositionSize).to.be < (parseUnits("1000000", 6)); // < $1M
       
       // Les spreads devraient augmenter
       const spread = await perpEngine.getMarketSpread("ETH-USD");
-      expect(spread).to.be.gt(parseUnits("5", 16)); // > 0.5%
+      expect(spread).to.be > (parseUnits("5", 16)); // > 0.5%
     });
     
     it("Devrait rejeter les grandes positions en low liquidity", async function () {
@@ -135,8 +135,8 @@ describe("🌍 Real World Market Conditions", function () {
       const fees = await perpEngine.getMarketFees("ETH-USD");
       const baseFees = await perpEngine.getBaseFees();
       
-      expect(fees.makerFee).to.be.gt(baseFees.makerFee);
-      expect(fees.takerFee).to.be.gt(baseFees.takerFee);
+      expect(fees.makerFee).to.be > (baseFees.makerFee);
+      expect(fees.takerFee).to.be > (baseFees.takerFee);
     });
   });
   
@@ -184,8 +184,8 @@ describe("🌍 Real World Market Conditions", function () {
       const totalLoss = await perpEngine.getTotalLoss();
       const socializedLoss = await perpEngine.getSocializedLoss();
       
-      expect(socializedLoss).to.be.gt(0);
-      expect(socializedLoss).to.be.lt(totalLoss); // Pas toutes les pertes sont socialisées
+      expect(socializedLoss).to.be > (0);
+      expect(socializedLoss).to.be < (totalLoss); // Pas toutes les pertes sont socialisées
     });
   });
   
@@ -204,7 +204,7 @@ describe("🌍 Real World Market Conditions", function () {
       const timePassed = 30 * 24 * 3600;
       const fundingRate = await perpEngine.getFundingRate("ETH-USD");
       const expectedFunding = initialFunding.add(
-        fundingRate.mul(timePassed).div(3600)
+        fundingRate * (timePassed) / (3600)
       );
       
       expect(finalFunding).to.be.closeTo(expectedFunding, parseUnits("1", 16)); // 1% tolerance
@@ -253,7 +253,7 @@ describe("🌍 Real World Market Conditions", function () {
     return await perpEngine.connect(trader1).openPosition(
       "ETH-USD",
       collateral,
-      collateral.mul(3),
+      collateral * (3),
       true
     );
   }

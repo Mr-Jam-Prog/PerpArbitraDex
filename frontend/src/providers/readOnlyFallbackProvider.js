@@ -30,7 +30,7 @@ class ReadOnlyFallbackProvider extends EventEmitter {
   // Initialize all providers
   _initializeProviders() {
     this.providers = this.rpcList.map((rpcUrl, index) => {
-      const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+      const provider = new ethers.JsonRpcProvider(rpcUrl);
       
       // Store original send method
       const originalSend = provider.send.bind(provider);

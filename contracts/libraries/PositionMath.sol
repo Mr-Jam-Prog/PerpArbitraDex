@@ -69,6 +69,7 @@ library PositionMath {
     struct PositionRiskParams {
         uint256 maintenanceMarginBps;  // Basis points (e.g., 2000 = 20%)
         uint256 liquidationThresholdBps; // Basis points (e.g., 8000 = 80%)
+        int256 skewBps;                // Net skew in basis points of skew scale
     }
     
     struct LiquidationResult {
@@ -213,7 +214,19 @@ library PositionMath {
         
         // Calculate maintenance margin in quote units
         uint256 notionalValue = params.size.mulDiv(validateAndNormalizePrice(currentPrice), DECIMALS);
-        uint256 maintenanceMargin = notionalValue.mulDiv(riskParams.maintenanceMarginBps, 10000);
+
+        // Dynamic maintenance margin based on skew
+        // If skew is high against the position, increase maintenance requirement
+        uint256 effectiveMMBps = riskParams.maintenanceMarginBps;
+        if (params.isLong && riskParams.skewBps > 0) {
+            // Long position in long skew market
+            effectiveMMBps = effectiveMMBps + uint256(riskParams.skewBps).mulDiv(effectiveMMBps, 10000);
+        } else if (!params.isLong && riskParams.skewBps < 0) {
+            // Short position in short skew market
+            effectiveMMBps = effectiveMMBps + uint256(-riskParams.skewBps).mulDiv(effectiveMMBps, 10000);
+        }
+
+        uint256 maintenanceMargin = notionalValue.mulDiv(effectiveMMBps, 10000);
         
         // Prevent division by zero (should never happen with validation)
         if (maintenanceMargin == 0) {
