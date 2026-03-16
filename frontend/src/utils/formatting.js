@@ -90,21 +90,21 @@ function validateBigNumber(value, name = 'value') {
     
     let bn;
     
-    if ((val => typeof val === "bigint" || (val && val._isBigNumber))(value)) {
+    if (ethers.BigNumber.isBigNumber(value)) {
       bn = value;
     } else if (typeof value === 'string' || typeof value === 'number') {
-      bn = BigInt(value);
+      bn = ethers.BigNumber.from(value);
     } else {
       throw new FormattingError(`Invalid ${name} type: ${typeof value}`, value);
     }
     
     // Check for negative values (if not allowed)
-    if (bn < (0)) {
+    if (bn.lt(0)) {
       throw new FormattingError(`${name} cannot be negative`, value);
     }
     
     // Check for reasonable bounds
-    if (bn > (MAX_DISPLAY_VALUE)) {
+    if (bn.gt(MAX_DISPLAY_VALUE)) {
       throw new FormattingError(`${name} exceeds maximum display value`, value);
     }
     
@@ -167,9 +167,9 @@ export function formatPnL(pnl, decimals = PRECISION) {
     const bn = validateBigNumber(pnl, 'pnl');
     validateDecimals(decimals);
     
-    const formatted = ethers.formatUnits(bn < 0n ? -bn : bn, decimals);
+    const formatted = formatUnits(bn.abs(), decimals);
     const number = parseFloat(formatted);
-    const isPositive = bn >= 0n;
+    const isPositive = bn.gte(0);
     
     // Format absolute value
     const absFormatted = new Intl.NumberFormat('en-US', {
@@ -185,8 +185,8 @@ export function formatPnL(pnl, decimals = PRECISION) {
       formatted: signedFormatted,
       raw: bn.toString(),
       isPositive,
-      isNegative: bn < 0n,
-      isZero: bn === 0n,
+      isNegative: bn.lt(0),
+      isZero: bn.isZero(),
       absoluteValue: absFormatted,
       colorClass: isPositive ? 'pnl-positive' : 'pnl-negative',
     };
@@ -216,12 +216,12 @@ export function formatFunding(fundingRate, period = 3600) {
     const bn = validateBigNumber(fundingRate, 'fundingRate');
     
     // Convert to percentage per period
-    const periodPercentage = bn * (100) / (ethers.WeiPerEther);
+    const periodPercentage = bn.mul(100).div(ethers.constants.WeiPerEther);
     
     // Annualize (assuming 365 days)
     const secondsPerYear = 365 * 24 * 3600;
     const periodsPerYear = secondsPerYear / period;
-    const annualized = periodPercentage * (periodsPerYear);
+    const annualized = periodPercentage.mul(periodsPerYear);
     
     // Format as percentage
     const periodPercent = parseFloat(formatUnits(periodPercentage, PRECISION));
@@ -230,14 +230,14 @@ export function formatFunding(fundingRate, period = 3600) {
     const periodFormatted = new Intl.NumberFormat('en-US', FORMAT_OPTIONS.PERCENTAGE).format(periodPercent);
     const annualFormatted = new Intl.NumberFormat('en-US', FORMAT_OPTIONS.PERCENTAGE).format(annualPercent);
     
-    const isPositive = bn >= (0);
+    const isPositive = bn.gte(0);
     
     return {
       period: `${isPositive ? '+' : ''}${periodFormatted}%`,
       annualized: `${isPositive ? '+' : ''}${annualFormatted}%`,
       raw: bn.toString(),
       isPositive,
-      isNegative: bn < (0),
+      isNegative: bn.lt(0),
       colorClass: isPositive ? 'funding-positive' : 'funding-negative',
     };
     
@@ -546,19 +546,19 @@ export function calculatePercentageChange(oldValue, newValue) {
     const oldBn = validateBigNumber(oldValue, 'oldValue');
     const newBn = validateBigNumber(newValue, 'newValue');
     
-    if (oldBn === 0n) {
-      return 0n;
+    if (oldBn.isZero()) {
+      return ethers.constants.Zero;
     }
     
     // Calculate percentage: ((new - old) / old) * 100 * 1e18
-    const diff = newBn - oldBn;
-    const percentage = diff * ethers.WeiPerEther / oldBn * 100n;
+    const diff = newBn.sub(oldBn);
+    const percentage = diff.mul(ethers.constants.WeiPerEther).div(oldBn).mul(100);
     
     return percentage;
     
   } catch (error) {
     console.error('Percentage calculation error:', error.message);
-    return 0n;
+    return ethers.constants.Zero;
   }
 }
 

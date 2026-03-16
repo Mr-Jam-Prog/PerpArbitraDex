@@ -45,8 +45,6 @@ contract AMMPool is IAMMPool, ERC20, Ownable {
     // Market ID => configuration
     mapping(uint256 => IAMMPool.MarketConfig) private _marketConfigs;
 
-    // ============ STRUCTS ============
-
     // ============ MODIFIERS ============
     
     modifier onlyPerpEngine() {
@@ -437,7 +435,7 @@ contract AMMPool is IAMMPool, ERC20, Ownable {
     // ============ GETTERS ============
 
     /**
-     * @notice Get market configuration
+     * @inheritdoc IAMMPool
      */
     function getMarketConfig(uint256 marketId) external view override returns (IAMMPool.MarketConfig memory) {
         return _marketConfigs[marketId];

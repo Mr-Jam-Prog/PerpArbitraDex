@@ -15,7 +15,7 @@ contract MockAMMPool is IAMMPool {
     function updateSkewScale(uint256, uint256) external override {}
     function updateMaxFundingRate(uint256, uint256) external override {}
     function emergencyResetSkew(uint256) external override {}
-    function getMarketConfig(uint256) external view override returns (MarketConfig memory) {
-        return MarketConfig(100000 * 1e18, 0.01 * 1e18, 3600, true);
+    function getMarketConfig(uint256) external view override returns (IAMMPool.MarketConfig memory config) {
+        config = IAMMPool.MarketConfig(100000 * 1e18, 0.01 * 1e18, 3600, true);
     }
 }

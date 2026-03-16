@@ -13,10 +13,10 @@ export const RiskIndicator = ({ healthFactor, positionsAtRisk, totalPositions })
 
   // Seuils de risque
   const RISK_THRESHOLDS = {
-    critical: ethers.parseUnits('1.1', 18), // 1.1 - Liquidation imminente
-    warning: ethers.parseUnits('1.5', 18),  // 1.5 - Risque élevé
-    moderate: ethers.parseUnits('2.0', 18), // 2.0 - Risque modéré
-    safe: ethers.parseUnits('3.0', 18)      // 3.0 - Sûr
+    critical: ethers.utils.parseUnits('1.1', 18), // 1.1 - Liquidation imminente
+    warning: ethers.utils.parseUnits('1.5', 18),  // 1.5 - Risque élevé
+    moderate: ethers.utils.parseUnits('2.0', 18), // 2.0 - Risque modéré
+    safe: ethers.utils.parseUnits('3.0', 18)      // 3.0 - Sûr
   };
 
   useEffect(() => {
@@ -36,24 +36,36 @@ export const RiskIndicator = ({ healthFactor, positionsAtRisk, totalPositions })
     let color;
     let description;
 
-    if (healthFactor < RISK_THRESHOLDS.critical) {
+    if (healthFactor.lt(RISK_THRESHOLDS.critical)) {
       percentage = 95 + Math.random() * 5; // 95-100%
       color = '#EF4444';
       description = 'CRITIQUE - Liquidation imminente';
-    } else if (healthFactor < RISK_THRESHOLDS.warning) {
-      percentage = 70 + Number((healthFactor - RISK_THRESHOLDS.critical) * 25n / (RISK_THRESHOLDS.warning - RISK_THRESHOLDS.critical));
+    } else if (healthFactor.lt(RISK_THRESHOLDS.warning)) {
+      percentage = 70 + (healthFactor.sub(RISK_THRESHOLDS.critical))
+        .mul(25)
+        .div(RISK_THRESHOLDS.warning.sub(RISK_THRESHOLDS.critical))
+        .toNumber() / 100;
       color = '#F59E0B';
       description = 'ATTENTION - Risque élevé de liquidation';
-    } else if (healthFactor < RISK_THRESHOLDS.moderate) {
-      percentage = 30 + Number((healthFactor - RISK_THRESHOLDS.warning) * 40n / (RISK_THRESHOLDS.moderate - RISK_THRESHOLDS.warning));
+    } else if (healthFactor.lt(RISK_THRESHOLDS.moderate)) {
+      percentage = 30 + (healthFactor.sub(RISK_THRESHOLDS.warning))
+        .mul(40)
+        .div(RISK_THRESHOLDS.moderate.sub(RISK_THRESHOLDS.warning))
+        .toNumber() / 100;
       color = '#FBBF24';
       description = 'MODÉRÉ - Surveillez vos positions';
-    } else if (healthFactor < RISK_THRESHOLDS.safe) {
-      percentage = 10 + Number((healthFactor - RISK_THRESHOLDS.moderate) * 20n / (RISK_THRESHOLDS.safe - RISK_THRESHOLDS.moderate));
+    } else if (healthFactor.lt(RISK_THRESHOLDS.safe)) {
+      percentage = 10 + (healthFactor.sub(RISK_THRESHOLDS.moderate))
+        .mul(20)
+        .div(RISK_THRESHOLDS.safe.sub(RISK_THRESHOLDS.moderate))
+        .toNumber() / 100;
       color = '#10B981';
       description = 'SÛR - Niveau de risque acceptable';
     } else {
-      percentage = 0 + Number((healthFactor - RISK_THRESHOLDS.safe) * 10n / ethers.parseUnits('5', 18));
+      percentage = 0 + (healthFactor.sub(RISK_THRESHOLDS.safe))
+        .mul(10)
+        .div(ethers.utils.parseUnits('5', 18)) // Jusqu'à HF 8.0
+        .toNumber() / 100;
       color = '#059669';
       description = 'TRÈS SÛR - Marge de sécurité élevée';
     }
@@ -172,7 +184,7 @@ export const RiskIndicator = ({ healthFactor, positionsAtRisk, totalPositions })
             <div className="description-text">
               <h4>{riskDescription}</h4>
               <p>
-                {healthFactor && healthFactor < (RISK_THRESHOLDS.warning)
+                {healthFactor && healthFactor.lt(RISK_THRESHOLDS.warning)
                   ? 'Ajoutez du collateral ou réduisez votre exposition'
                   : 'Votre portefeuille est bien géré'}
               </p>

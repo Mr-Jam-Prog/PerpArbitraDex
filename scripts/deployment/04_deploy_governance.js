@@ -16,7 +16,7 @@ module.exports = async () => {
     TOKENOMICS.SYMBOL,
     TOKENOMICS.INITIAL_SUPPLY
   );
-  await token.waitForDeployment();
+  await token.deployed();
   console.log(`✅ PerpDexToken: ${token.address}`);
   
   // 2. Déploiement TimelockController
@@ -25,9 +25,9 @@ module.exports = async () => {
     TOKENOMICS.TIMELOCK_DELAY, // 2 jours pour mainnet
     [], // proposers vides initialement
     [], // executors vides initialement
-    ethers.ZeroAddress // admin = timelock lui-même
+    ethers.constants.AddressZero // admin = timelock lui-même
   );
-  await timelock.waitForDeployment();
+  await timelock.deployed();
   console.log(`✅ TimelockController: ${timelock.address}`);
   
   // 3. Déploiement Governor
@@ -40,7 +40,7 @@ module.exports = async () => {
     TOKENOMICS.PROPOSAL_THRESHOLD,
     TOKENOMICS.QUORUM_PERCENTAGE
   );
-  await governor.waitForDeployment();
+  await governor.deployed();
   console.log(`✅ Governor: ${governor.address}`);
   
   // 4. Déploiement VotingEscrow (veToken)
@@ -54,7 +54,7 @@ module.exports = async () => {
     kind: 'uups',
     initializer: 'initialize'
   });
-  await votingEscrow.waitForDeployment();
+  await votingEscrow.deployed();
   console.log(`✅ VotingEscrow: ${votingEscrow.address}`);
   
   // 5. Déploiement Treasury
@@ -66,7 +66,7 @@ module.exports = async () => {
     kind: 'uups',
     initializer: 'initialize'
   });
-  await treasury.waitForDeployment();
+  await treasury.deployed();
   console.log(`✅ Treasury: ${treasury.address}`);
   
   // 6. Déploiement FeeDistributor
@@ -79,7 +79,7 @@ module.exports = async () => {
     kind: 'uups',
     initializer: 'initialize'
   });
-  await feeDistributor.waitForDeployment();
+  await feeDistributor.deployed();
   console.log(`✅ FeeDistributor: ${feeDistributor.address}`);
   
   // 7. Configuration Timelock roles

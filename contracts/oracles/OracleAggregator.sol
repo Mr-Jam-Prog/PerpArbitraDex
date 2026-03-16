@@ -37,6 +37,12 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
         uint256 maxPrice;
     }
 
+    struct SourceData {
+        uint256[] prices;
+        uint256[] timestamps;
+        uint256[] confidences;
+    }
+
     struct PriceCache {
         uint256 price;
         uint256 timestamp;
@@ -58,12 +64,8 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
     // Feed ID => configuration
     mapping(bytes32 => FeedConfig) private _feedConfigs;
 
-    // feedId => timestamp => prices
-    mapping(bytes32 => mapping(uint256 => uint256[])) private _aggregatedPricesHistory;
-    // feedId => timestamp => timestamps
-    mapping(bytes32 => mapping(uint256 => uint256[])) private _aggregatedTimestampsHistory;
-    // feedId => timestamp => confidences
-    mapping(bytes32 => mapping(uint256 => uint256[])) private _aggregatedConfidencesHistory;
+    // feedId => timestamp => SourceData
+    mapping(bytes32 => mapping(uint256 => SourceData)) private _aggregatedSourceData;
     
     // Security module
     address public oracleSecurity;
@@ -112,20 +114,15 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
     {
         // Never revert - return last valid price with staleness flag
         AggregatedPrice storage aggPrice = _aggregatedPrices[feedId];
-        uint256 maxStaleness = _feedConfigs[feedId].maxStaleness;
-        if (maxStaleness == 0) maxStaleness = MAX_CACHE_AGE;
         
         if (aggPrice.status == PriceStatus.ACTIVE && 
-            aggPrice.timestamp <= block.timestamp &&
-            block.timestamp - aggPrice.timestamp <= maxStaleness) {
+            block.timestamp - aggPrice.timestamp <= MAX_CACHE_AGE) {
             return aggPrice.price;
         }
         
         // Return cached price if available and not too stale
         PriceCache storage cache = _priceCache[feedId];
-        if (cache.isValid &&
-            cache.timestamp <= block.timestamp &&
-            block.timestamp - cache.timestamp <= maxStaleness * 2) {
+        if (cache.isValid && block.timestamp - cache.timestamp <= MAX_CACHE_AGE * 2) {
             return cache.price;
         }
         
@@ -177,6 +174,7 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
         uint256[] memory prices = new uint256[](sources.length);
         uint256[] memory timestamps = new uint256[](sources.length);
         uint256[] memory confidences = new uint256[](sources.length);
+        bool[] memory valid = new bool[](sources.length);
         
         uint256 validCount = 0;
         
@@ -191,18 +189,7 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
                 _fetchSourcePrice(source);
             
             if (sourceValid) {
-                // Timestamp validation
-                if (timestamp > block.timestamp || timestamp == 0) {
-                    continue;
-                }
-
-                // Staleness check per source
-                if (block.timestamp - timestamp > source.heartbeat) {
-                    continue;
-                }
-
-                // Normalize to target decimals
-                prices[validCount] = _normalizeDecimals(price, source.decimals, PRICE_DECIMALS);
+                prices[validCount] = price;
                 timestamps[validCount] = timestamp;
                 confidences[validCount] = confidence;
                 validCount++;
@@ -224,37 +211,32 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
         );
         
         // Apply sanity checks
-        bool sanityOk;
-        try OracleSanityChecker(sanityChecker).validatePrice(
+        bool sanityOk = OracleSanityChecker(sanityChecker).validatePrice(
             feedId,
             aggPrice.price,
             aggPrice.minPrice,
             aggPrice.maxPrice
-        ) returns (bool ok) {
-            sanityOk = ok;
-        } catch {
-            sanityOk = false;
-        }
+        );
         
         if (!sanityOk) {
             // Mark price as disputed
             aggPrice.status = PriceStatus.DISPUTED;
             
             // Check security module for emergency handling
-            try IOracleSecurity(oracleSecurity).shouldFreeze(feedId) returns (bool freeze) {
-                if (freeze) {
-                    aggPrice.status = PriceStatus.FROZEN;
-                }
-            } catch {}
+            if (IOracleSecurity(oracleSecurity).shouldFreeze(feedId)) {
+                aggPrice.status = PriceStatus.FROZEN;
+            }
         }
         
         // Update aggregated price
         _aggregatedPrices[feedId] = aggPrice;
 
-        // Store source data for audit using separate mappings to avoid struct nested array issues
-        _aggregatedPricesHistory[feedId][aggPrice.timestamp] = prices;
-        _aggregatedTimestampsHistory[feedId][aggPrice.timestamp] = timestamps;
-        _aggregatedConfidencesHistory[feedId][aggPrice.timestamp] = confidences;
+        // Store source data for audit
+        _aggregatedSourceData[feedId][aggPrice.timestamp] = SourceData({
+            prices: prices,
+            timestamps: timestamps,
+            confidences: confidences
+        });
         
         // Update cache
         _priceCache[feedId] = PriceCache({
@@ -320,6 +302,7 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
         require(_sources[feedId].length > 0, "OracleAggregator: no sources");
         
         // Find and remove source
+        address oracleAddress = _sources[feedId][_sources[feedId].length - 1].oracleAddress;
         _sources[feedId].pop();
         
         // If no sources left, remove feed
@@ -376,8 +359,7 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
             
             (bool valid, uint256 price, , ) = _fetchSourcePrice(sources[i]);
             if (valid) {
-                // Normalize to target decimals
-                prices[validCount] = _normalizeDecimals(price, sources[i].decimals, PRICE_DECIMALS);
+                prices[validCount] = price;
                 validCount++;
             }
         }
@@ -409,8 +391,7 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
             
             (bool sourceValid, uint256 price, , ) = _fetchSourcePrice(sources[i]);
             if (sourceValid) {
-                // Normalize to target decimals
-                prices[validCount] = _normalizeDecimals(price, sources[i].decimals, PRICE_DECIMALS);
+                prices[validCount] = price;
                 validCount++;
             }
         }
@@ -459,19 +440,14 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
         returns (bool valid, uint256 price, uint256 timestamp, uint256 confidence)
     {
         if (source.oracleType == OracleType.CHAINLINK) {
-            try ChainlinkOracle(source.oracleAddress).getPriceData() returns (bool v, uint256 p, uint256 t, uint256 c) {
-                return (v, p, t, c);
-            } catch { return (false, 0, 0, 0); }
+            return ChainlinkOracle(source.oracleAddress).getPriceData();
         } else if (source.oracleType == OracleType.PYTH) {
-            try PythOracle(source.oracleAddress).getPriceData() returns (bool v, uint256 p, uint256 t, uint256 c) {
-                return (v, p, t, c);
-            } catch { return (false, 0, 0, 0); }
+            return PythOracle(source.oracleAddress).getPriceData();
         } else if (source.oracleType == OracleType.TWAP) {
-            try TWAPOracle(source.oracleAddress).getPriceData() returns (bool v, uint256 p, uint256 t, uint256 c) {
-                return (v, p, t, c);
-            } catch { return (false, 0, 0, 0); }
+            return TWAPOracle(source.oracleAddress).getPriceData();
         } else if (source.oracleType == OracleType.CUSTOM) {
             // Custom oracle interface
+            // Implementation depends on specific oracle
             return (false, 0, 0, 0);
         }
         
@@ -521,7 +497,7 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
             status = PriceStatus.INACTIVE;
         }
         
-        // Price is already normalized by caller
+        // Price is already normalized to 8 decimals by sources
         uint256 normalizedPrice = medianPrice;
         
         return AggregatedPrice({
@@ -612,15 +588,17 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
     /**
      * @dev Normalize price to target decimals
      */
-    function _normalizeDecimals(
-        uint256 price,
-        uint256 sourceDecimals,
-        uint256 targetDecimals
-    ) internal pure returns (uint256) {
-        if (sourceDecimals > targetDecimals) {
-            return price / (10 ** (sourceDecimals - targetDecimals));
-        } else if (sourceDecimals < targetDecimals) {
-            return price * (10 ** (targetDecimals - sourceDecimals));
+    function _normalizeDecimals(uint256 price, uint256 targetDecimals)
+        internal
+        pure
+        returns (uint256)
+    {
+        // Assuming input price is in 18 decimals
+        // Convert to target decimals
+        if (targetDecimals > 18) {
+            return price * (10 ** (targetDecimals - 18));
+        } else if (targetDecimals < 18) {
+            return price / (10 ** (18 - targetDecimals));
         } else {
             return price;
         }
@@ -670,15 +648,7 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
         returns (bool stale) 
     {
         AggregatedPrice storage aggPrice = _aggregatedPrices[feedId];
-        if (aggPrice.status != PriceStatus.ACTIVE) {
-            return true;
-        }
-        if (aggPrice.timestamp > block.timestamp || aggPrice.timestamp == 0) {
-            return true; // Invalid timestamps are treated as stale
-        }
-        uint256 maxStaleness = _feedConfigs[feedId].maxStaleness;
-        if (maxStaleness == 0) maxStaleness = MAX_CACHE_AGE;
-        stale = block.timestamp - aggPrice.timestamp > maxStaleness;
+        stale = block.timestamp - aggPrice.timestamp > _feedConfigs[feedId].maxStaleness;
     }
 
     /**
@@ -746,7 +716,7 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
         bool requireTWAP,
         uint256 twapWindow
     ) external onlyOwner feedExists(feedId) {
-        require(minSources >= 1, "OracleAggregator: min sources < 1");
+        require(minSources >= 2, "OracleAggregator: min sources < 2");
         require(maxDeviationBps <= 1000, "OracleAggregator: deviation too high"); // 10% max
         require(maxStaleness <= 1 hours, "OracleAggregator: staleness too high");
         
@@ -818,11 +788,8 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
         view 
         returns (uint256[] memory prices, uint256[] memory timestamps, uint256[] memory confidences) 
     {
-        return (
-            _aggregatedPricesHistory[feedId][timestamp],
-            _aggregatedTimestampsHistory[feedId][timestamp],
-            _aggregatedConfidencesHistory[feedId][timestamp]
-        );
+        SourceData storage data = _aggregatedSourceData[feedId][timestamp];
+        return (data.prices, data.timestamps, data.confidences);
     }
 
     /**
@@ -836,14 +803,7 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
     ) external override whenNotPaused {
         // Only security module can push prices directly
         require(msg.sender == oracleSecurity, "OracleAggregator: only security module");
-        require(timestamp <= block.timestamp, "OracleAggregator: future timestamp");
-        require(timestamp > 0, "OracleAggregator: zero timestamp");
         
-        FeedConfig storage config = _feedConfigs[feedId];
-        if (config.maxStaleness > 0) {
-            require(block.timestamp - timestamp <= config.maxStaleness, "OracleAggregator: stale price");
-        }
-
         _aggregatedPrices[feedId] = AggregatedPrice({
             price: price,
             timestamp: timestamp,

@@ -2,95 +2,107 @@
 pragma solidity 0.8.19;
 
 import {IPerpEngine} from "../interfaces/IPerpEngine.sol";
+import {IPositionViewer} from "../interfaces/IPositionViewer.sol";
 
 contract MockPerpEngine is IPerpEngine {
-    function openPosition(TradeParams calldata) external override returns (uint256) { return 0; }
-    function increasePosition(uint256, uint256, uint256) external override {}
-    function decreasePosition(uint256, uint256, uint256) external override {}
-    function closePosition(uint256) external override {}
+    mapping(uint256 => Position) private _positions;
+    mapping(uint256 => PositionView) private _positionViews;
+
+    function setPosition(uint256 positionId, Position calldata pos) external {
+        _positions[positionId] = pos;
+    }
+
+    function setPositionView(uint256 positionId, PositionView calldata viewData) external {
+        _positionViews[positionId] = viewData;
+    }
+
+    // IPerpEngine Implementation
+    function openPosition(TradeParams calldata params) external override returns (uint256) { return 0; }
+    function increasePosition(uint256 positionId, uint256 sizeAdded, uint256 marginAdded) external override {}
+    function decreasePosition(uint256 positionId, uint256 sizeReduced, uint256 marginReduced) external override {}
+    function closePosition(uint256 positionId) external override {}
     function liquidatePosition(LiquidateParams calldata params) external override returns (uint256) {
-        delete _positions[params.positionId];
-        delete _posViews[params.positionId];
-        delete _hfs[params.positionId];
+        _positions[params.positionId].size -= params.sizeToLiquidate;
+        _positionViews[params.positionId].size -= params.sizeToLiquidate;
+        if (_positions[params.positionId].size == 0) {
+            _positions[params.positionId].isActive = false;
+            _positionViews[params.positionId].healthFactor = 1e18; // Reset HF
+        }
         return 0;
     }
-    function accrueFunding(uint256) external override {}
-    function batchAccrueFunding(uint256[] calldata) external override {}
-    function addMargin(uint256, uint256) external override {}
-    function removeMargin(uint256, uint256) external override {}
-    function getPositionInternal(uint256 id) external view override returns (Position memory) {
-        return _positions[id];
+    function accrueFunding(uint256 marketId) external override {}
+    function batchAccrueFunding(uint256[] calldata marketIds) external override {}
+    function addMargin(uint256 positionId, uint256 amount) external override {}
+    function removeMargin(uint256 positionId, uint256 amount) external override {}
+    function getPositionInternal(uint256 positionId) external view override returns (Position memory) {
+        return _positions[positionId];
     }
-    function updateProtocolFee(uint256) external override {}
-    function updateLiquidationPenalty(uint256) external override {}
-    function updateFundingParams(uint256, uint256) external override {}
-    function initializeMarket(uint256, bytes32, uint256, uint256, uint256, uint256, uint256) external override {}
-    function initializeMarketWithSkew(uint256, bytes32, uint256, uint256, uint256, uint256, uint256, uint256) external override {}
 
-    function getPositionsByTrader(address, uint256, uint256) external view override returns (PositionView[] memory, uint256) {
-        return (new PositionView[](0), 0);
+    // IPositionViewer Implementation
+    function getPosition(uint256 positionId) external view override returns (PositionView memory) {
+        return _positionViews[positionId];
     }
-    function getPositionsByMarket(uint256, uint256, uint256) external view override returns (PositionView[] memory, uint256) {
-        return (new PositionView[](0), 0);
+    function getPositionsByTrader(address trader, uint256 cursor, uint256 limit) external view override returns (PositionView[] memory positions, uint256 newCursor) {
+        return (positions, 0);
+    }
+    function getPositionsByMarket(uint256 marketId, uint256 cursor, uint256 limit) external view override returns (PositionView[] memory positions, uint256 newCursor) {
+        return (positions, 0);
     }
     function getPositionStats() external view override returns (PositionStats memory) {
-        PositionStats memory s;
-        return s;
+        PositionStats memory stats;
+        return stats;
     }
-    function getMarketStats(uint256) external view override returns (PositionStats memory) {
-        PositionStats memory s;
-        return s;
+    function getMarketStats(uint256 marketId) external view override returns (PositionStats memory) {
+        PositionStats memory stats;
+        return stats;
     }
-    function getLiquidationPrice(uint256) external view override returns (uint256) { return 0; }
-    function getUnrealizedPnl(uint256, uint256) external view override returns (int256) { return 0; }
-    function isPositionLiquidatable(uint256, uint256) external view override returns (bool) { return false; }
-    function getAvailableMargin(uint256) external view override returns (uint256) { return 0; }
-    function getMaxAdditionalSize(uint256, uint256) external view override returns (uint256) { return 0; }
-    function batchGetPositions(uint256[] calldata) external view override returns (PositionView[] memory) {
-        return new PositionView[](0);
+    function getHealthFactor(uint256 positionId) external view override returns (uint256) {
+        return _positionViews[positionId].healthFactor;
     }
-    function batchGetHealthFactors(uint256[] calldata) external view override returns (uint256[] memory) {
-        return new uint256[](0);
+    function getLiquidationPrice(uint256 positionId) external view override returns (uint256) {
+        return _positionViews[positionId].liquidationPrice;
     }
-    function batchIsLiquidatable(uint256[] calldata, uint256[] calldata) external view override returns (bool[] memory) {
-        return new bool[](0);
+    function getUnrealizedPnl(uint256 positionId, uint256 currentPrice) external view override returns (int256) {
+        return _positionViews[positionId].unrealizedPnl;
     }
-    function previewLiquidation(uint256, uint256) external view override returns (uint256, uint256, uint256) {
-        return (0, 0, 0);
+    function isPositionLiquidatable(uint256 positionId, uint256 currentPrice) external view override returns (bool) {
+        return _positionViews[positionId].healthFactor < 1e18;
     }
-    function getTotalOpenInterest(uint256) external view override returns (uint256) {
+    function getAvailableMargin(uint256 positionId) external view override returns (uint256) {
         return 0;
     }
-    function getMarketOracleFeed(uint256) external view override returns (bytes32) {
-        return bytes32(uint256(1));
+    function getMaxAdditionalSize(uint256 positionId, uint256 additionalMargin) external view override returns (uint256) {
+        return 0;
+    }
+    function batchGetPositions(uint256[] calldata positionIds) external view override returns (PositionView[] memory views) {
+        views = new PositionView[](positionIds.length);
+        for(uint256 i=0; i<positionIds.length; i++) {
+            views[i] = _positionViews[positionIds[i]];
+        }
+        return views;
+    }
+    function batchGetHealthFactors(uint256[] calldata positionIds) external view override returns (uint256[] memory healthFactors) {
+        healthFactors = new uint256[](positionIds.length);
+        for(uint256 i=0; i<positionIds.length; i++) {
+            healthFactors[i] = _positionViews[positionIds[i]].healthFactor;
+        }
+        return healthFactors;
+    }
+    function batchIsLiquidatable(uint256[] calldata positionIds, uint256[] calldata currentPrices) external view override returns (bool[] memory liquidatable) {
+        liquidatable = new bool[](positionIds.length);
+        for(uint256 i=0; i<positionIds.length; i++) {
+            liquidatable[i] = _positionViews[positionIds[i]].healthFactor < 1e18;
+        }
+        return liquidatable;
     }
 
-    mapping(uint256 => PositionView) private _posViews;
-    mapping(uint256 => Position) private _positions;
-    mapping(uint256 => uint256) private _hfs;
-
-    function setPositionView(uint256 id, PositionView calldata v) external {
-        _posViews[id] = v;
-        _positions[id].trader = v.trader;
-        _positions[id].marketId = v.marketId;
-        _positions[id].size = v.size;
-        _positions[id].isActive = v.size > 0;
+    function previewLiquidation(uint256 positionId, uint256 currentPrice) external view override returns (uint256 reward, uint256 penalty, uint256 newHealthFactor) {
+        return (0, 0, 1e18);
     }
 
-    function setPositionInternal(uint256 id, Position calldata p) external {
-        _positions[id] = p;
-    }
-    function setHealthFactor(uint256 id, uint256 hf) external {
-        _hfs[id] = hf;
-    }
-    function getPosition(uint256 id) external view override returns (PositionView memory) {
-        return _posViews[id];
-    }
-    function getHealthFactor(uint256 id) external view override returns (uint256) {
-        return _hfs[id] > 0 ? _hfs[id] : _posViews[id].healthFactor;
-    }
-    function getPositionStatus(uint256 id) external view override returns (bool, bool, uint256) {
-        uint256 hf = _hfs[id] > 0 ? _hfs[id] : _posViews[id].healthFactor;
-        return (true, hf < 1e18, hf);
-    }
+    // Admin Functions
+    function updateProtocolFee(uint256 newProtocolFee) external override {}
+    function updateLiquidationPenalty(uint256 newLiquidationPenalty) external override {}
+    function updateFundingParams(uint256 newFundingInterval, uint256 newMaxFundingRate) external override {}
+    function initializeMarket(uint256 marketId, bytes32 oracleFeedId, uint256 maxLeverage, uint256 minMarginRatio, uint256 minPositionSize, uint256 liquidationFeeRatio, uint256 protocolFeeRatio) external override {}
 }

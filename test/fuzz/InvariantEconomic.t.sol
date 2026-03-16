@@ -234,7 +234,7 @@ contract TraderActor {
     uint256[] public myPositions;
 
     constructor(address engine, address token) {
-        perpEngine = PerpEngine(payable(engine));
+        perpEngine = PerpEngine(engine);
         usdc = IERC20(token);
         usdc.approve(engine, type(uint256).max);
     }
@@ -273,7 +273,7 @@ contract LpActor {
     IERC20 public usdc;
 
     constructor(address pool, address token) {
-        ammPool = AMMPool(payable(pool));
+        ammPool = AMMPool(pool);
         usdc = IERC20(token);
         usdc.approve(pool, type(uint256).max);
     }
@@ -284,7 +284,7 @@ contract LiquidatorActor {
     IERC20 public usdc;
 
     constructor(address engine, address token) {
-        liquidationEngine = LiquidationEngine(payable(engine));
+        liquidationEngine = LiquidationEngine(engine);
         usdc = IERC20(token);
     }
 
