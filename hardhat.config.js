@@ -1,7 +1,7 @@
-require("@nomicfoundation/hardhat-toolbox");
+import "@nomicfoundation/hardhat-toolbox";
 
 /** @type import('hardhat/config').HardhatUserConfig */
-module.exports = {
+export default {
   solidity: {
     version: "0.8.19",
     settings: {
@@ -9,7 +9,7 @@ module.exports = {
         enabled: true,
         runs: 200,
       },
-      viaIR: true,
+      viaIR: false,
     },
   },
   networks: {

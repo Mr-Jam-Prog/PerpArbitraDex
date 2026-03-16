@@ -184,7 +184,7 @@ export const RiskIndicator = ({ healthFactor, positionsAtRisk, totalPositions })
             <div className="description-text">
               <h4>{riskDescription}</h4>
               <p>
-                {healthFactor && healthFactor.lt(RISK_THRESHOLDS.warning) 
+                {healthFactor && healthFactor.lt(RISK_THRESHOLDS.warning)
                   ? 'Ajoutez du collateral ou réduisez votre exposition'
                   : 'Votre portefeuille est bien géré'}
               </p>
