@@ -1,5 +1,5 @@
 const { expect } = require("chai");
-const { ethers } = require("hardhat");
+const { ethers, network } = require("hardhat");
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("⚡ LiquidationEngine - Unit Tests", function () {
@@ -16,7 +16,7 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
   let oracle1, oracle2;
   
   const MARKET_ID = 1n;
-  const FEED_ID = "0x0000000000000000000000000000000000000000000000000000000000000001";
+  const FEED_ID = ethers.toBeHex(MARKET_ID, 32);
   const INITIAL_PRICE = ethers.parseUnits("2000", 8);
   const COLLATERAL_AMOUNT = ethers.parseUnits("1000", 18);
   
@@ -43,7 +43,7 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
     );
     await sanityChecker.waitForDeployment();
 
-    const OracleAggregator = await ethers.getContractFactory("contracts/oracles/OracleAggregator.sol:OracleAggregator");
+    const OracleAggregator = await ethers.getContractFactory("OracleAggregator");
     oracleAggregator = await OracleAggregator.deploy(owner.address, sanityChecker.target); 
     await oracleAggregator.waitForDeployment();
 
@@ -111,12 +111,8 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
     });
     await oracleAggregator.updatePrice(FEED_ID);
 
-    await quoteToken.mint(liquidationEngine.target, ethers.parseUnits("10000", 18));
-    await quoteToken.mint(incentiveDistributor.target, ethers.parseUnits("10000", 18));
-    // Mint some to distributor for payout
-    await quoteToken.mint(incentiveDistributor.target, ethers.parseUnits("1000000", 18));
-    // Actually reward comes from LiquidationEngine to liquidator, and then penalty to distributor
     await quoteToken.mint(liquidationEngine.target, ethers.parseUnits("1000000", 18));
+    await quoteToken.mint(incentiveDistributor.target, ethers.parseUnits("1000000", 18));
   });
   
   describe("⚡ Liquidation Execution", function () {
@@ -155,12 +151,15 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
         lastUpdated: await time.latest()
       });
 
-      await ethers.provider.send("hardhat_setBalance", [perpEngine.target, "0x1000000000000000000"]);
-      const perpSigner = await ethers.getImpersonatedSigner(perpEngine.target);
+      const perpAddress = await perpEngine.getAddress();
+      await network.provider.send("hardhat_setBalance", [perpAddress, "0x1000000000000000000"]);
+      const perpSigner = await ethers.getImpersonatedSigner(perpAddress);
       
       await liquidationEngine.connect(perpSigner).queueLiquidation(positionId, ethers.parseUnits("0.8", 18));
       
-      await time.increase(2000);
+      await time.increase(1000); // Wait enough for grace period
+
+      // Update oracle after time increase to keep price fresh
       await oracle1.setPrice(INITIAL_PRICE);
       await oracle2.setPrice(INITIAL_PRICE);
       await oracleAggregator.updatePrice(FEED_ID);
@@ -173,6 +172,23 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
 
     it("Should revert if position is not in queue", async function () {
         const positionId = 2n;
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: ethers.parseUnits("1", 18),
+            margin: COLLATERAL_AMOUNT,
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**18n,
+            liquidationPrice: 0n,
+            healthFactor: ethers.parseUnits("0.5", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: 0n,
+            openTime: await time.latest(),
+            lastUpdated: await time.latest()
+        });
+
         await expect(
             liquidationEngine.executeLiquidation(positionId, 0n)
         ).to.be.revertedWith("Not in queue");
@@ -197,8 +213,9 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
             lastUpdated: await time.latest()
         });
 
-        await ethers.provider.send("hardhat_setBalance", [perpEngine.target, "0x1000000000000000000"]);
-        const perpSigner = await ethers.getImpersonatedSigner(perpEngine.target);
+        const perpAddress = await perpEngine.getAddress();
+        await network.provider.send("hardhat_setBalance", [perpAddress, "0x1000000000000000000"]);
+        const perpSigner = await ethers.getImpersonatedSigner(perpAddress);
         
         await liquidationEngine.connect(perpSigner).queueLiquidation(positionId, ethers.parseUnits("0.5", 18));
         

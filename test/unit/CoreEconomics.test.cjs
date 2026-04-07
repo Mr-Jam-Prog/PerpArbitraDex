@@ -13,7 +13,7 @@ describe("💎 Core Economics - Validation", function () {
         [owner, trader] = await ethers.getSigners();
         
         const MockERC20 = await ethers.getContractFactory("MockERC20");
-        quoteToken = await MockERC20.deploy("Quote", "QT");
+        quoteToken = await MockERC20.deploy("Quote", "QT", 18);
         
         const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
         protocolConfig = await ProtocolConfig.deploy(owner.address, owner.address);

@@ -16,28 +16,31 @@ describe("🏁 Protocol Core Validation", function () {
         [owner, trader, liquidator, insuranceFund] = await ethers.getSigners();
         
         const MockERC20 = await ethers.getContractFactory("MockERC20");
-        quoteToken = await MockERC20.deploy("USD Stable", "USDC");
+        quoteToken = await MockERC20.deploy("USD Stable", "USDC", 18);
         await quoteToken.waitForDeployment();
         
         const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
         protocolConfig = await ProtocolConfig.deploy(owner.address, owner.address);
         await protocolConfig.waitForDeployment();
 
+        const OracleSanityChecker = await ethers.getContractFactory("OracleSanityChecker");
+        const sanityChecker = await OracleSanityChecker.deploy(1, 10n**15n, 500);
+
         const OracleAggregator = await ethers.getContractFactory("OracleAggregator");
-        oracleAggregator = await OracleAggregator.deploy(owner.address, owner.address);
+        oracleAggregator = await OracleAggregator.deploy(owner.address, sanityChecker.target);
         await oracleAggregator.waitForDeployment();
         
         const deployerAddr = owner.address;
         const nonce = await ethers.provider.getTransactionCount(deployerAddr);
         
+        // Nonce management for circular dependencies
         const posMgrAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 2 });
         const ammAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 3 });
-        const liqAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 4 });
-        const perpAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 5 });
+        const liqAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 6 });
+        const perpAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 7 });
 
-        const PositionManager = await ethers.getContractFactory("PositionManager");
-        const positionManager = await PositionManager.deploy(perpAddr);
-        await positionManager.waitForDeployment();
+        const MockPositionManager = await ethers.getContractFactory("MockPositionManager");
+        const positionManager = await MockPositionManager.deploy();
         
         const AMMPool = await ethers.getContractFactory("AMMPool");
         ammPool = await AMMPool.deploy(perpAddr, oracleAggregator.target);
@@ -75,7 +78,7 @@ describe("🏁 Protocol Core Validation", function () {
             ammPool.target,
             oracleAggregator.target,
             liquidationEngine.target,
-            owner.address,
+            owner.address, // riskManager mock address
             protocolConfig.target,
             insuranceFund.address,
             quoteToken.target,
