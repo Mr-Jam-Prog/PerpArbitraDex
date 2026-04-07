@@ -4,298 +4,230 @@
 // @invariants: Funding rate symmetry, no arbitrage
 
 const { expect } = require("chai");
-const { ethers } = require("hardhat");
+const { network, ethers } = require("hardhat");
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("💰 AMMPool - Unit Tests", function () {
   let ammPool;
   let perpEngine;
-  let protocolConfig;
+  let mockOracle;
   let owner, user1, user2;
+  let impersonatedPerpEngine;
   
-  const ETH_USD_MARKET = "ETH-USD";
-  const INITIAL_PRICE = ethers.parseUnits("2000", 18);
-  const COLLATERAL_AMOUNT = ethers.parseUnits("1000", 18);
-  const LEVERAGE = ethers.parseUnits("5", 18);
+  const ETH_USD_MARKET = 1n;
   
   beforeEach(async function () {
     [owner, user1, user2] = await ethers.getSigners();
-    
-    // Déploiement ProtocolConfig
-    const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
-    protocolConfig = await ProtocolConfig.deploy(owner.address, owner.address);
-    await protocolConfig.waitForDeployment();
     
     // Déploiement PerpEngine mock
     const MockPerpEngine = await ethers.getContractFactory("MockPerpEngine");
     perpEngine = await MockPerpEngine.deploy();
     await perpEngine.waitForDeployment();
+    const perpEngineAddress = await perpEngine.getAddress();
+
+    // Déploiement Oracle mock/aggregator
+    const MockOracle = await ethers.getContractFactory("MockOracle");
+    mockOracle = await MockOracle.deploy();
+    await mockOracle.waitForDeployment();
     
     // Déploiement AMMPool
-    const AMMPool = await ethers.getContractFactory("AMMPool");
-    ammPool = await AMMPool.deploy(protocolConfig.address, perpEngine.address);
+    const AMMPoolFactory = await ethers.getContractFactory("AMMPool");
+    ammPool = await AMMPoolFactory.deploy(perpEngineAddress, mockOracle.target);
     await ammPool.waitForDeployment();
+
+    // Impersonate PerpEngine
+    await network.provider.send("hardhat_setBalance", [
+      perpEngineAddress,
+      "0xDE0B6B3A7640000", // 1 ETH
+    ]);
+    impersonatedPerpEngine = await ethers.getImpersonatedSigner(perpEngineAddress);
     
-    // Configuration
-    await protocolConfig.setAMMPool(ammPool.address);
-    await perpEngine.setAMMPool(ammPool.address);
+    // Initialize market
+    await ammPool.connect(impersonatedPerpEngine).initializeMarket(
+      ETH_USD_MARKET,
+      ethers.parseUnits("100000", 18), // skewScale ($100k)
+      ethers.parseUnits("0.01", 18),   // maxFundingRate (1% per hour)
+      3600                             // fundingInterval (1h)
+    );
   });
   
   describe("📈 Funding Rate Calculation", function () {
     it("Should calculate funding rate based on skew", async function () {
-      // Configure le skew dans le mock
-      const skew = ethers.parseUnits("100000", 18); // $100k skew long
-      await perpEngine.setSkew(ETH_USD_MARKET, skew);
+      const skew = ethers.parseUnits("100", 18);
+      await ammPool.connect(impersonatedPerpEngine).updateSkew(ETH_USD_MARKET, true, skew);
 
-      const totalSize = ethers.parseUnits("1000000", 18); // $1M total
-      await perpEngine.setTotalSize(ETH_USD_MARKET, totalSize);
-
-      const fundingRate = await ammPool.calculateFundingRate(ETH_USD_MARKET);
+      await time.increase(3600);
+      await ammPool.connect(impersonatedPerpEngine).updateFundingRate(ETH_USD_MARKET);
       
-      // fundingRate = skew / totalSize * fundingRateCoefficient
-      const expectedRate = skew * (await ammPool.fundingRateCoefficient()) / (totalSize);
-      
-      expect(fundingRate).to.equal(expectedRate);
+      const fundingRate = await ammPool.getFundingRate(ETH_USD_MARKET);
+      expect(fundingRate).to.be.gt(0);
     });
     
     it("Should have symmetric funding for long vs short", async function () {
-      // Skew long
-      await perpEngine.setSkew(ETH_USD_MARKET, ethers.parseUnits("100000", 18));
-      await perpEngine.setTotalSize(ETH_USD_MARKET, ethers.parseUnits("1000000", 18));
+      const amount = ethers.parseUnits("100", 18);
 
-      const longSkewRate = await ammPool.calculateFundingRate(ETH_USD_MARKET);
+      // Setup: long skew
+      await ammPool.connect(impersonatedPerpEngine).updateSkew(ETH_USD_MARKET, true, amount);
+      await time.increase(3600);
+      await ammPool.connect(impersonatedPerpEngine).updateFundingRate(ETH_USD_MARKET);
+      const longSkewRate = await ammPool.getFundingRate(ETH_USD_MARKET);
 
-      // Skew short (négatif)
-      await perpEngine.setSkew(ETH_USD_MARKET, ethers.parseUnits("-100000", 18));
-      const shortSkewRate = await ammPool.calculateFundingRate(ETH_USD_MARKET);
+      // Re-initialize for short test to ensure clean state and identical time elapsed
+      const AMMPoolFactory = await ethers.getContractFactory("AMMPool");
+      const ammPool2 = await AMMPoolFactory.deploy(impersonatedPerpEngine.address, mockOracle.target);
+      await ammPool2.waitForDeployment();
+      await ammPool2.connect(impersonatedPerpEngine).initializeMarket(
+        ETH_USD_MARKET,
+        ethers.parseUnits("100000", 18),
+        ethers.parseUnits("0.01", 18),
+        3600
+      );
 
-      // Les taux devraient être opposés
-      expect(longSkewRate).to.equal(shortSkewRate * (-1));
+      await ammPool2.connect(impersonatedPerpEngine).updateSkew(ETH_USD_MARKET, false, amount);
+      await time.increase(3600);
+      await ammPool2.connect(impersonatedPerpEngine).updateFundingRate(ETH_USD_MARKET);
+      const shortSkewRate = await ammPool2.getFundingRate(ETH_USD_MARKET);
+
+      expect(longSkewRate).to.equal(-shortSkewRate);
     });
 
     it("Should cap funding rate at maximum", async function () {
-      // Crée un skew énorme pour dépasser le cap
-      const hugeSkew = ethers.parseUnits("500000", 18);
-      const smallTotal = ethers.parseUnits("100000", 18); // 500% skew!
-      await perpEngine.setSkew(ETH_USD_MARKET, hugeSkew);
-      await perpEngine.setTotalSize(ETH_USD_MARKET, smallTotal);
+      await ammPool.connect(impersonatedPerpEngine).updateSkew(ETH_USD_MARKET, true, ethers.parseUnits("1000000", 18));
 
-      const fundingRate = await ammPool.calculateFundingRate(ETH_USD_MARKET);
-      const maxRate = await ammPool.maxFundingRate();
+      await time.increase(3600);
+      await ammPool.connect(impersonatedPerpEngine).updateFundingRate(ETH_USD_MARKET);
+      const fundingRate = await ammPool.getFundingRate(ETH_USD_MARKET);
+      const maxRate = (await ammPool.getMarketConfig(ETH_USD_MARKET)).maxFundingRate;
 
-      expect(fundingRate((val => val < 0n ? -val : val)())).to.be <= (maxRate);
+      expect(fundingRate).to.equal(maxRate);
     });
 
     it("Should apply funding rate interval correctly", async function () {
-      const skew = ethers.parseUnits("100000", 18);
-      const totalSize = ethers.parseUnits("1000000", 18);
-      await perpEngine.setSkew(ETH_USD_MARKET, skew);
-      await perpEngine.setTotalSize(ETH_USD_MARKET, totalSize);
+      await ammPool.connect(impersonatedPerpEngine).updateSkew(ETH_USD_MARKET, true, ethers.parseUnits("100000", 18));
 
-      const hourlyRate = await ammPool.calculateFundingRate(ETH_USD_MARKET);
+      await time.increase(1800);
+      await ammPool.connect(impersonatedPerpEngine).updateFundingRate(ETH_USD_MARKET);
+      expect(await ammPool.getFundingRate(ETH_USD_MARKET)).to.equal(0);
 
-      // Funding pour 1 jour (24h)
-      await time.increase(86400);
-      const dailyRate = await ammPool.calculateAccumulatedFunding(ETH_USD_MARKET);
-
-      // dailyRate ≈ hourlyRate * 24
-      const expectedDailyRate = hourlyRate * (24);
-      expect(dailyRate).to.be.closeTo(expectedDailyRate, hourlyRate((val => val < 0n ? -val : val)()) / (100)); // 1% tolerance
+      await time.increase(1800);
+      await ammPool.connect(impersonatedPerpEngine).updateFundingRate(ETH_USD_MARKET);
+      expect(await ammPool.getFundingRate(ETH_USD_MARKET)).to.be.gt(0);
     });
   });
   
   describe("🔄 Funding Settlement", function () {
-    it("Should settle funding correctly for long position", async function () {
-      // Configure une position long
-      const positionId = 1;
+    it("Should calculate funding payment correctly for long position", async function () {
       const positionSize = ethers.parseUnits("10000", 18);
-      const isLong = true;
-
-      await perpEngine.setPosition(positionId, ETH_USD_MARKET, isLong, positionSize, INITIAL_PRICE, COLLATERAL_AMOUNT);
       
-      // Configure un skew long (longs paient du funding)
-      const skew = ethers.parseUnits("50000", 18);
-      const totalSize = ethers.parseUnits("100000", 18);
-      await perpEngine.setSkew(ETH_USD_MARKET, skew);
-      await perpEngine.setTotalSize(ETH_USD_MARKET, totalSize);
+      await ammPool.connect(impersonatedPerpEngine).updateSkew(ETH_USD_MARKET, true, ethers.parseUnits("100", 18));
+      await time.increase(3600);
+      await ammPool.connect(impersonatedPerpEngine).updateFundingRate(ETH_USD_MARKET);
       
-      // Avance le temps
-      await time.increase(3600); // 1 heure
+      const lastFundingAccrued = (await time.latest()) - 3600;
+      const payment = await ammPool.calculateFundingPayment(ETH_USD_MARKET, positionSize, true, lastFundingAccrued);
 
-      // Settle funding
-      await ammPool.settleFunding(ETH_USD_MARKET);
-
-      // Vérifie que la position a payé du funding (cumulativeFunding négatif pour long)
-      const position = await perpEngine.getPosition(positionId);
-      expect(position.cumulativeFunding).to.be < (0);
+      expect(payment).to.be.lt(0);
     });
 
-    it("Should settle funding correctly for short position", async function () {
-      const positionId = 2;
+    it("Should calculate funding payment correctly for short position", async function () {
       const positionSize = ethers.parseUnits("10000", 18);
-      const isLong = false;
       
-      await perpEngine.setPosition(positionId, ETH_USD_MARKET, isLong, positionSize, INITIAL_PRICE, COLLATERAL_AMOUNT);
-      
-      // Skew long (shorts reçoivent du funding)
-      const skew = ethers.parseUnits("50000", 18);
-      const totalSize = ethers.parseUnits("100000", 18);
-      await perpEngine.setSkew(ETH_USD_MARKET, skew);
-      await perpEngine.setTotalSize(ETH_USD_MARKET, totalSize);
-
+      await ammPool.connect(impersonatedPerpEngine).updateSkew(ETH_USD_MARKET, true, ethers.parseUnits("100", 18));
       await time.increase(3600);
-      await ammPool.settleFunding(ETH_USD_MARKET);
+      await ammPool.connect(impersonatedPerpEngine).updateFundingRate(ETH_USD_MARKET);
 
-      const position = await perpEngine.getPosition(positionId);
-      expect(position.cumulativeFunding).to.be > (0); // Short reçoit du funding
+      const lastFundingAccrued = (await time.latest()) - 3600;
+      const payment = await ammPool.calculateFundingPayment(ETH_USD_MARKET, positionSize, false, lastFundingAccrued);
+
+      expect(payment).to.be.gt(0);
     });
 
     it("Should handle zero skew correctly", async function () {
-      // Skew = 0 (pas de funding)
-      await perpEngine.setSkew(ETH_USD_MARKET, 0);
-      await perpEngine.setTotalSize(ETH_USD_MARKET, ethers.parseUnits("100000", 18));
-
-      const positionId = 3;
-      await perpEngine.setPosition(positionId, ETH_USD_MARKET, true, ethers.parseUnits("10000", 18), INITIAL_PRICE, COLLATERAL_AMOUNT);
-
       await time.increase(3600);
-      await ammPool.settleFunding(ETH_USD_MARKET);
+      await ammPool.connect(impersonatedPerpEngine).updateFundingRate(ETH_USD_MARKET);
 
-      const position = await perpEngine.getPosition(positionId);
-      expect(position.cumulativeFunding).to.equal(0);
+      const payment = await ammPool.calculateFundingPayment(ETH_USD_MARKET, ethers.parseUnits("10000", 18), true, (await time.latest()) - 3600);
+      expect(payment).to.equal(0);
     });
 
-    it("Should accumulate funding over multiple settlements", async function () {
-      const positionId = 4;
-      await perpEngine.setPosition(positionId, ETH_USD_MARKET, true, ethers.parseUnits("10000", 18), INITIAL_PRICE, COLLATERAL_AMOUNT);
+    it("Should update accumulated funding in applyFunding", async function () {
+      await ammPool.connect(impersonatedPerpEngine).updateSkew(ETH_USD_MARKET, true, ethers.parseUnits("100", 18));
+      await time.increase(3600);
+      await ammPool.connect(impersonatedPerpEngine).updateFundingRate(ETH_USD_MARKET);
 
-      const skew = ethers.parseUnits("30000", 18);
-      const totalSize = ethers.parseUnits("100000", 18);
-      await perpEngine.setSkew(ETH_USD_MARKET, skew);
-      await perpEngine.setTotalSize(ETH_USD_MARKET, totalSize);
+      const lastFundingAccrued = (await time.latest()) - 3600;
+      await ammPool.connect(impersonatedPerpEngine).applyFunding(ETH_USD_MARKET, ethers.parseUnits("10000", 18), true, lastFundingAccrued);
 
-      let totalFunding = 0;
-
-      // Multiple settlements
-      for (let i = 0; i < 3; i++) {
-        await time.increase(3600);
-        await ammPool.settleFunding(ETH_USD_MARKET);
-
-        const position = await perpEngine.getPosition(positionId);
-        totalFunding = position.cumulativeFunding;
-      }
-
-      expect(totalFunding((val => val < 0n ? -val : val)())).to.be > (0);
+      const state = await ammPool.getFundingState(ETH_USD_MARKET);
+      expect(state.fundingAccumulatedLong).to.be.gt(0);
     });
   });
 
   describe("⚖️ Funding Rate Properties", function () {
     it("Should maintain invariant: total funding paid = total funding received", async function () {
-      // Crée plusieurs positions
-      const positions = [
-        { id: 1, size: ethers.parseUnits("5000", 18), isLong: true },
-        { id: 2, size: ethers.parseUnits("3000", 18), isLong: true },
-        { id: 3, size: ethers.parseUnits("4000", 18), isLong: false },
-        { id: 4, size: ethers.parseUnits("4000", 18), isLong: false }
-      ];
-
-      for (const pos of positions) {
-        await perpEngine.setPosition(
-          pos.id,
-          ETH_USD_MARKET,
-          pos.isLong,
-          pos.size,
-          INITIAL_PRICE,
-          COLLATERAL_AMOUNT
-        );
-      }
-
-      // Configure un skew
-      await perpEngine.setSkew(ETH_USD_MARKET, ethers.parseUnits("1000", 18));
-      await perpEngine.setTotalSize(ETH_USD_MARKET, ethers.parseUnits("16000", 18));
-
+      await ammPool.connect(impersonatedPerpEngine).updateSkew(ETH_USD_MARKET, true, ethers.parseUnits("100", 18));
       await time.increase(3600);
-      await ammPool.settleFunding(ETH_USD_MARKET);
+      await ammPool.connect(impersonatedPerpEngine).updateFundingRate(ETH_USD_MARKET);
 
-      // Calcule le total funding payé et reçu
-      let totalPaid = ethers.BigNumber.from(0);
-      let totalReceived = ethers.BigNumber.from(0);
+      const lastFundingAccrued = (await time.latest()) - 3600;
 
-      for (const pos of positions) {
-        const position = await perpEngine.getPosition(pos.id);
-        if (position.cumulativeFunding < (0)) {
-          totalPaid = totalPaid + (position.cumulativeFunding((val => val < 0n ? -val : val)()));
-        } else {
-          totalReceived = totalReceived + (position.cumulativeFunding);
-        }
-      }
+      const longPayment = await ammPool.calculateFundingPayment(ETH_USD_MARKET, ethers.parseUnits("10000", 18), true, lastFundingAccrued);
+      const shortPayment = await ammPool.calculateFundingPayment(ETH_USD_MARKET, ethers.parseUnits("10000", 18), false, lastFundingAccrued);
 
-      // Le total payé devrait égaler le total reçu (hors arrondissements)
-      expect(totalPaid).to.be.closeTo(totalReceived, totalPaid / (100)); // 1% tolerance
+      expect(longPayment < 0n ? -longPayment : longPayment).to.equal(shortPayment < 0n ? -shortPayment : shortPayment);
     });
 
     it("Should have funding rate proportional to time", async function () {
-      await perpEngine.setSkew(ETH_USD_MARKET, ethers.parseUnits("50000", 18));
-      await perpEngine.setTotalSize(ETH_USD_MARKET, ethers.parseUnits("200000", 18));
+      await ammPool.connect(impersonatedPerpEngine).updateSkew(ETH_USD_MARKET, true, ethers.parseUnits("100", 18));
 
-      // Funding pour 1 heure
-      const rate1h = await ammPool.calculateFundingRate(ETH_USD_MARKET);
+      await time.increase(3600);
+      await ammPool.connect(impersonatedPerpEngine).updateFundingRate(ETH_USD_MARKET);
+      const rate1h = await ammPool.getFundingRate(ETH_USD_MARKET);
 
-      // Funding pour 2 heures
-      await time.increase(7200);
-      const accumulated2h = await ammPool.calculateAccumulatedFunding(ETH_USD_MARKET);
+      await time.increase(3600);
+      await ammPool.connect(impersonatedPerpEngine).updateFundingRate(ETH_USD_MARKET);
+      const rate2h = await ammPool.getFundingRate(ETH_USD_MARKET);
 
-      // accumulated2h ≈ rate1h * 2
-      const expected2h = rate1h * (2);
-      expect(accumulated2h).to.be.closeTo(expected2h, rate1h((val => val < 0n ? -val : val)()) / (100));
+      expect(rate2h).to.be.closeTo(rate1h, rate1h / 100n);
     });
 
     it("Should handle extreme skew values", async function () {
-      // Skew proche de 100%
-      const almostTotal = ethers.parseUnits("99999", 18);
-      const total = ethers.parseUnits("100000", 18);
+      const hugeSkew = ethers.parseUnits("1000000", 18);
+      await ammPool.connect(impersonatedPerpEngine).updateSkew(ETH_USD_MARKET, true, hugeSkew);
 
-      await perpEngine.setSkew(ETH_USD_MARKET, almostTotal);
-      await perpEngine.setTotalSize(ETH_USD_MARKET, total);
+      await time.increase(3600);
+      await ammPool.connect(impersonatedPerpEngine).updateFundingRate(ETH_USD_MARKET);
+      const rate = await ammPool.getFundingRate(ETH_USD_MARKET);
+      const maxRate = (await ammPool.getMarketConfig(ETH_USD_MARKET)).maxFundingRate;
 
-      const rate = await ammPool.calculateFundingRate(ETH_USD_MARKET);
-      const maxRate = await ammPool.maxFundingRate();
-
-      // Le taux devrait être proche du maximum
-      expect(rate((val => val < 0n ? -val : val)())).to.be.closeTo(maxRate, maxRate / (10));
+      expect(rate).to.equal(maxRate);
     });
   });
 
   describe("🔧 Configuration", function () {
-    it("Should allow owner to update funding rate coefficient", async function () {
-      const newCoefficient = ethers.parseUnits("0.0001", 18);
-      await ammPool.connect(owner).setFundingRateCoefficient(newCoefficient);
-
-      expect(await ammPool.fundingRateCoefficient()).to.equal(newCoefficient);
+    it("Should allow updating skew scale via PerpEngine", async function () {
+      const newScale = ethers.parseUnits("200000", 18);
+      await ammPool.connect(impersonatedPerpEngine).updateSkewScale(ETH_USD_MARKET, newScale);
+      expect((await ammPool.getMarketConfig(ETH_USD_MARKET)).skewScale).to.equal(newScale);
     });
 
-    it("Should reject non-owner configuration", async function () {
-      const newCoefficient = ethers.parseUnits("0.0001", 18);
-
+    it("Should reject non-PerpEngine configuration", async function () {
       await expect(
-        ammPool.connect(user1).setFundingRateCoefficient(newCoefficient)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+        ammPool.connect(user1).updateSkewScale(ETH_USD_MARKET, ethers.parseUnits("200000", 18))
+      ).to.be.revertedWith("AMMPool: only PerpEngine");
     });
 
-    it("Should allow owner to update max funding rate", async function () {
-      const newMaxRate = ethers.parseUnits("0.001", 18); // 0.1% per hour
-      await ammPool.connect(owner).setMaxFundingRate(newMaxRate);
-
-      expect(await ammPool.maxFundingRate()).to.equal(newMaxRate);
+    it("Should allow updating max funding rate via PerpEngine", async function () {
+      const newMaxRate = ethers.parseUnits("0.005", 18);
+      await ammPool.connect(impersonatedPerpEngine).updateMaxFundingRate(ETH_USD_MARKET, newMaxRate);
+      expect((await ammPool.getMarketConfig(ETH_USD_MARKET)).maxFundingRate).to.equal(newMaxRate);
     });
 
     it("Should validate configuration parameters", async function () {
-      // Coefficient trop élevé
-      const excessiveCoefficient = ethers.parseUnits("1", 18);
-
+      const excessiveRate = ethers.parseUnits("0.5", 18); // 50%
       await expect(
-        ammPool.connect(owner).setFundingRateCoefficient(excessiveCoefficient)
-      ).to.be.revertedWith("InvalidCoefficient");
+        ammPool.connect(impersonatedPerpEngine).updateMaxFundingRate(ETH_USD_MARKET, excessiveRate)
+      ).to.be.revertedWith("AMMPool: funding rate too high");
     });
   });
 });

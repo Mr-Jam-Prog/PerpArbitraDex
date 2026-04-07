@@ -22,3 +22,4 @@ artifacts/
 cache/
 test_output.txt
 build_output.txt
+packages/sdk/dist/
