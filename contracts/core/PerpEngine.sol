@@ -74,6 +74,8 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
 
     // Admin and governance
     address public governance;
+    uint256 public globalProtocolFeeRatio;
+    uint256 public globalLiquidationFeeRatio;
 
     // Economic metrics for invariants
     uint256 public totalCollateral;
@@ -160,7 +162,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         riskManager = riskManager_;
         configRegistry = configRegistry_;
         insuranceFund = insuranceFund_;
-        governance = insuranceFund_; // Default to insurance fund, can be changed
+        governance = msg.sender; // Deployer is initial governance. Transfer after deployment.
         
         baseToken = IERC20(baseToken_);
         quoteToken = IERC20(quoteToken_);
@@ -621,8 +623,10 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
 
         // Calculate liquidation penalty (in quote units), capped by remaining margin
         uint256 liquidatedNotional = liquidatedSize.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
+        uint256 liquidationFeeRatio = _markets[position.marketId].liquidationFeeRatio;
+        if (liquidationFeeRatio == 0) liquidationFeeRatio = globalLiquidationFeeRatio;
         uint256 penalty = liquidatedNotional.mulDiv(
-            _markets[position.marketId].liquidationFeeRatio,
+            liquidationFeeRatio,
             PRECISION
         );
         if (penalty > remainingAfterPnl) {
@@ -1030,14 +1034,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
      * @inheritdoc IPerpEngine
      */
     function updateProtocolFee(uint256 newProtocolFee) external override onlyGovernance {
-        // Update all markets with new global protocol fee
-        // In production this might be more granular
-        uint256 numMarkets = 100; // Hypothetical max for loop
-        for (uint256 i = 1; i <= numMarkets; i++) {
-            if (_markets[i].isActive) {
-                _markets[i].protocolFeeRatio = newProtocolFee;
-            }
-        }
+        globalProtocolFeeRatio = newProtocolFee;
         emit ProtocolFeeUpdated(newProtocolFee);
     }
 
@@ -1045,12 +1042,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
      * @inheritdoc IPerpEngine
      */
     function updateLiquidationPenalty(uint256 newLiquidationPenalty) external override onlyGovernance {
-        uint256 numMarkets = 100;
-        for (uint256 i = 1; i <= numMarkets; i++) {
-            if (_markets[i].isActive) {
-                _markets[i].liquidationFeeRatio = newLiquidationPenalty;
-            }
-        }
+        globalLiquidationFeeRatio = newLiquidationPenalty;
         emit LiquidationPenaltyUpdated(newLiquidationPenalty);
     }
 
@@ -1061,9 +1053,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         uint256 newFundingInterval,
         uint256 newMaxFundingRate
     ) external override onlyGovernance {
-        // Update funding parameters in AMM pool
-        IAMMPool(ammPool).updateSkewScale(0, newFundingInterval); // Correct call would depend on IAMMPool
-        emit FundingParamsUpdated(newFundingInterval, newMaxFundingRate);
+        revert("updateFundingParams: not yet implemented");
     }
 
     /**
@@ -1101,6 +1091,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
      * @dev Accrue funding for a market
      */
     function _accrueFunding(uint256 marketId) internal {
+        if (block.timestamp <= _fundingStates[marketId].lastFundingTime) return;
         // Update funding in AMM pool
         int256 fundingRate = IAMMPool(ammPool).updateFundingRate(marketId);
         
@@ -1216,7 +1207,9 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         
         uint256 currentPrice = IOracleAggregator(oracleAggregator).getPrice(market.oracleFeedId);
         uint256 notionalValue = size.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
-        protocolFee = notionalValue.mulDiv(market.protocolFeeRatio, PRECISION);
+        uint256 protocolFeeRatio = market.protocolFeeRatio;
+        if (protocolFeeRatio == 0) protocolFeeRatio = globalProtocolFeeRatio;
+        protocolFee = notionalValue.mulDiv(protocolFeeRatio, PRECISION);
         
         if (protocolFee > 0) {
             _protocolFees[address(quoteToken)] += protocolFee;
@@ -1286,8 +1279,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     }
 
     function getPositionsByMarket(uint256 marketId, uint256 cursor, uint256 limit) external view override returns (PositionView[] memory positions, uint256 newCursor) {
-        // Not implemented: market to positions mapping not in storage
-        return (positions, cursor);
+        revert(unicode"getPositionsByMarket: not implemented — use subgraph");
     }
 
     function getPositionStats() external view override returns (PositionStats memory stats) {

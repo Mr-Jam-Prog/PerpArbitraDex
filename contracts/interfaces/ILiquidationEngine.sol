@@ -98,6 +98,12 @@ interface ILiquidationEngine {
     ) external returns (LiquidationResult[] memory results);
 
     /**
+     * @notice Batch liquidate positions for improved throughput and gas efficiency
+     * @param positionIds Array of position IDs to liquidate
+     */
+    function liquidateBatch(uint256[] calldata positionIds) external;
+
+    /**
      * @notice Flash liquidation with Aave flash loans
      * @param positionId Position to liquidate
      * @param loanAmount Flash loan amount
@@ -115,6 +121,13 @@ interface ILiquidationEngine {
      * @return numProcessed Number of positions processed
      */
     function processQueue(uint256 maxProcess) external returns (uint256 numProcessed);
+
+    /**
+     * @notice Process multiple liquidations from the queue automatically
+     * @param maxCount Maximum number of liquidations to process
+     * @return numProcessed Number of positions processed
+     */
+    function processLiquidations(uint256 maxCount) external returns (uint256 numProcessed);
 
     // ============ VIEW FUNCTIONS ============
 

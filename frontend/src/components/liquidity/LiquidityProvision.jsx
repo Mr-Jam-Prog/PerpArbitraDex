@@ -243,13 +243,13 @@ export const LiquidityProvision = () => {
             <div className="amount-conversion">
               {action === 'deposit' ? (
                 <span>
-                  ≈ {estimatedShares.gt(0) 
-                    ? ethers.utils.formatUnits(estimatedShares, 18) 
+                  ≈ {estimatedShares.gt(0)
+                    ? ethers.utils.formatUnits(estimatedShares, 18)
                     : '0'} LP shares
                 </span>
               ) : (
                 <span>
-                  ≈ {estimatedShares.gt(0) 
+                  ≈ {estimatedShares.gt(0)
                     ? formatCurrency(
                         estimatedShares
                           .mul(poolData?.totalLiquidity || ethers.BigNumber.from(0))

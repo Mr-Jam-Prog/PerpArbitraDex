@@ -93,7 +93,7 @@ export const ProposalBrowser = () => {
   const ProposalCard = ({ proposal }) => {
     const status = getProposalStatus(proposal.state);
     const totalVotes = proposal.forVotes.add(proposal.againstVotes).add(proposal.abstainVotes);
-    const forPercentage = totalVotes.gt(0) 
+    const forPercentage = totalVotes.gt(0)
       ? proposal.forVotes.mul(100).div(totalVotes).toNumber()
       : 0;
 

@@ -9,7 +9,7 @@ import { formatCurrency, formatTimestamp, formatPercentage } from '../../utils';
 
 export const VotingInterface = ({ proposalId }) => {
   const { account, signer } = usePerpDex();
-  const { 
+  const {
     proposal,
     userVotingPower,
     castVote,
@@ -60,13 +60,13 @@ export const VotingInterface = ({ proposalId }) => {
 
     try {
       setTransactionStatus('pending');
-      
+
       const tx = await castVote(proposalId, choice);
       await tx.wait();
-      
+
       setTransactionStatus('success');
       setVoteChoice(choice);
-      
+
       alert('Vote enregistré avec succès!');
     } catch (error) {
       console.error('Error casting vote:', error);
@@ -93,13 +93,13 @@ export const VotingInterface = ({ proposalId }) => {
 
     try {
       setTransactionStatus('delegating');
-      
+
       const tx = await delegateVote(delegateAddress);
       await tx.wait();
-      
+
       setTransactionStatus('delegated');
       setIsDelegating(false);
-      
+
       alert('Délégation réussie!');
     } catch (error) {
       console.error('Error delegating vote:', error);
@@ -141,22 +141,22 @@ export const VotingInterface = ({ proposalId }) => {
   const VotingProgressBar = ({ forPercentage, againstPercentage, abstainPercentage }) => {
     return (
       <div className="voting-progress-bar">
-        <div 
-          className="progress-segment for" 
+        <div
+          className="progress-segment for"
           style={{ width: `${forPercentage}%` }}
           title={`For: ${forPercentage.toFixed(1)}%`}
         >
           <span>For</span>
         </div>
-        <div 
-          className="progress-segment against" 
+        <div
+          className="progress-segment against"
           style={{ width: `${againstPercentage}%` }}
           title={`Against: ${againstPercentage.toFixed(1)}%`}
         >
           <span>Against</span>
         </div>
-        <div 
-          className="progress-segment abstain" 
+        <div
+          className="progress-segment abstain"
           style={{ width: `${abstainPercentage}%` }}
           title={`Abstain: ${abstainPercentage.toFixed(1)}%`}
         >
@@ -212,7 +212,7 @@ export const VotingInterface = ({ proposalId }) => {
           </span>
         </div>
         <h1 className="proposal-title">{proposal.description}</h1>
-        
+
         <div className="proposal-timeline">
           <div className="timeline-item">
             <div className="timeline-label">Début</div>
@@ -240,8 +240,8 @@ export const VotingInterface = ({ proposalId }) => {
         <div className="status-card">
           <div className="status-label">Quorum Progress</div>
           <div className="progress-container">
-            <div 
-              className="progress-bar" 
+            <div
+              className="progress-bar"
               style={{ width: `${calculateQuorumProgress()}%` }}
             />
             <div className="progress-text">
@@ -273,8 +273,8 @@ export const VotingInterface = ({ proposalId }) => {
       {/* Résultats du vote */}
       <div className="voting-results">
         <h3>Résultats Actuels</h3>
-        
-        <VotingProgressBar 
+
+        <VotingProgressBar
           forPercentage={forPercentage}
           againstPercentage={againstPercentage}
           abstainPercentage={abstainPercentage}
@@ -321,7 +321,7 @@ export const VotingInterface = ({ proposalId }) => {
             <div className="power-value">
               {formatCurrency(userVotingPower || ethers.BigNumber.from(0))}
             </div>
-            
+
             {!isDelegating ? (
               <button
                 className="delegate-button"
@@ -439,12 +439,12 @@ export const VotingInterface = ({ proposalId }) => {
       {/* Détails de la proposal */}
       <div className="proposal-details">
         <h3>Détails de la Proposal</h3>
-        
+
         <div className="details-grid">
           <div className="detail-item">
             <div className="detail-label">Proposer</div>
             <div className="detail-value">
-              <a 
+              <a
                 href={`https://arbiscan.io/address/${proposal.proposer}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -490,7 +490,7 @@ export const VotingInterface = ({ proposalId }) => {
               <div key={index} className="action-item">
                 <div className="action-target">
                   Target {index + 1}:{' '}
-                  <a 
+                  <a
                     href={`https://arbiscan.io/address/${target}`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -526,7 +526,7 @@ export const VotingInterface = ({ proposalId }) => {
                 {proposal.votes.slice(0, 10).map((vote, index) => (
                   <tr key={index}>
                     <td>
-                      <a 
+                      <a
                         href={`https://arbiscan.io/address/${vote.voter}`}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -537,10 +537,10 @@ export const VotingInterface = ({ proposalId }) => {
                     </td>
                     <td>
                       <span className={`vote-tag ${
-                        vote.support === 1 ? 'for' : 
+                        vote.support === 1 ? 'for' :
                         vote.support === 0 ? 'against' : 'abstain'
                       }`}>
-                        {vote.support === 1 ? 'For' : 
+                        {vote.support === 1 ? 'For' :
                          vote.support === 0 ? 'Against' : 'Abstain'}
                       </span>
                     </td>
