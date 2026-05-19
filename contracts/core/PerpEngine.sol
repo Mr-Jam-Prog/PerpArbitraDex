@@ -162,7 +162,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         riskManager = riskManager_;
         configRegistry = configRegistry_;
         insuranceFund = insuranceFund_;
-        governance = msg.sender; // Deployer is initial governance. Transfer after deployment.
+        governance = insuranceFund_; // Deployer is initial governance. Transfer after deployment.
         
         baseToken = IERC20(baseToken_);
         quoteToken = IERC20(quoteToken_);
