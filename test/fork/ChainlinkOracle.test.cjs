@@ -4,7 +4,7 @@
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits } = ethers.utils;
+const { parseUnits } = ethers;
 
 describe("🔗 Chainlink Oracle Mainnet Fork", function () {
   // Adresses Chainlink Arbitrum
@@ -42,7 +42,7 @@ describe("🔗 Chainlink Oracle Mainnet Fork", function () {
     const ChainlinkOracle = await ethers.getContractFactory("ChainlinkOracle");
     chainlinkOracle = await ChainlinkOracle.deploy(
       CHAINLINK_REGISTRY,
-      ethers.constants.AddressZero // aggregator à configurer
+      ethers.ZeroAddress // aggregator à configurer
     );
     
     // Déploiement de l'agrégateur

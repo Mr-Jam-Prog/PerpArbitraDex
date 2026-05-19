@@ -10,7 +10,7 @@ contract MockPerpEngine is IPerpEngine {
     mapping(uint256 => uint256) private _healthFactors;
     mapping(uint256 => uint256) private _liqPrices;
     mapping(uint256 => int256) private _pnl;
-    
+
     address private _ammPool;
 
     function setAMMPool(address amm) external {
@@ -76,7 +76,7 @@ contract MockPerpEngine is IPerpEngine {
         if (_positionViews[params.positionId].positionId != 0) {
             _positionViews[params.positionId].size = 0;
         }
-        return 0; 
+        return 0;
     }
 
     function accrueFunding(uint256) external override {}

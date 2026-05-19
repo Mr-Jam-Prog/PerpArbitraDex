@@ -130,7 +130,7 @@ contract LiquidationQueue {
         // Filter by grace period and sort by health factor
         ILiquidationEngine.LiquidationCandidate[] memory candidates = new ILiquidationEngine.LiquidationCandidate[](allPositions.length);
         uint256 validCount = 0;
-        
+
         for (uint256 i = 0; i < allPositions.length; i++) {
             QueueItem storage item = queueItems[allPositions[i]];
             if (block.timestamp >= item.queueTime) {
@@ -142,10 +142,10 @@ contract LiquidationQueue {
         if (validCount == 0) {
             return (false, 0);
         }
-        
+
         // Sort by health factor (most unhealthy first)
         _sortCandidates(candidates, validCount);
-        
+
         return (true, candidates[0].positionId);
     }
 

@@ -17,9 +17,9 @@ describe("🔄 FullTradeFlow - Integration Tests", function () {
   let owner, trader1, trader2, lpProvider;
   
   const ETH_USD_MARKET = "ETH-USD";
-  const INITIAL_PRICE = ethers.utils.parseUnits("2000", 18);
-  const COLLATERAL_AMOUNT = ethers.utils.parseUnits("10000", 18); // $10,000
-  const LEVERAGE = ethers.utils.parseUnits("3", 18); // 3x
+  const INITIAL_PRICE = ethers.parseUnits("2000", 18);
+  const COLLATERAL_AMOUNT = ethers.parseUnits("10000", 18); // $10,000
+  const LEVERAGE = ethers.parseUnits("3", 18); // 3x
   
   beforeEach(async function () {
     [owner, trader1, trader2, lpProvider] = await ethers.getSigners();
@@ -27,21 +27,21 @@ describe("🔄 FullTradeFlow - Integration Tests", function () {
     // Déploiement des contrats réels (pas des mocks)
     const MockERC20 = await ethers.getContractFactory("MockERC20");
     collateralToken = await MockERC20.deploy("USD Stable", "USD", 18);
-    await collateralToken.deployed();
+    await collateralToken.waitForDeployment();
     
     const MockOracle = await ethers.getContractFactory("MockOracle");
     oracle = await MockOracle.deploy();
-    await oracle.deployed();
+    await oracle.waitForDeployment();
     await oracle.setPrice(ETH_USD_MARKET, INITIAL_PRICE);
     
     const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
     protocolConfig = await ProtocolConfig.deploy();
-    await protocolConfig.deployed();
+    await protocolConfig.waitForDeployment();
     await protocolConfig.initialize();
     
     const MarketRegistry = await ethers.getContractFactory("MarketRegistry");
     marketRegistry = await MarketRegistry.deploy(protocolConfig.address);
-    await marketRegistry.deployed();
+    await marketRegistry.waitForDeployment();
     
     const PositionManager = await ethers.getContractFactory("PositionManager");
     positionManager = await PositionManager.deploy(
@@ -49,11 +49,11 @@ describe("🔄 FullTradeFlow - Integration Tests", function () {
       "PERP-POS",
       protocolConfig.address
     );
-    await positionManager.deployed();
+    await positionManager.waitForDeployment();
     
     const RiskManager = await ethers.getContractFactory("RiskManager");
-    const riskManager = await RiskManager.deploy(protocolConfig.address, ethers.constants.AddressZero);
-    await riskManager.deployed();
+    const riskManager = await RiskManager.deploy(protocolConfig.address, ethers.ZeroAddress);
+    await riskManager.waitForDeployment();
     
     const PerpEngine = await ethers.getContractFactory("PerpEngine");
     perpEngine = await PerpEngine.deploy(
@@ -61,19 +61,19 @@ describe("🔄 FullTradeFlow - Integration Tests", function () {
       marketRegistry.address,
       positionManager.address
     );
-    await perpEngine.deployed();
+    await perpEngine.waitForDeployment();
     
     const AMMPool = await ethers.getContractFactory("AMMPool");
     const ammPool = await AMMPool.deploy(protocolConfig.address, perpEngine.address);
-    await ammPool.deployed();
+    await ammPool.waitForDeployment();
     
     // Configuration complète
     await protocolConfig.setGlobalParameters(
-      ethers.utils.parseUnits("0.1", 18), // 10% initial
-      ethers.utils.parseUnits("0.08", 18), // 8% maintenance
-      ethers.utils.parseUnits("0.02", 18), // 2% liquidation fee
-      ethers.utils.parseUnits("0.001", 18), // 0.1% protocol fee
-      ethers.utils.parseUnits("10", 18), // 10x max leverage
+      ethers.parseUnits("0.1", 18), // 10% initial
+      ethers.parseUnits("0.08", 18), // 8% maintenance
+      ethers.parseUnits("0.02", 18), // 2% liquidation fee
+      ethers.parseUnits("0.001", 18), // 0.1% protocol fee
+      ethers.parseUnits("10", 18), // 10x max leverage
       3600 // 1 hour funding
     );
     
@@ -90,11 +90,11 @@ describe("🔄 FullTradeFlow - Integration Tests", function () {
     await marketRegistry.addMarket(
       ETH_USD_MARKET,
       "Ethereum / USD",
-      ethers.constants.AddressZero, // ETH
+      ethers.ZeroAddress, // ETH
       collateralToken.address, // USD
-      ethers.utils.parseUnits("1000000", 18), // $1M max position
-      ethers.utils.parseUnits("100", 18), // $100 min position
-      ethers.utils.parseUnits("0.01", 18), // $0.01 tick size
+      ethers.parseUnits("1000000", 18), // $1M max position
+      ethers.parseUnits("100", 18), // $100 min position
+      ethers.parseUnits("0.01", 18), // $0.01 tick size
       ["mock"]
     );
     
@@ -299,7 +299,7 @@ describe("🔄 FullTradeFlow - Integration Tests", function () {
       await collateralToken.connect(trader1).approve(perpEngine.address, COLLATERAL_AMOUNT.mul(4));
       
       // Stratégie de hedging: long principal + short de couverture
-      const mainPositionSize = COLLATERAL_AMOUNT.mul(LEVERAGE).div(ethers.utils.parseUnits("1", 18));
+      const mainPositionSize = COLLATERAL_AMOUNT.mul(LEVERAGE).div(ethers.parseUnits("1", 18));
       
       // Position long principale
       await perpEngine.connect(trader1).openPosition(
@@ -433,7 +433,7 @@ describe("🔄 FullTradeFlow - Integration Tests", function () {
           ETH_USD_MARKET,
           true,
           COLLATERAL_AMOUNT,
-          ethers.utils.parseUnits("15", 18), // 15x > 10x max
+          ethers.parseUnits("15", 18), // 15x > 10x max
           INITIAL_PRICE.mul(101).div(100)
         )
       ).to.be.revertedWith("ExceedsMaxLeverage");

@@ -4,7 +4,7 @@
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits, formatUnits } = ethers.utils;
+const { parseUnits, formatUnits } = ethers;
 
 describe("🚀 FlashLoans Integration", function () {
   let deployer, user1, liquidator;
@@ -61,7 +61,7 @@ describe("🚀 FlashLoans Integration", function () {
       const premium = loanAmount.mul(9).div(10000);
       
       // Encodage d'une opération qui ne rembourse pas
-      const maliciousData = ethers.utils.defaultAbiCoder.encode(
+      const maliciousData = ethers.AbiCoder.defaultAbiCoder().encode(
         ["bool"],
         [false] // Ne pas rembourser
       );

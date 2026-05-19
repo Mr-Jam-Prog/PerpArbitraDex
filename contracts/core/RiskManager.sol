@@ -406,7 +406,7 @@ contract RiskManager is IRiskManager, Ownable {
         
         // Check trader's existing positions
         // This would require querying PerpEngine for trader's positions
-        
+
         return (true, "");
     }
 
