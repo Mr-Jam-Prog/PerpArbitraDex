@@ -159,6 +159,8 @@ contract InvariantEconomicTest is StdInvariant, Test {
 
     function _setupMarkets() internal {
         vm.prank(insuranceFund);
+        perpEngine.setGovernance(address(this));
+
         perpEngine.initializeMarket(
             1,
             bytes32("ETH-USD"),

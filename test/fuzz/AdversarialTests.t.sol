@@ -109,8 +109,11 @@ contract AdversarialTests is Test {
         assertEq(address(ammPool), ammAddr, "AMM address mismatch");
         assertEq(address(perpEngine), perpAddr, "Perp address mismatch");
 
-        // Standard market initialization
+        // Grant governance to test contract
         vm.prank(insuranceFund);
+        perpEngine.setGovernance(address(this));
+
+        // Standard market initialization
         perpEngine.initializeMarket(
             1,
             bytes32("ETH-USD"),
