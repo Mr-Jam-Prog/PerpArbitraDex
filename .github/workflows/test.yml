@@ -16,7 +16,7 @@ jobs:
           submodules: recursive
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
           version: 8
 
@@ -37,12 +37,12 @@ jobs:
   hardhat:
     name: Hardhat Tests
     runs-on: ubuntu-latest
-    continue-on-error: true # Legacy Hardhat tests - Foundry is the source of truth for economic invariants
+    continue-on-error: false - Foundry is the source of truth for economic invariants
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
           version: 8
 

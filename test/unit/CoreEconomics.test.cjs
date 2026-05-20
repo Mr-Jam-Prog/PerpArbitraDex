@@ -1,5 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { parseUnits, formatUnits } = ethers;
+
 
 describe("💎 Core Economics - Validation", function () {
     let perpEngine, positionManager, oracleAggregator, protocolConfig, quoteToken;

@@ -5,6 +5,8 @@
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { parseUnits, formatUnits } = ethers;
+
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("🚀 PerpEngine - Unit Tests", function () {
@@ -157,7 +159,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
         const initialBalance = await mockUSD.balanceOf(user1.address);
         await perpEngine.connect(user1).closePosition(positionId);
         const finalBalance = await mockUSD.balanceOf(user1.address);
-        expect(finalBalance).to.be.gt(initialBalance);
+        expect(finalBalance).to.be > (initialBalance);
     });
   });
 

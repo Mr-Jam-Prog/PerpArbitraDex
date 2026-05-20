@@ -5,6 +5,8 @@
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { parseUnits, formatUnits } = ethers;
+
 
 describe("📊 FundingRateCalculator - Unit Tests", function () {
   let fundingRateCalculator;
