@@ -1,5 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { parseUnits, formatUnits } = ethers;
+
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("🏁 Protocol Core Validation", function () {
