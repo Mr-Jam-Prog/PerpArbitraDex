@@ -99,16 +99,16 @@ describe("⚡ Liquidations - Integration Tests", function () {
     await protocolConfig.setRiskManager(riskManager.address);
     await protocolConfig.setAMMPool(ammPool.address);
     await protocolConfig.setLiquidationEngine(liquidationEngine.address);
-    
+
     await positionManager.setPerpEngine(perpEngine.address);
     await marketRegistry.setPerpEngine(perpEngine.address);
     await riskManager.setPerpEngine(perpEngine.address);
     await ammPool.setPerpEngine(perpEngine.address);
-    
+
     await liquidationEngine.setLiquidationQueue(liquidationQueue.address);
     await liquidationEngine.setIncentiveDistributor(incentiveDistributor.address);
     await liquidationQueue.setLiquidationEngine(liquidationEngine.address);
-    
+
     // Ajout du marché
     await marketRegistry.addMarket(
       ETH_USD_MARKET,
@@ -120,7 +120,7 @@ describe("⚡ Liquidations - Integration Tests", function () {
       ethers.utils.parseUnits("0.01", 18),
       ["mock"]
     );
-    
+
     await marketRegistry.setOracle(ETH_USD_MARKET, oracle.address);
     
     // Funding pour les tests

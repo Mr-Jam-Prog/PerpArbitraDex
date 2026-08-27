@@ -3,8 +3,8 @@ const { ethers } = require("hardhat");
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("🏁 Protocol Core Validation", function () {
-    let perpEngine, ammPool, oracleAggregator, liquidationEngine, protocolConfig, riskManager;
-    let quoteToken, baseToken, positionManager;
+    let perpEngine, ammPool, oracleAggregator, liquidationEngine, protocolConfig;
+    let quoteToken;
     let owner, trader, liquidator, insuranceFund;
     
     const MARKET_ID = 1n;
@@ -17,43 +17,71 @@ describe("🏁 Protocol Core Validation", function () {
         
         const MockERC20 = await ethers.getContractFactory("MockERC20");
         quoteToken = await MockERC20.deploy("USD Stable", "USDC", 18);
-        baseToken = await MockERC20.deploy("Ethereum", "ETH", 18);
+        await quoteToken.waitForDeployment();
         
         const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
         protocolConfig = await ProtocolConfig.deploy(owner.address, owner.address);
-        
-        // Use MockOracle for validation to simplify
-        const MockOracle = await ethers.getContractFactory("MockOracle");
-        oracleAggregator = await MockOracle.deploy("Oracle", 18);
+        await protocolConfig.waitForDeployment();
+
+        const OracleSanityChecker = await ethers.getContractFactory("OracleSanityChecker");
+        const sanityChecker = await OracleSanityChecker.deploy(1, 10n**15n, 500);
+
+        const OracleAggregator = await ethers.getContractFactory("OracleAggregator");
+        oracleAggregator = await OracleAggregator.deploy(owner.address, sanityChecker.target);
+        await oracleAggregator.waitForDeployment();
 
         const deployerAddr = owner.address;
         const nonce = await ethers.provider.getTransactionCount(deployerAddr);
         
-        const posMgrAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 6 });
-        const perpAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 5 });
+        // Nonce management for circular dependencies
+        const posMgrAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 2 });
+        const ammAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 3 });
+        const liqAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 6 });
+        const perpAddr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 7 });
 
-        const MockAMMPool = await ethers.getContractFactory("MockAMMPool");
-        ammPool = await MockAMMPool.deploy();
+        const MockPositionManager = await ethers.getContractFactory("MockPositionManager");
+        const positionManager = await MockPositionManager.deploy();
         
-        const MockLiquidationEngine = await ethers.getContractFactory("MockLiquidationEngine");
-        liquidationEngine = await MockLiquidationEngine.deploy();
+        const AMMPool = await ethers.getContractFactory("AMMPool");
+        ammPool = await AMMPool.deploy(perpAddr, oracleAggregator.target);
+        await ammPool.waitForDeployment();
 
-        const MockRiskManager = await ethers.getContractFactory("MockRiskManager");
-        riskManager = await MockRiskManager.deploy();
+        const LiquidationQueue = await ethers.getContractFactory("LiquidationQueue");
+        const liquidationQueue = await LiquidationQueue.deploy(liqAddr);
+        await liquidationQueue.waitForDeployment();
 
-        const PositionManager = await ethers.getContractFactory("PositionManager");
-        positionManager = await PositionManager.deploy(perpAddr);
+        const IncentiveDistributor = await ethers.getContractFactory("IncentiveDistributor");
+        const incentiveDistributor = await IncentiveDistributor.deploy(
+            quoteToken.target,
+            perpAddr,
+            protocolConfig.target,
+            owner.address,
+            insuranceFund.address,
+            owner.address
+        );
+        await incentiveDistributor.waitForDeployment();
+
+        const LiquidationEngine = await ethers.getContractFactory("LiquidationEngine");
+        liquidationEngine = await LiquidationEngine.deploy(
+            perpAddr,
+            protocolConfig.target,
+            oracleAggregator.target,
+            quoteToken.target,
+            liquidationQueue.target,
+            incentiveDistributor.target
+        );
+        await liquidationEngine.waitForDeployment();
         
         const PerpEngine = await ethers.getContractFactory("PerpEngine");
         perpEngine = await PerpEngine.deploy(
-            posMgrAddr,
+            positionManager.target,
             ammPool.target,
             oracleAggregator.target,
             liquidationEngine.target,
-            riskManager.target,
+            owner.address, // riskManager mock address
             protocolConfig.target,
             insuranceFund.address,
-            baseToken.target,
+            quoteToken.target,
             quoteToken.target
         );
         await perpEngine.waitForDeployment();

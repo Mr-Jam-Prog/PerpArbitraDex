@@ -4,8 +4,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import { 
-  BarChart, Bar, LineChart, Line, XAxis, YAxis, 
+import {
+  BarChart, Bar, LineChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
@@ -13,10 +13,10 @@ import { useLiquidity } from '../../hooks';
 import { formatCurrency, formatPercentage, formatTimestamp } from '../../utils';
 
 export const YieldDashboard = () => {
-  const { 
-    poolData, 
-    userLpBalance, 
-    userRewards, 
+  const {
+    poolData,
+    userLpBalance,
+    userRewards,
     historicalYield,
     loading,
     error
@@ -290,7 +290,7 @@ export const YieldDashboard = () => {
               <div className="chart-metric">
                 <span>Moyenne:</span>
                 <span>
-                  {yieldData.length > 0 
+                  {yieldData.length > 0
                     ? `${(yieldData.reduce((sum, d) => sum + d.apy, 0) / yieldData.length).toFixed(2)}%`
                     : '--'
                   }
@@ -299,7 +299,7 @@ export const YieldDashboard = () => {
               <div className="chart-metric">
                 <span>Max:</span>
                 <span>
-                  {yieldData.length > 0 
+                  {yieldData.length > 0
                     ? `${Math.max(...yieldData.map(d => d.apy)).toFixed(2)}%`
                     : '--'
                   }
@@ -310,26 +310,26 @@ export const YieldDashboard = () => {
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={yieldData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis 
-                dataKey="date" 
+              <XAxis
+                dataKey="date"
                 stroke="#9CA3AF"
                 fontSize={12}
               />
-              <YAxis 
+              <YAxis
                 stroke="#9CA3AF"
                 fontSize={12}
                 tickFormatter={(value) => `${value.toFixed(1)}%`}
               />
-              <Tooltip 
+              <Tooltip
                 formatter={(value) => [`${value.toFixed(2)}%`, 'APY']}
                 labelFormatter={(label) => label}
               />
               <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="apy" 
-                name="APY" 
-                stroke="#10B981" 
+              <Line
+                type="monotone"
+                dataKey="apy"
+                name="APY"
+                stroke="#10B981"
                 strokeWidth={2}
                 dot={false}
                 activeDot={{ r: 6 }}
@@ -345,33 +345,33 @@ export const YieldDashboard = () => {
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={yieldData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
-              <XAxis 
-                dataKey="date" 
+              <XAxis
+                dataKey="date"
                 stroke="#9CA3AF"
                 fontSize={12}
               />
-              <YAxis 
+              <YAxis
                 stroke="#9CA3AF"
                 fontSize={12}
                 tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
               />
-              <Tooltip 
+              <Tooltip
                 formatter={(value, name) => [
                   `$${(value / 1000).toFixed(1)}k`,
                   name === 'fees' ? 'Fees' : 'Volume'
                 ]}
               />
               <Legend />
-              <Bar 
-                dataKey="fees" 
-                name="Fees" 
-                fill="#3B82F6" 
+              <Bar
+                dataKey="fees"
+                name="Fees"
+                fill="#3B82F6"
                 radius={[4, 4, 0, 0]}
               />
-              <Bar 
-                dataKey="volume" 
-                name="Volume" 
-                fill="#8B5CF6" 
+              <Bar
+                dataKey="volume"
+                name="Volume"
+                fill="#8B5CF6"
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>
@@ -400,7 +400,7 @@ export const YieldDashboard = () => {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip 
+                <Tooltip
                   formatter={(value) => [`${value}%`, 'Part']}
                 />
               </PieChart>
@@ -409,8 +409,8 @@ export const YieldDashboard = () => {
           <div className="distribution-legend">
             {distributionData.map((item, index) => (
               <div key={item.name} className="legend-item">
-                <div 
-                  className="legend-color" 
+                <div
+                  className="legend-color"
                   style={{ backgroundColor: COLORS[index] }}
                 />
                 <span className="legend-label">{item.name}</span>
@@ -480,7 +480,7 @@ export const YieldDashboard = () => {
             <div className="insight-content">
               <h4>Performance</h4>
               <p>
-                L'APY a augmenté de {yieldData.length >= 2 
+                L'APY a augmenté de {yieldData.length >= 2
                   ? ((yieldData[yieldData.length - 1].apy - yieldData[0].apy) / yieldData[0].apy * 100).toFixed(1)
                   : '--'
                 }% sur la période sélectionnée.
@@ -493,8 +493,8 @@ export const YieldDashboard = () => {
             <div className="insight-content">
               <h4>Efficacité</h4>
               <p>
-                Le ratio Fees/TVL est de {poolData 
-                  ? ((parseFloat(ethers.utils.formatUnits(poolData.dailyFees || 0, 18)) * 365 / 
+                Le ratio Fees/TVL est de {poolData
+                  ? ((parseFloat(ethers.utils.formatUnits(poolData.dailyFees || 0, 18)) * 365 /
                      parseFloat(ethers.utils.formatUnits(poolData.totalLiquidity || 1, 18)) * 100).toFixed(2)
                   ) : '--'
                 }%, supérieur à la moyenne du marché.
@@ -507,7 +507,7 @@ export const YieldDashboard = () => {
             <div className="insight-content">
               <h4>Recommandation</h4>
               <p>
-                {poolData?.apy && poolData.apy > 20 
+                {poolData?.apy && poolData.apy > 20
                   ? "Rendements excellents, considérez augmenter votre position."
                   : poolData?.apy && poolData.apy > 10
                   ? "Rendements solides, maintenez votre position."

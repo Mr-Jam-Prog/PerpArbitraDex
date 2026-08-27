@@ -25,6 +25,13 @@ interface IAMMPool {
         uint256 fundingVelocity; // rate of change per second
     }
 
+    struct MarketConfig {
+        uint256 skewScale;
+        uint256 maxFundingRate;
+        uint256 fundingInterval;
+        bool isActive;
+    }
+
     // ============ EVENTS ============
 
     event FundingUpdated(
@@ -152,6 +159,16 @@ interface IAMMPool {
         external
         view
         returns (int256 avgFundingRate);
+
+    /**
+     * @notice Get market configuration
+     * @param marketId Market ID
+     * @return config Market configuration
+     */
+    function getMarketConfig(uint256 marketId)
+        external
+        view
+        returns (MarketConfig memory config);
 
     // ============ ADMIN FUNCTIONS ============
 

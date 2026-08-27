@@ -138,7 +138,7 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         uint256 marketId = perpEngine.getPosition(positionId).marketId;
         uint256 currentPrice = _getValidatedPrice(marketId);
         uint256 healthFactor = perpEngine.getHealthFactor(positionId);
-        
+
         require(healthFactor < HEALTH_FACTOR_SCALE, "Position healthy");
         
         // Calculate liquidation details
@@ -217,6 +217,21 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
     /**
      * @inheritdoc ILiquidationEngine
      */
+    function liquidateBatch(uint256[] calldata positionIds) external override nonReentrant whenNotPaused {
+        require(positionIds.length <= liquidatorConfig.batchSize, "Exceeds batch size");
+
+        for (uint256 i = 0; i < positionIds.length; i++) {
+            try this.executeLiquidation(positionIds[i], liquidatorConfig.minReward) {
+                // Success
+            } catch {
+                emit LiquidationSkipped(positionIds[i], msg.sender, 3);
+            }
+        }
+    }
+
+    /**
+     * @inheritdoc ILiquidationEngine
+     */
     function flashLiquidate(
         uint256 positionId,
         uint256 loanAmount,
@@ -236,9 +251,23 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
      * @inheritdoc ILiquidationEngine
      */
     function processQueue(uint256 maxProcess) external override nonReentrant whenNotPaused returns (uint256 numProcessed) {
-        require(maxProcess > 0, "Invalid max process");
-        
-        for (uint256 i = 0; i < maxProcess; i++) {
+        return processLiquidations(maxProcess);
+    }
+
+    /// @dev Internal only. nonReentrant omitted — caller holds the guard.
+    /**
+     * @inheritdoc ILiquidationEngine
+     */
+    function processLiquidations(uint256 maxCount)
+        public
+        override
+        whenNotPaused
+        returns (uint256 numProcessed)
+    {
+        require(maxCount > 0, "Invalid max count");
+        uint256 limit = maxCount > liquidatorConfig.batchSize ? liquidatorConfig.batchSize : maxCount;
+
+        for (uint256 i = 0; i < limit; i++) {
             (bool hasNext, uint256 nextPositionId) = liquidationQueue.getNext();
             if (!hasNext) break;
             
@@ -246,15 +275,13 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
             if (block.timestamp < liquidationQueue.getQueueTime(nextPositionId) + liquidatorConfig.gracePeriod) {
                 continue;
             }
-            
+
             try this.executeLiquidation(nextPositionId, liquidatorConfig.minReward) {
                 numProcessed++;
             } catch {
                 // Skip and continue
                 continue;
             }
-            
-            if (numProcessed >= liquidatorConfig.batchSize) break;
         }
         
         return numProcessed;
@@ -287,7 +314,7 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
     ) public view override returns (uint256 reward) {
         // Get position details
         IPerpEngine.PositionView memory position = perpEngine.getPosition(positionId);
-        
+
         // Calculate penalty based on liquidated size
         uint256 penalty = (liquidatedSize * liquidatorConfig.penaltyRatio) / HEALTH_FACTOR_SCALE;
         
@@ -351,14 +378,14 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         
         // Calculate how much to liquidate to bring health factor to MIN_HEALTH_FACTOR
         uint256 targetHealthFactor = MIN_HEALTH_FACTOR;
-        uint256 liquidationRatio = (HEALTH_FACTOR_SCALE - healthFactor) * HEALTH_FACTOR_SCALE / 
+        uint256 liquidationRatio = (HEALTH_FACTOR_SCALE - healthFactor) * HEALTH_FACTOR_SCALE /
                                   (HEALTH_FACTOR_SCALE - targetHealthFactor);
         
         // Cap at 100%
         liquidationRatio = liquidationRatio > HEALTH_FACTOR_SCALE ? HEALTH_FACTOR_SCALE : liquidationRatio;
         
         uint256 liquidatedSize = (position.size * liquidationRatio) / HEALTH_FACTOR_SCALE;
-        
+
         // Calculate penalty (based on liquidated size)
         penalty = (liquidatedSize * liquidatorConfig.penaltyRatio) / HEALTH_FACTOR_SCALE;
         

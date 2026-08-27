@@ -43,16 +43,10 @@ contract AMMPool is IAMMPool, ERC20, Ownable {
     mapping(uint256 => FundingRateCalculator.FundingState) private _fundingStates;
     
     // Market ID => configuration
-    mapping(uint256 => MarketConfig) private _marketConfigs;
+    mapping(uint256 => IAMMPool.MarketConfig) private _marketConfigs;
 
-    // ============ STRUCTS ============
-    
-    struct MarketConfig {
-        uint256 skewScale;
-        uint256 maxFundingRate;
-        uint256 fundingInterval;
-        bool isActive;
-    }
+    // Market ID => Last skew scale update
+    mapping(uint256 => uint256) private _lastSkewScaleUpdates;
 
     // ============ MODIFIERS ============
     
@@ -130,7 +124,7 @@ contract AMMPool is IAMMPool, ERC20, Ownable {
         marketExists(marketId)
         returns (int256 fundingRate)
     {
-        MarketConfig storage config = _marketConfigs[marketId];
+        IAMMPool.MarketConfig storage config = _marketConfigs[marketId];
         MarketSkew storage skew = _marketSkews[marketId];
         FundingRateCalculator.FundingState storage state = _fundingStates[marketId];
         
@@ -191,17 +185,23 @@ contract AMMPool is IAMMPool, ERC20, Ownable {
         
         // Update accumulated funding
         if (fundingPayment > 0) {
+            // Longs pay shorts → long accumulated increases, short decreases
             if (isLong) {
                 state.fundingAccumulatedLong += uint256(fundingPayment);
             } else {
-                state.fundingAccumulatedShort += uint256(fundingPayment);
+                if (state.fundingAccumulatedShort >= uint256(fundingPayment)) {
+                    state.fundingAccumulatedShort -= uint256(fundingPayment);
+                }
             }
-        } else {
+        } else if (fundingPayment < 0) {
             uint256 paymentAbs = uint256(-fundingPayment);
-            if (isLong) {
-                state.fundingAccumulatedLong += paymentAbs;
-            } else {
+            // Shorts pay longs → short accumulated increases, long decreases
+            if (!isLong) {
                 state.fundingAccumulatedShort += paymentAbs;
+            } else {
+                if (state.fundingAccumulatedLong >= paymentAbs) {
+                    state.fundingAccumulatedLong -= paymentAbs;
+                }
             }
         }
     }
@@ -219,7 +219,7 @@ contract AMMPool is IAMMPool, ERC20, Ownable {
         returns (uint256 markPrice)
     {
         FundingRateCalculator.FundingState storage state = _fundingStates[marketId];
-        MarketConfig storage config = _marketConfigs[marketId];
+        IAMMPool.MarketConfig storage config = _marketConfigs[marketId];
         
         // Calculate time to next funding
         uint256 timeToNextFunding = config.fundingInterval - 
@@ -301,6 +301,9 @@ contract AMMPool is IAMMPool, ERC20, Ownable {
 
     /**
      * @inheritdoc IAMMPool
+     * @dev WARNING: period parameter is ignored. Returns instantaneous rate.
+     * True TWAP implementation is pending. Do not rely on this for
+     * time-sensitive liquidation or risk calculations.
      */
     function getTWAFundingRate(uint256 marketId, uint256 period)
         external
@@ -308,7 +311,8 @@ contract AMMPool is IAMMPool, ERC20, Ownable {
         override
         returns (int256 avgFundingRate)
     {
-        // Simplified implementation - in production would use oracle history
+        // NOTE: True TWAP not yet implemented. Returns current rate.
+        // Do not use for liquidation decisions.
         return _fundingStates[marketId].currentFundingRate;
     }
 
@@ -350,26 +354,15 @@ contract AMMPool is IAMMPool, ERC20, Ownable {
      * @inheritdoc IAMMPool
      */
     function emergencyResetSkew(uint256 marketId) external override onlyPerpEngine {
-        MarketSkew storage skew = _marketSkews[marketId];
-        
-        // Only reset if skew is extremely unbalanced (10:1 ratio)
-        if (skew.longOpenInterest > skew.shortOpenInterest * 10 || 
-            skew.shortOpenInterest > skew.longOpenInterest * 10) {
-            
-            uint256 avgOI = (skew.longOpenInterest + skew.shortOpenInterest) / 2;
-            skew.longOpenInterest = avgOI;
-            skew.shortOpenInterest = avgOI;
-            skew.netSkew = 0;
-            skew.totalOpenInterest = avgOI * 2;
-            
-            emit SkewUpdated(marketId, 0, avgOI, avgOI);
-        }
+        revert(unicode"emergencyResetSkew: disabled — would diverge state with PerpEngine");
     }
 
     // ============ MARKET MANAGEMENT ============
 
     /**
      * @notice Initialize a new market
+     * @dev Only PerpEngine can initialize markets to ensure
+     * governance flow is respected.
      */
     function initializeMarket(
         uint256 marketId,
@@ -377,13 +370,13 @@ contract AMMPool is IAMMPool, ERC20, Ownable {
         uint256 maxFundingRate,
         uint256 fundingInterval
     ) external {
-        require(msg.sender == perpEngine || msg.sender == owner(), "AMMPool: unauthorized");
+        require(msg.sender == perpEngine, "AMMPool: only PerpEngine");
         require(!_marketConfigs[marketId].isActive, "AMMPool: market already active");
         require(skewScale >= MIN_SKEW_SCALE && skewScale <= MAX_SKEW_SCALE, "AMMPool: invalid skew scale");
         require(maxFundingRate <= MAX_FUNDING_RATE, "AMMPool: funding rate too high");
         require(fundingInterval >= 1 hours && fundingInterval <= 24 hours, "AMMPool: invalid interval");
         
-        _marketConfigs[marketId] = MarketConfig({
+        _marketConfigs[marketId] = IAMMPool.MarketConfig({
             skewScale: skewScale,
             maxFundingRate: maxFundingRate,
             fundingInterval: fundingInterval,
@@ -423,7 +416,10 @@ contract AMMPool is IAMMPool, ERC20, Ownable {
      * @dev Dynamically adjust skew scale based on open interest
      */
     function _updateSkewScale(uint256 marketId, MarketSkew storage skew) internal {
-        MarketConfig storage config = _marketConfigs[marketId];
+        if (block.timestamp - _lastSkewScaleUpdates[marketId] < 1 hours) return;
+        _lastSkewScaleUpdates[marketId] = block.timestamp;
+
+        IAMMPool.MarketConfig storage config = _marketConfigs[marketId];
         
         // Dynamic adjustment: if OI > 2x skew scale, increase skew scale
         // If OI < 0.5x skew scale, decrease skew scale
@@ -444,9 +440,9 @@ contract AMMPool is IAMMPool, ERC20, Ownable {
     // ============ GETTERS ============
 
     /**
-     * @notice Get market configuration
+     * @inheritdoc IAMMPool
      */
-    function getMarketConfig(uint256 marketId) external view returns (MarketConfig memory) {
+    function getMarketConfig(uint256 marketId) external view override returns (IAMMPool.MarketConfig memory) {
         return _marketConfigs[marketId];
     }
 
