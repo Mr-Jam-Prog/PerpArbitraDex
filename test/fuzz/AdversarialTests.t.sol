@@ -110,7 +110,6 @@ contract AdversarialTests is Test {
         assertEq(address(perpEngine), perpAddr, "Perp address mismatch");
 
         // Standard market initialization
-        vm.prank(insuranceFund);
         perpEngine.initializeMarket(
             1,
             bytes32("ETH-USD"),

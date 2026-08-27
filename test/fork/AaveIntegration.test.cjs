@@ -4,7 +4,7 @@
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseUnits } = ethers.utils;
+const { parseUnits } = ethers;
 
 describe("🏦 Aave V3 Mainnet Fork Integration", function () {
   // Adresses Arbitrum Mainnet
