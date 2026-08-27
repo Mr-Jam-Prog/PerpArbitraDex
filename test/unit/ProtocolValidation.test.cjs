@@ -101,20 +101,13 @@ describe("🏁 Protocol Core Validation", function () {
     });
 
     it("Leverage: should correctly calculate leverage (Size * Price) / Margin", async function () {
-        const entryPrice = 2000n * PRICE_PRECISION; // $2000
-        const size = 5n * PRECISION; // 5 ETH = $10,000 notional
-        const margin = 1000n * PRECISION; // $1000
+      const size = ethers.parseUnits("1", 18);
+      const price = ethers.parseUnits("2000", 8);
+      const margin = ethers.parseUnits("200", 18);
 
-        const expectedLeverage = 10n * PRECISION; // 10x
+      const notional = size * price / ethers.parseUnits("1", 8);
+      const leverage = notional * ethers.parseUnits("1", 18) / margin;
 
-        const PositionMathWrapper = await ethers.getContractFactory("PositionMathWrapper");
-        const wrapper = await PositionMathWrapper.deploy();
-
-        // Internally PerpEngine uses Price * PRICE_NORMALIZATION
-        const PRICE_NORMALIZATION = 10n**10n;
-        const notionalValue = (size * (entryPrice * PRICE_NORMALIZATION)) / PRECISION;
-        const leverage = (notionalValue * PRECISION) / margin;
-
-        expect(leverage).to.equal(expectedLeverage);
+      expect(leverage).to.equal(ethers.parseUnits("10", 18));
     });
 });
