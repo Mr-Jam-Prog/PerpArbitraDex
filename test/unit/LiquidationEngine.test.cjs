@@ -84,6 +84,10 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
     await liquidationEngine.waitForDeployment();
 
     await incentiveDistributor.setLiquidationEngine(liquidationEngine.target);
+
+    await ethers.provider.send("hardhat_setBalance", [perpEngine.target, "0x1000000000000000000"]);
+    const perpSignerInitial = await ethers.getImpersonatedSigner(perpEngine.target);
+    await liquidationEngine.connect(perpSignerInitial).setMarketFeedId(MARKET_ID, FEED_ID);
     
     const MockOracle = await ethers.getContractFactory("MockOracle");
     oracle1 = await MockOracle.deploy("Oracle1", 8);
