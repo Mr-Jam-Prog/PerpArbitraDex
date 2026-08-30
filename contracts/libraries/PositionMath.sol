@@ -72,8 +72,8 @@ library PositionMath {
     }
     
     struct LiquidationResult {
-        bool isLiquidatable;
-        uint256 liquidationPrice; // 8 decimals (0 if not liquidatable)
+        bool hasValidLiquidationPrice; // true if a positive liq price exists
+        uint256 liquidationPrice;      // 8 decimals (0 if no valid price)
     }
     
     struct PositionMetrics {
@@ -272,7 +272,7 @@ library PositionMath {
             if (denominator == 0) return LiquidationResult(false, 0);
             
             uint256 liqPriceNormalized = uint256(numerator).mulDiv(DECIMALS, denominator);
-            result.isLiquidatable = true;
+            result.hasValidLiquidationPrice = true;
             result.liquidationPrice = denormalizePrice(liqPriceNormalized);
         } else {
             // size * (Entry - Price) / D + Collateral - Funding = size * Price * mmRatio / D
@@ -286,7 +286,7 @@ library PositionMath {
             uint256 denominator = params.size.mulDiv(DECIMALS + mmRatio, DECIMALS);
             uint256 liqPriceNormalized = uint256(numerator).mulDiv(DECIMALS, denominator);
             
-            result.isLiquidatable = true;
+            result.hasValidLiquidationPrice = true;
             result.liquidationPrice = denormalizePrice(liqPriceNormalized);
         }
         
@@ -304,7 +304,7 @@ library PositionMath {
     ) internal pure returns (uint256 liquidationPrice) {
         LiquidationResult memory result = calculateLiquidationPriceSafe(params, riskParams);
         
-        if (!result.isLiquidatable) {
+        if (!result.hasValidLiquidationPrice) {
             revert PositionNotLiquidatable();
         }
         
@@ -393,11 +393,8 @@ library PositionMath {
         if (params.collateral == 0) return 0;
         
         int256 pnl = calculatePnL(
-            params.entryPrice,
-            currentPrice,
-            params.size,
-            params.isLong
-        );
+            params.entryPrice, currentPrice, params.size, params.isLong
+        ) - params.fundingAccrued;
         
         uint256 absPnL = SafeDecimalMath.abs(pnl);
         return int256(
@@ -417,8 +414,15 @@ library PositionMath {
         metrics.liquidation = calculateLiquidationPriceSafe(params, riskParams);
         metrics.pnl = calculatePnL(params.entryPrice, currentPrice, params.size, params.isLong);
         metrics.pnlVsCollateral = calculatePnLvsCollateral(params, currentPrice);
-        metrics.maintenanceMargin = params.size.mulDiv(riskParams.maintenanceMarginBps, 10000);
-        metrics.liquidationThreshold = params.size.mulDiv(riskParams.liquidationThresholdBps, 10000);
+        uint256 notionalValue = params.size.mulDiv(
+            validateAndNormalizePrice(currentPrice), DECIMALS
+        );
+        metrics.maintenanceMargin = notionalValue.mulDiv(
+            riskParams.maintenanceMarginBps, 10000
+        );
+        metrics.liquidationThreshold = DECIMALS.mulDiv(
+            riskParams.liquidationThresholdBps, 10000
+        );
     }
     
     /**
@@ -483,6 +487,10 @@ library PositionMath {
         }
     }
     
+    /// @dev unchecked is safe: mulDiv prevents multiplication overflow.
+    /// int256 cast is safe for realistic price/size values (< 2^255).
+    /// Maximum realistic: price_diff=1e18 * size=1e24 / DECIMALS=1e18 = 1e24,
+    /// far below type(int256).max = ~5.7e76.
     function _calculatePnLLongOptimized(
         uint256 entryNormalized,
         uint256 currentNormalized,
@@ -495,6 +503,10 @@ library PositionMath {
         }
     }
     
+    /// @dev unchecked is safe: mulDiv prevents multiplication overflow.
+    /// int256 cast is safe for realistic price/size values (< 2^255).
+    /// Maximum realistic: price_diff=1e18 * size=1e24 / DECIMALS=1e18 = 1e24,
+    /// far below type(int256).max = ~5.7e76.
     function _calculatePnLShortOptimized(
         uint256 entryNormalized,
         uint256 currentNormalized,
