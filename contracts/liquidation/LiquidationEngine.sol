@@ -122,7 +122,8 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
      */
     function _executeLiquidationCore(
         uint256 positionId,
-        uint256 minReward
+        uint256 minReward,
+        address liquidator
     ) internal returns (LiquidationResult memory result) {
         // Check position is in queue and grace period passed
         require(liquidationQueue.isQueued(positionId), "Not in queue");
@@ -136,6 +137,9 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         uint256 currentPrice = _getValidatedPrice(marketId);
         uint256 healthFactor = perpEngine.getHealthFactor(positionId);
         
+        // Strict liquidatability check
+        require(healthFactor > 0 && healthFactor < HEALTH_FACTOR_SCALE, "Position not liquidatable");
+
         // Calculate liquidation details
         (uint256 reward, uint256 penalty, uint256 newHealthFactor, uint256 liquidatedSize) = _calculateLiquidation(
             positionId,
@@ -157,12 +161,12 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         totalLiquidationVolume += positionSizeBefore - remainingSize;
         
         // Distribute rewards
-        _distributeLiquidationRewards(positionId, reward, penalty, msg.sender);
+        _distributeLiquidationRewards(positionId, reward, penalty, liquidator);
         
         // Prepare result
         result = LiquidationResult({
             positionId: positionId,
-            liquidator: msg.sender,
+            liquidator: liquidator,
             liquidationPrice: currentPrice,
             penalty: penalty,
             reward: reward,
@@ -175,18 +179,18 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
             liquidationQueue.remove(positionId);
         }
         
-        emit LiquidationExecuted(positionId, msg.sender, reward, penalty, remainingSize == 0);
+        emit LiquidationExecuted(positionId, liquidator, reward, penalty, remainingSize == 0);
     }
 
     /**
      * @notice Helper function for try/catch calls from processQueue and executeBatchLiquidation
      */
-    function _executeFromQueue(uint256 positionId, uint256 minReward)
+    function _executeFromQueue(uint256 positionId, uint256 minReward, address liquidator)
         external
         returns (LiquidationResult memory)
     {
         require(msg.sender == address(this), "Only self");
-        return _executeLiquidationCore(positionId, minReward);
+        return _executeLiquidationCore(positionId, minReward, liquidator);
     }
 
     /**
@@ -200,7 +204,7 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         onlyValidPosition(positionId)
         returns (LiquidationResult memory)
     {
-        return _executeLiquidationCore(positionId, minReward);
+        return _executeLiquidationCore(positionId, minReward, msg.sender);
     }
 
     /**
@@ -216,7 +220,7 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         results = new LiquidationResult[](positionIds.length);
         
         for (uint256 i = 0; i < positionIds.length; i++) {
-            try this._executeFromQueue(positionIds[i], minRewards[i]) returns (LiquidationResult memory result) {
+            try this._executeFromQueue(positionIds[i], minRewards[i], msg.sender) returns (LiquidationResult memory result) {
                 results[i] = result;
             } catch {
                 // Skip failed liquidations but continue with batch
@@ -242,14 +246,7 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         uint256 loanAmount,
         uint256 minReward
     ) external override nonReentrant whenNotPaused returns (LiquidationResult memory) {
-        // This function would integrate with FlashLiquidator.sol
-        // For now, it calls executeLiquidation with additional checks
-        require(loanAmount > 0, "Loan amount required");
-        
-        // Verify flash loan capability
-        _validateFlashLoan(loanAmount);
-        
-        return executeLiquidation(positionId, minReward);
+        revert("Flash liquidation disabled");
     }
 
     /**
@@ -266,8 +263,15 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
             if (block.timestamp < liquidationQueue.getQueueTime(nextPositionId) + liquidatorConfig.gracePeriod) {
                 continue;
             }
+
+            // Remove healthy or invalid positions from queue
+            uint256 hf = perpEngine.getHealthFactor(nextPositionId);
+            if (hf == 0 || hf >= HEALTH_FACTOR_SCALE) {
+                liquidationQueue.remove(nextPositionId);
+                continue;
+            }
             
-            try this._executeFromQueue(nextPositionId, liquidatorConfig.minReward) {
+            try this._executeFromQueue(nextPositionId, liquidatorConfig.minReward, msg.sender) {
                 numProcessed++;
             } catch {
                 // Skip and continue
@@ -305,11 +309,9 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         uint256 liquidatedSize,
         uint256 liquidationPrice
     ) public view override returns (uint256 reward) {
-        // Get position details
-        IPerpEngine.PositionView memory position = perpEngine.getPosition(positionId);
-        
-        // Calculate penalty based on liquidated size
-        uint256 penalty = (liquidatedSize * liquidatorConfig.penaltyRatio) / HEALTH_FACTOR_SCALE;
+        // Calculate penalty based on liquidated size notionnel in quote token units
+        uint256 notionalLiquidated = (liquidatedSize * liquidationPrice) / 1e8;
+        uint256 penalty = (notionalLiquidated * liquidatorConfig.penaltyRatio) / HEALTH_FACTOR_SCALE;
         
         // Calculate reward (penalty + incentive)
         uint256 baseReward = penalty;
@@ -379,8 +381,9 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         
         liquidatedSize = (position.size * liquidationRatio) / HEALTH_FACTOR_SCALE;
         
-        // Calculate penalty (based on liquidated size)
-        penalty = (liquidatedSize * liquidatorConfig.penaltyRatio) / HEALTH_FACTOR_SCALE;
+        // Calculate penalty based on liquidated size notionnel in quote token units
+        uint256 notionalLiquidated = (liquidatedSize * currentPrice) / 1e8;
+        penalty = (notionalLiquidated * liquidatorConfig.penaltyRatio) / HEALTH_FACTOR_SCALE;
         
         // Calculate reward
         reward = estimateReward(positionId, liquidatedSize, currentPrice);

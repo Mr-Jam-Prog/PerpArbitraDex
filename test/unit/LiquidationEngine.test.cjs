@@ -200,5 +200,151 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
             liquidationEngine.executeLiquidation(positionId, 0n)
         ).to.be.revertedWith("Grace period not passed");
     });
+
+    it("Should attribute reward to external liquidator in executeBatchLiquidation and processQueue", async function () {
+        const positionId1 = 10n;
+        const positionId2 = 11n;
+        const size = ethers.parseUnits("5", 18);
+        const now = await time.latest();
+
+        await perpEngine.setPositionView(positionId1, {
+            positionId: positionId1,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: size,
+            margin: COLLATERAL_AMOUNT,
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE * 80n / 100n,
+            healthFactor: ethers.parseUnits("0.8", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: 0n,
+            openTime: now,
+            lastUpdated: now
+        });
+
+        await perpEngine.setPositionView(positionId2, {
+            positionId: positionId2,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: size,
+            margin: COLLATERAL_AMOUNT,
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE * 80n / 100n,
+            healthFactor: ethers.parseUnits("0.8", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: 0n,
+            openTime: now,
+            lastUpdated: now
+        });
+
+        await ethers.provider.send("hardhat_setBalance", [perpEngine.target, "0x1000000000000000000"]);
+        const perpSigner = await ethers.getImpersonatedSigner(perpEngine.target);
+
+        await liquidationEngine.connect(perpSigner).queueLiquidation(positionId1, ethers.parseUnits("0.8", 18));
+        await liquidationEngine.connect(perpSigner).queueLiquidation(positionId2, ethers.parseUnits("0.8", 18));
+
+        await time.increase(2000);
+        await oracle1.getFunction("setPrice")(INITIAL_PRICE);
+        await oracle2.getFunction("setPrice")(INITIAL_PRICE);
+        await oracleAggregator.updatePrice(FEED_ID);
+
+        const initialBalance = await quoteToken.balanceOf(liquidator1.address);
+        const tx = await liquidationEngine.connect(liquidator1).executeBatchLiquidation([positionId1], [0n]);
+        const finalBalance = await quoteToken.balanceOf(liquidator1.address);
+
+        expect(finalBalance).to.be.gt(initialBalance);
+        expect(await quoteToken.balanceOf(liquidationEngine.target)).to.not.equal(finalBalance);
+
+        // Process Queue test
+        const initialBalance2 = await quoteToken.balanceOf(liquidator1.address);
+        await liquidationEngine.connect(liquidator1).processQueue(1);
+        const finalBalance2 = await quoteToken.balanceOf(liquidator1.address);
+        expect(finalBalance2).to.be.gt(initialBalance2);
+    });
+
+    it("Should prevent liquidation of position that recovered health (healthFactor >= 1e18)", async function () {
+        const positionId = 20n;
+        const now = await time.latest();
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: ethers.parseUnits("5", 18),
+            margin: COLLATERAL_AMOUNT,
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE * 80n / 100n,
+            healthFactor: ethers.parseUnits("0.8", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: 0n,
+            openTime: now,
+            lastUpdated: now
+        });
+
+        await ethers.provider.send("hardhat_setBalance", [perpEngine.target, "0x1000000000000000000"]);
+        const perpSigner = await ethers.getImpersonatedSigner(perpEngine.target);
+        await liquidationEngine.connect(perpSigner).queueLiquidation(positionId, ethers.parseUnits("0.8", 18));
+
+        await time.increase(2000);
+        await oracle1.getFunction("setPrice")(INITIAL_PRICE);
+        await oracle2.getFunction("setPrice")(INITIAL_PRICE);
+        await oracleAggregator.updatePrice(FEED_ID);
+
+        // Position health recovers to 1.2
+        await perpEngine.setHealthFactor(positionId, ethers.parseUnits("1.2", 18));
+
+        await expect(
+            liquidationEngine.connect(liquidator1).executeLiquidation(positionId, 0n)
+        ).to.be.revertedWith("Position not liquidatable");
+    });
+
+    it("Should explicitly revert flashLiquidate as disabled", async function () {
+        await expect(
+            liquidationEngine.flashLiquidate(1n, 100n, 0n)
+        ).to.be.revertedWith("Flash liquidation disabled");
+    });
+
+    it("Should correctly calculate penalty and reward in quote token units when price != 1", async function () {
+        const positionId = 30n;
+        const now = await time.latest();
+        const customPrice = ethers.parseUnits("2000", 8); // $2000 per unit
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: ethers.parseUnits("5", 18), // 5 ETH position = $10,000 notionnel
+            margin: COLLATERAL_AMOUNT,
+            entryPrice: customPrice,
+            leverage: 10n**19n,
+            liquidationPrice: customPrice * 80n / 100n,
+            healthFactor: ethers.parseUnits("0.8", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: 0n,
+            openTime: now,
+            lastUpdated: now
+        });
+
+        await ethers.provider.send("hardhat_setBalance", [perpEngine.target, "0x1000000000000000000"]);
+        const perpSigner = await ethers.getImpersonatedSigner(perpEngine.target);
+        await liquidationEngine.connect(perpSigner).queueLiquidation(positionId, ethers.parseUnits("0.8", 18));
+
+        await time.increase(2000);
+
+        // Preview liquidation
+        const [reward, penalty] = await liquidationEngine.previewLiquidation(positionId, customPrice);
+
+        // Penalty 5% on 5 ETH * $2000 = $10,000 notionnel.
+        // Liquidation ratio for health factor 0.8 to 0.95 = (1 - 0.8) / (1 - 0.95) = 0.2 / 0.05 = 4 -> capped at 100%.
+        // 100% of $10,000 = $10,000 notionnel. Penalty @ 5% = $500 = 500e18 quote tokens.
+        expect(penalty).to.equal(ethers.parseUnits("500", 18));
+    });
   });
 });
