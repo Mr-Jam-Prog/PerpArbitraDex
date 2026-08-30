@@ -152,9 +152,9 @@ describe("🔮 OracleAggregator - Unit Tests", function () {
       const newPrice = ethers.parseUnits("2100", 18);
       await newOracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, newPrice);
       
-      await oracleAggregator.removeOracleSource(feedId);
-      await oracleAggregator.removeOracleSource(feedId);
-      await oracleAggregator.removeOracleSource(feedId);
+      await oracleAggregator.removeOracleSource(feedId, chainlinkOracle.target);
+      await oracleAggregator.removeOracleSource(feedId, pythOracle.target);
+      await oracleAggregator.removeOracleSource(feedId, twapOracle.target);
 
       await oracleAggregator.addOracleSource(feedId, {
         oracleAddress: chainlinkOracle.target,

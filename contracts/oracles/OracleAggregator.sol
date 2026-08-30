@@ -44,6 +44,14 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
         bool isValid;
     }
 
+    struct FeedConfig {
+        uint256 minSources;
+        uint256 maxDeviationBps;
+        uint256 maxStaleness;
+        bool requireTWAP;
+        uint256 twapWindow;
+    }
+
     // ============ STATE VARIABLES ============
     
     // Feed ID => OracleSource[]
@@ -110,26 +118,24 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
         override 
         returns (uint256 price) 
     {
-        // Never revert - return last valid price with staleness flag
+        // Emergency price has HIGHEST priority — always check first
+        if (_emergencyPrices[feedId] > 0) {
+            return _emergencyPrices[feedId];
+        }
+
+        // Then check active aggregated price
         AggregatedPrice storage aggPrice = _aggregatedPrices[feedId];
-        
-        if (aggPrice.status == PriceStatus.ACTIVE && 
+        if (aggPrice.status == PriceStatus.ACTIVE &&
             block.timestamp - aggPrice.timestamp <= MAX_CACHE_AGE) {
             return aggPrice.price;
         }
-        
-        // Return cached price if available and not too stale
+
+        // Then fall back to cache
         PriceCache storage cache = _priceCache[feedId];
         if (cache.isValid && block.timestamp - cache.timestamp <= MAX_CACHE_AGE * 2) {
             return cache.price;
         }
-        
-        // Emergency fallback price
-        if (_emergencyPrices[feedId] > 0) {
-            return _emergencyPrices[feedId];
-        }
-        
-        // Last resort: return 0 (caller must handle)
+
         return 0;
     }
 
@@ -301,25 +307,38 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
     /**
      * @inheritdoc IOracleAggregator
      */
-    function removeOracleSource(bytes32 feedId) external override onlyOwner {
+    function removeOracleSource(bytes32 feedId, address sourceAddress)
+        external
+        override
+        onlyOwner
+    {
         require(_sources[feedId].length > 0, "OracleAggregator: no sources");
-        
-        // Find and remove source
-        _sources[feedId].pop();
-        
-        // If no sources left, remove feed
-        if (_sources[feedId].length == 0) {
+
+        OracleSource[] storage sources = _sources[feedId];
+        bool found = false;
+        for (uint256 i = 0; i < sources.length; i++) {
+            if (sources[i].oracleAddress == sourceAddress) {
+                sources[i] = sources[sources.length - 1];
+                sources.pop();
+                found = true;
+                break;
+            }
+        }
+        require(found, "OracleAggregator: source not found");
+
+        if (sources.length == 0) {
             _removeFeed(feedId);
         }
-        
+
         emit OracleRemoved(feedId);
     }
 
     // ============ TWAP FUNCTIONS ============
 
-    /**
-     * @inheritdoc IOracleAggregator
-     */
+    /// @dev WARNING: period parameter is ignored.
+    /// True TWAP implementation is pending.
+    /// Returns current aggregated price as approximation.
+    /// Do not rely on this for time-sensitive calculations.
     function getTWAP(bytes32 feedId, uint256 period)
         external
         view
@@ -327,16 +346,7 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
         feedExists(feedId)
         returns (uint256 twapPrice)
     {
-        // Check if TWAP is required for this feed
-        if (_feedConfigs[feedId].requireTWAP) {
-            // Get TWAP from TWAP oracle
-            // Implementation depends on TWAP oracle interface
-            // For now, return current price if no TWAP available
-            return _aggregatedPrices[feedId].price;
-        }
-        
-        // Calculate simple TWAP from price history
-        // Note: In production, this would use a proper TWAP oracle
+        // period is intentionally unused pending TWAP implementation
         return _aggregatedPrices[feedId].price;
     }
 
@@ -491,6 +501,18 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
         // Calculate min/max prices
         (uint256 minPrice, uint256 maxPrice) = _minMax(prices, validCount);
         
+        if (minPrice == 0) {
+            // Cannot calculate deviation if any price is zero
+            // Return DISPUTED status to prevent using bad data
+            return AggregatedPrice({
+                price: medianPrice,
+                timestamp: medianTimestamp,
+                confidence: avgConfidence,
+                status: PriceStatus.DISPUTED,
+                minPrice: minPrice,
+                maxPrice: maxPrice
+            });
+        }
         // Check deviation
         uint256 deviation = (maxPrice - minPrice) * 10000 / minPrice;
         bool deviationOk = deviation <= _feedConfigs[feedId].maxDeviationBps;
@@ -814,6 +836,13 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
         // Only security module can push prices directly
         require(msg.sender == oracleSecurity, "OracleAggregator: only security module");
         
+        require(price > 0, "OracleAggregator: zero price");
+        require(timestamp <= block.timestamp, "OracleAggregator: future timestamp");
+        require(
+            block.timestamp - timestamp <= MAX_CACHE_AGE,
+            "OracleAggregator: timestamp too old"
+        );
+
         _aggregatedPrices[feedId] = AggregatedPrice({
             price: price,
             timestamp: timestamp,
@@ -825,12 +854,4 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
         
         emit PriceUpdated(feedId, price, timestamp, confidence);
     }
-}
-
-struct FeedConfig {
-    uint256 minSources;
-    uint256 maxDeviationBps;
-    uint256 maxStaleness;
-    bool requireTWAP;
-    uint256 twapWindow;
 }

@@ -81,8 +81,9 @@ interface IOracleAggregator {
     /**
      * @notice Remove an oracle source
      * @param feedId Feed identifier to remove
+     * @param sourceAddress Oracle source address to remove
      */
-    function removeOracleSource(bytes32 feedId) external;
+    function removeOracleSource(bytes32 feedId, address sourceAddress) external;
 
     /**
      * @notice Update price for a feed
