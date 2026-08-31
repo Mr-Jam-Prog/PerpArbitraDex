@@ -6,9 +6,11 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "test": "node --test test/*.test.ts"
   },
   "devDependencies": {
+    "@types/node": "^20.19.27",
     "typescript": "^5.9.3"
   }
 }
