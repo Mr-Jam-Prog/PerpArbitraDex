@@ -12,6 +12,7 @@
     "MarketRegistry": "ENABLED_MVP",
     "PositionManager": "ENABLED_MVP",
     "PerpEngine": "ENABLED_MVP",
+    "LiquidityVault": "ENABLED_MVP",
     "RiskManager": "ENABLED_MVP",
     "AMMPool": "ENABLED_MVP",
     "LiquidationEngine": "ENABLED_MVP",

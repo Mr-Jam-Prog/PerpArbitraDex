@@ -15,6 +15,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
   let oracleAggregator;
   let liquidationEngine;
   let configRegistry;
+  let liquidityVault;
   let mockUSD;
   let mockBaseToken;
   let owner, user1, user2, liquidator, insuranceFund;
@@ -62,6 +63,11 @@ describe("🚀 PerpEngine - Unit Tests", function () {
     positionManager = await MockPositionManager.deploy();
     await positionManager.waitForDeployment();
 
+    // Deploy LiquidityVault
+    const LiquidityVault = await ethers.getContractFactory("LiquidityVault");
+    liquidityVault = await LiquidityVault.deploy(await mockUSD.getAddress(), "Vault USD", "vUSD");
+    await liquidityVault.waitForDeployment();
+
     // Deploy PerpEngine
     const PerpEngine = await ethers.getContractFactory("PerpEngine");
     perpEngine = await PerpEngine.deploy(
@@ -71,17 +77,16 @@ describe("🚀 PerpEngine - Unit Tests", function () {
       liquidationEngine.target,
       riskManager.target,
       configRegistry.target,
-      insuranceFund.address,
+      liquidityVault.target,
       mockBaseToken.target,
       mockUSD.target
     );
     await perpEngine.waitForDeployment();
+
+    await liquidityVault.setPerpEngine(perpEngine.target);
     
     // Setup market
-    const govSigner = await ethers.getImpersonatedSigner(insuranceFund.address);
-    await owner.sendTransaction({ to: insuranceFund.address, value: ethers.parseEther("1") });
-
-    await perpEngine.connect(govSigner).initializeMarket(
+    await perpEngine.connect(owner).initializeMarket(
         MARKET_ID,
         feedId,
         ethers.parseUnits("100", 18), // maxLeverage
@@ -95,8 +100,13 @@ describe("🚀 PerpEngine - Unit Tests", function () {
   describe("📈 Position Opening", function () {
     it("Should open a long position successfully", async function () {
       await mockUSD.mint(user1.address, COLLATERAL_AMOUNT);
-      await mockUSD.connect(user1).approve(perpEngine.target, COLLATERAL_AMOUNT);
+      await mockUSD.connect(user1).approve(liquidityVault.target, COLLATERAL_AMOUNT);
       
+      const depositLp = ethers.parseUnits("100000", 18);
+      await mockUSD.mint(owner.address, depositLp);
+      await mockUSD.connect(owner).approve(liquidityVault.target, depositLp);
+      await liquidityVault.connect(owner).deposit(depositLp, owner.address);
+
       const size = ethers.parseUnits("2.5", 18); // $5000 notional at $2000 price
       
       await expect(
@@ -118,7 +128,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
 
     it("Should reject position with too much leverage", async function () {
         await mockUSD.mint(user1.address, COLLATERAL_AMOUNT);
-        await mockUSD.connect(user1).approve(perpEngine.target, COLLATERAL_AMOUNT);
+        await mockUSD.connect(user1).approve(liquidityVault.target, COLLATERAL_AMOUNT);
 
         const hugeSize = ethers.parseUnits("1000", 18); // $2M notional with $1k margin = 2000x
 
@@ -140,8 +150,13 @@ describe("🚀 PerpEngine - Unit Tests", function () {
     let positionId = 1;
 
     beforeEach(async function () {
+        const depositLp = ethers.parseUnits("100000", 18);
+        await mockUSD.mint(owner.address, depositLp);
+        await mockUSD.connect(owner).approve(liquidityVault.target, depositLp);
+        await liquidityVault.connect(owner).deposit(depositLp, owner.address);
+
         await mockUSD.mint(user1.address, COLLATERAL_AMOUNT);
-        await mockUSD.connect(user1).approve(perpEngine.target, COLLATERAL_AMOUNT);
+        await mockUSD.connect(user1).approve(liquidityVault.target, COLLATERAL_AMOUNT);
         await perpEngine.connect(user1).openPosition({
             marketId: MARKET_ID,
             isLong: true,
@@ -163,8 +178,13 @@ describe("🚀 PerpEngine - Unit Tests", function () {
 
   describe("⚖️ Liquidation", function () {
     it("Should allow LiquidationEngine to liquidate", async function () {
+        const depositLp = ethers.parseUnits("100000", 18);
+        await mockUSD.mint(owner.address, depositLp);
+        await mockUSD.connect(owner).approve(liquidityVault.target, depositLp);
+        await liquidityVault.connect(owner).deposit(depositLp, owner.address);
+
         await mockUSD.mint(user1.address, COLLATERAL_AMOUNT);
-        await mockUSD.connect(user1).approve(perpEngine.target, COLLATERAL_AMOUNT);
+        await mockUSD.connect(user1).approve(liquidityVault.target, COLLATERAL_AMOUNT);
         await perpEngine.connect(user1).openPosition({
             marketId: MARKET_ID,
             isLong: true,

@@ -9,6 +9,7 @@ import {PositionManager} from "../../contracts/core/PositionManager.sol";
 import {AMMPool} from "../../contracts/core/AMMPool.sol";
 import {ProtocolConfig} from "../../contracts/core/ProtocolConfig.sol";
 import {LiquidationEngine} from "../../contracts/liquidation/LiquidationEngine.sol";
+import {LiquidityVault} from "../../contracts/core/LiquidityVault.sol";
 
 contract MockERC20 is IERC20 {
     string public name;
@@ -58,6 +59,7 @@ contract AdversarialTests is Test {
     AMMPool public ammPool;
     ProtocolConfig public protocolConfig;
     LiquidationEngine public liquidationEngine;
+    LiquidityVault public liquidityVault;
     MockERC20 public usdc;
 
     uint256 public currentPrice = 2000e8;
@@ -77,7 +79,8 @@ contract AdversarialTests is Test {
         address posMgrAddr = vm.computeCreateAddress(address(this), nonce + 2);
         address ammAddr = vm.computeCreateAddress(address(this), nonce + 3);
         address liqAddr = vm.computeCreateAddress(address(this), nonce + 4);
-        address perpAddr = vm.computeCreateAddress(address(this), nonce + 5);
+        address vaultAddr = vm.computeCreateAddress(address(this), nonce + 5);
+        address perpAddr = vm.computeCreateAddress(address(this), nonce + 6);
 
         usdc = new MockERC20("USDC", "USDC", 18);
         protocolConfig = new ProtocolConfig(address(this), address(this));
@@ -94,6 +97,8 @@ contract AdversarialTests is Test {
             address(0)
         );
 
+        liquidityVault = new LiquidityVault(address(usdc), "Vault USDC", "vUSDC");
+
         perpEngine = new PerpEngine(
             address(positionManager),
             ammAddr,
@@ -101,16 +106,22 @@ contract AdversarialTests is Test {
             liqAddr,
             address(this), // riskManager mock
             address(protocolConfig),
-            insuranceFund,
+            address(liquidityVault),
             address(usdc),
             address(usdc)
         );
+
+        liquidityVault.setPerpEngine(address(perpEngine));
+
+        // Fund LiquidityVault with LP capital
+        usdc.mint(address(this), 100_000_000e18);
+        usdc.approve(address(liquidityVault), type(uint256).max);
+        liquidityVault.deposit(100_000_000e18, address(this));
         
         assertEq(address(ammPool), ammAddr, "AMM address mismatch");
         assertEq(address(perpEngine), perpAddr, "Perp address mismatch");
 
         // Standard market initialization
-        vm.prank(insuranceFund);
         perpEngine.initializeMarket(
             1,
             bytes32("ETH-USD"),
@@ -128,9 +139,9 @@ contract AdversarialTests is Test {
         usdc.mint(liquidator, 10_000_000e18);
         
         vm.prank(trader);
-        usdc.approve(address(perpEngine), type(uint256).max);
+        usdc.approve(address(liquidityVault), type(uint256).max);
         vm.prank(liquidator);
-        usdc.approve(address(perpEngine), type(uint256).max);
+        usdc.approve(address(liquidityVault), type(uint256).max);
     }
 
     // Mock OracleAggregator
