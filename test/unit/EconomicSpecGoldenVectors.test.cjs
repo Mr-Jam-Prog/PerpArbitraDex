@@ -254,7 +254,8 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
       await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
       await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
 
-      // Trader margin = $25, size = 1 ETH ($2,000 notional). Fee = $2 (0.1%).
+      // Trader margin = $25, size = 1 ETH ($2,000 notional). Open Fee = $2 (0.1%).
+      // Remaining position margin = $23.
       const margin = ethers.parseUnits("25", 18);
       const size = ethers.parseUnits("1", 18);
 
@@ -272,17 +273,66 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
         referralCode: ethers.ZeroHash
       });
 
-      // Price crashes to $1,000 (Loss = $1,000, Closing Fee = $1).
+      // Price crashes to $1,000 (Trading Loss = $1,000 > $23 margin).
+      // Trading loss takes priority and consumes all $23 collateral.
+      // Remaining collateral = $0, nominal closing fee = $1.
+      // Collectible closing fee = min($1, $0) = $0. Unpaid fee is dropped, NOT socialized to LP/IF.
       await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1000", 8));
 
       const feeBalBefore = await sys.vault.protocolFeeBalance();
       await sys.engine.connect(sys.t1).closePosition(1);
       const feeBalAfter = await sys.vault.protocolFeeBalance();
 
-      // Fee collected MUST equal exactly $1 (the actual closing fee, covered by collateral)
-      expect(feeBalAfter - feeBalBefore).to.equal(ethers.parseUnits("1", 18));
+      // Closing fee collected MUST equal 0 because trading loss exhausted position collateral first
+      expect(feeBalAfter - feeBalBefore).to.equal(0n);
 
       // Vault physical quote balance MUST match liabilities
+      const physBal = await sys.quote.balanceOf(sys.vault.target);
+      const liabilities = (await sys.vault.totalLpAssets()) +
+                          (await sys.vault.traderMarginTotal()) +
+                          (await sys.vault.insuranceFundBalance()) +
+                          (await sys.vault.protocolFeeBalance());
+      expect(physBal).to.equal(liabilities);
+    });
+
+    it("Partially solvent position collects fee up to remaining collateral", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("100000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      // Trader margin = $1002.50, size = 1 ETH ($2,000 notional). Open fee = $2.
+      // Pos margin after open fee = $1000.50.
+      const margin = ethers.parseUnits("1002.5", 18);
+      const size = ethers.parseUnits("1", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Price drops to $1,000 (Trading Loss = $1,000).
+      // Remaining collateral after loss = $1000.50 - $1000.00 = $0.50.
+      // Nominal closing fee = $1. Collectible fee = min($1, $0.50) = $0.50.
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1000", 8));
+
+      const feeBalBefore = await sys.vault.protocolFeeBalance();
+      await sys.engine.connect(sys.t1).closePosition(1);
+      const feeBalAfter = await sys.vault.protocolFeeBalance();
+
+      expect(feeBalAfter - feeBalBefore).to.equal(ethers.parseUnits("0.5", 18));
+
       const physBal = await sys.quote.balanceOf(sys.vault.target);
       const liabilities = (await sys.vault.totalLpAssets()) +
                           (await sys.vault.traderMarginTotal()) +
