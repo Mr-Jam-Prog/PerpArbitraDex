@@ -1,5 +1,5 @@
 // @title: Funding Model Specification & Invariants Verification Tests
-// @notice Verifies path independence, non-double settlement, sign correctness, long/short conservation, mutation ordering, and reference model parity.
+// @notice Verifies path independence (including non-aligned durations), non-double settlement, sign correctness, long/short conservation, mutation ordering, boundary conditions, and reference model parity.
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
@@ -107,8 +107,8 @@ describe("📐 Funding Model Specification & Invariants", function () {
     await liquidityVault.connect(owner).deposit(ethers.parseUnits("5000000", 18), owner.address);
   });
 
-  describe("1. Path Independence Test", function () {
-    it("Should produce identical cumulative funding index whether updated in 1 step of T or N steps summing to T", async function () {
+  describe("1. Path Independence Test (Aligned & Non-Aligned Durations)", function () {
+    it("Aligned durations: produce identical cumulative funding index for 1 step of T vs N steps summing to T", async function () {
       const engineSigner = await ethers.getImpersonatedSigner(perpEngine.target);
       await ethers.provider.send("hardhat_setBalance", [perpEngine.target, "0x1000000000000000000"]);
 
@@ -144,6 +144,79 @@ describe("📐 Funding Model Specification & Invariants", function () {
 
       expect(singleUpdateIndex).to.equal(multiUpdateIndex);
       expect(singleUpdateIndex).to.be.gt(0n);
+    });
+
+    it("NON-ALIGNED DURATIONS: Path A (2.0 * I) vs Path B (1.5 * I then 0.5 * I) yield identical index", async function () {
+      const engineSigner = await ethers.getImpersonatedSigner(perpEngine.target);
+      await ethers.provider.send("hardhat_setBalance", [perpEngine.target, "0x1000000000000000000"]);
+
+      const skewSize = ethers.parseUnits("500000", 18);
+
+      const AMMPoolFactory = await ethers.getContractFactory("AMMPool");
+      const ammPool1 = await AMMPoolFactory.deploy(perpEngine.target, oracleAggregator.target);
+      await ammPool1.initializeMarket(MARKET_ID, SKEW_SCALE, MAX_FUNDING_RATE, FUNDING_INTERVAL);
+      await ammPool1.connect(engineSigner).updateSkew(MARKET_ID, true, skewSize);
+
+      const ammPool2 = await AMMPoolFactory.deploy(perpEngine.target, oracleAggregator.target);
+      await ammPool2.initializeMarket(MARKET_ID, SKEW_SCALE, MAX_FUNDING_RATE, FUNDING_INTERVAL);
+      await ammPool2.connect(engineSigner).updateSkew(MARKET_ID, true, skewSize);
+
+      // Path B: Update at 1.5 * I (5400s)
+      await time.increase(5400);
+      await ammPool2.connect(engineSigner).updateFundingRate(MARKET_ID);
+
+      // Path B: Update remaining 0.5 * I (1800s, total = 7200s = 2.0 * I)
+      await time.increase(1800);
+      await ammPool2.connect(engineSigner).updateFundingRate(MARKET_ID);
+
+      // Path A: Update ONCE at 2.0 * I (7200s)
+      await ammPool1.connect(engineSigner).updateFundingRate(MARKET_ID);
+
+      const indexA = await ammPool1.getCumulativeFundingIndex(MARKET_ID);
+      const indexB = await ammPool2.getCumulativeFundingIndex(MARKET_ID);
+
+      expect(indexA).to.equal(indexB);
+      expect(indexA).to.be.gt(0n);
+    });
+
+    it("NON-ALIGNED MULTI-STEP: Path A (3.0 * I) vs Path B (1.25 * I, 0.75 * I, 0.4 * I, 0.6 * I) yield identical index", async function () {
+      const engineSigner = await ethers.getImpersonatedSigner(perpEngine.target);
+      await ethers.provider.send("hardhat_setBalance", [perpEngine.target, "0x1000000000000000000"]);
+
+      const skewSize = ethers.parseUnits("500000", 18);
+
+      const AMMPoolFactory = await ethers.getContractFactory("AMMPool");
+      const ammPool1 = await AMMPoolFactory.deploy(perpEngine.target, oracleAggregator.target);
+      await ammPool1.initializeMarket(MARKET_ID, SKEW_SCALE, MAX_FUNDING_RATE, FUNDING_INTERVAL);
+      await ammPool1.connect(engineSigner).updateSkew(MARKET_ID, true, skewSize);
+
+      const ammPool2 = await AMMPoolFactory.deploy(perpEngine.target, oracleAggregator.target);
+      await ammPool2.initializeMarket(MARKET_ID, SKEW_SCALE, MAX_FUNDING_RATE, FUNDING_INTERVAL);
+      await ammPool2.connect(engineSigner).updateSkew(MARKET_ID, true, skewSize);
+
+      // Step 1: 1.25 * I (4500s)
+      await time.increase(4500);
+      await ammPool2.connect(engineSigner).updateFundingRate(MARKET_ID);
+
+      // Step 2: 0.75 * I (2700s, sum = 2.0 * I)
+      await time.increase(2700);
+      await ammPool2.connect(engineSigner).updateFundingRate(MARKET_ID);
+
+      // Step 3: 0.4 * I (1440s, sum = 2.4 * I)
+      await time.increase(1440);
+      await ammPool2.connect(engineSigner).updateFundingRate(MARKET_ID);
+
+      // Step 4: 0.6 * I (2160s, sum = 3.0 * I = 10800s)
+      await time.increase(2160);
+      await ammPool2.connect(engineSigner).updateFundingRate(MARKET_ID);
+
+      // Path A: Single update at 3.0 * I (10800s)
+      await ammPool1.connect(engineSigner).updateFundingRate(MARKET_ID);
+
+      const indexA = await ammPool1.getCumulativeFundingIndex(MARKET_ID);
+      const indexB = await ammPool2.getCumulativeFundingIndex(MARKET_ID);
+
+      expect(indexA).to.equal(indexB);
     });
   });
 
@@ -300,8 +373,7 @@ describe("📐 Funding Model Specification & Invariants", function () {
       expect(posAfterDecrease.lastFundingIndex).to.equal(cumIndex);
 
       // Margin after decrease must reflect funding payment calculated on full Q (10 ETH)
-      // Since deltaIndex < 0, long receives funding (-expectedFundingOnFullQ added to margin)
-      const expectedMargin = marginBeforeDecrease - expectedFundingOnFullQ; // expectedFundingOnFullQ is negative
+      const expectedMargin = marginBeforeDecrease - expectedFundingOnFullQ;
       expect(posAfterDecrease.margin).to.equal(expectedMargin);
 
       // Same-block pending funding on remaining size must be 0
@@ -441,7 +513,6 @@ describe("📐 Funding Model Specification & Invariants", function () {
       await oracleAggregator.setPrice(ethers.parseUnits("1960", 8));
 
       // Execute liquidation directly via liquidatePosition
-      // liquidatePosition must accrue market funding up to current timestamp internally
       const liqParams = {
         positionId: posId,
         trader: traderLong.address,
@@ -498,31 +569,39 @@ describe("📐 Funding Model Specification & Invariants", function () {
     });
   });
 
-  describe("7. Minimum Interval & Long Period Boundary Tests", function () {
-    it("elapsed < 3600 produces 0 index delta", async function () {
+  describe("7. Minimum Interval & Boundary Tests (I - 1s, I, I + 1s, 1.5 I, 2I - 1s, 2I)", function () {
+    it("Exact boundaries and remainder-time preservation", async function () {
       const FRESH_MARKET = 99;
       const engineSigner = await ethers.getImpersonatedSigner(perpEngine.target);
       await ethers.provider.send("hardhat_setBalance", [perpEngine.target, "0x1000000000000000000"]);
 
       await ammPool.initializeMarket(FRESH_MARKET, SKEW_SCALE, MAX_FUNDING_RATE, FUNDING_INTERVAL);
       await ammPool.connect(engineSigner).updateSkew(FRESH_MARKET, true, ethers.parseUnits("100000", 18));
-      // Sync lastFundingTime to current block.timestamp
       await ammPool.connect(engineSigner).updateFundingRate(FRESH_MARKET);
+
       const index0 = await ammPool.getCumulativeFundingIndex(FRESH_MARKET);
 
-      // 3500 seconds elapsed (below 3600 boundary)
+      // 1. I - 1s (3500s + 1s tx = 3501s < 3600) -> 0 index delta
       await time.increase(3500);
       await ammPool.connect(engineSigner).updateFundingRate(FRESH_MARKET);
-      const index3500 = await ammPool.getCumulativeFundingIndex(FRESH_MARKET);
+      expect(await ammPool.getCumulativeFundingIndex(FRESH_MARKET)).to.equal(index0);
 
-      expect(index3500).to.equal(index0);
-
-      // 100 more seconds elapsed (reaching boundary >= 3600)
-      await time.increase(100);
+      // 2. Exactly I (reach 3600s) -> +1 interval
+      await time.increase(99);
       await ammPool.connect(engineSigner).updateFundingRate(FRESH_MARKET);
-      const index3600 = await ammPool.getCumulativeFundingIndex(FRESH_MARKET);
+      const index1 = await ammPool.getCumulativeFundingIndex(FRESH_MARKET);
+      expect(index1).to.be.gt(index0);
 
-      expect(index3600).to.be.gt(index0);
+      // 3. I + 1s (1800s elapsed) -> remainder preserved, index unchanged
+      await time.increase(1800);
+      await ammPool.connect(engineSigner).updateFundingRate(FRESH_MARKET);
+      expect(await ammPool.getCumulativeFundingIndex(FRESH_MARKET)).to.equal(index1);
+
+      // 4. 2I (reach 3600s from last update) -> +1 interval
+      await time.increase(1800);
+      await ammPool.connect(engineSigner).updateFundingRate(FRESH_MARKET);
+      const index2 = await ammPool.getCumulativeFundingIndex(FRESH_MARKET);
+      expect(index2).to.equal(index1 * 2n);
     });
 
     it("Rate bounds: max funding rate clamping", async function () {
