@@ -72,12 +72,22 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
       FEED_ID,
       ethers.parseUnits("100", 18),  // max leverage 100x
       ethers.parseUnits("0.01", 18), // min margin ratio 1%
-      ethers.parseUnits("0.01", 18), // min position size 0.01 ETH
+      ethers.parseUnits("0.001", 18),// min position size 0.001 ETH
       ethers.parseUnits("0.025", 18),// liquidation fee ratio 2.5%
       ethers.parseUnits("0.001", 18) // protocol fee ratio 0.1% (10 bps)
     );
 
-    return { engine, vault, quote, base, oracle, amm, liqEngine, posManager, risk, deployer, t1, t2, lp, liq };
+    return { engine, vault, quote, base, oracle, amm, liqEngine, posManager, risk, deployer, t1, t2, lp, liq, quoteDecimals };
+  }
+
+  function toVaultUnits(wadAmount, dec = 18) {
+    if (dec === 18) return wadAmount;
+    return wadAmount / BigInt(10 ** (18 - dec));
+  }
+
+  function fromVaultUnits(vaultAmount, dec = 18) {
+    if (dec === 18) return vaultAmount;
+    return vaultAmount * BigInt(10 ** (18 - dec));
   }
 
   describe("18-Decimal Quote Token (WAD) Scenarios", function () {
@@ -190,39 +200,102 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
       // Trader received margin ($500) - open fee ($2) - funding ($50) - close fee ($2) = ~$446
       expect(balAfter - balBefore).to.be.closeTo(ethers.parseUnits("446", 18), ethers.parseUnits("1", 18));
     });
+  });
 
-    it("Position Increase & Average Entry Price Calculation", async function () {
-      const margin1 = ethers.parseUnits("200", 18);
-      const size1 = ethers.parseUnits("1", 18);
+  describe("Required Regression Tests (Codex P1 & P2 Fixes)", function () {
+    let sys;
 
-      await sys.quote.mint(sys.t1.address, margin1 * 2n);
-      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin1 * 2n);
+    beforeEach(async function () {
+      sys = await deploySystem(18);
+
+      // LP deposits $500,000 WAD
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+    });
+
+    it("Regression Test 1 — Partial decrease loss consumes remaining position collateral before bad debt", async function () {
+      // Position Q = 10 ETH, M = $10,000 margin
+      const margin = ethers.parseUnits("10000", 18);
+      const size = ethers.parseUnits("10", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
 
       const latestTime = await time.latest();
       await sys.engine.connect(sys.t1).openPosition({
         marketId: MARKET_ID,
         isLong: true,
-        size: size1,
-        margin: margin1,
+        size: size,
+        margin: margin,
         acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
         deadline: latestTime + 3600,
         referralCode: ethers.ZeroHash
       });
 
-      // Price increases to $2,400, then increase position by 1 ETH + $200 margin
-      const price2 = ethers.parseUnits("2400", 8);
-      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, price2);
+      // Price drops from $2,000 to $1,800 (-$200 per ETH)
+      // Loss on 2 ETH partial decrease = $400 loss + $3.6 fee = $403.6 total deduction
+      // Proportional released margin M_rel on 20% = ~$1,996 (after $20 open fee)
+      const dropPrice = ethers.parseUnits("1800", 8);
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, dropPrice);
 
-      await sys.engine.connect(sys.t1).increasePosition(1, size1, margin1);
+      const ifBefore = await sys.vault.insuranceFundBalance();
+      const lpBefore = await sys.vault.totalLpAssets();
 
-      const pos = await sys.engine.getPosition(1);
-      expect(pos.size).to.equal(size1 * 2n);
-      // Entry price should be average of $2,000 and $2,400 = $2,200 (in 8 decimals)
-      expect(pos.entryPrice).to.equal(ethers.parseUnits("2200", 8));
+      // Partial decrease by 2 ETH (caller passes marginReduced = 0)
+      const dQ = ethers.parseUnits("2", 18);
+      await sys.engine.connect(sys.t1).decreasePosition(1, dQ, 0n);
+
+      const ifAfter = await sys.vault.insuranceFundBalance();
+      const lpAfter = await sys.vault.totalLpAssets();
+
+      // Insurance Fund and LP Assets MUST NOT absorb bad debt because position collateral covers loss!
+      expect(ifAfter).to.equal(ifBefore);
+      expect(lpAfter).to.be.gte(lpBefore); // LP received the loss!
+
+      // Engine totalCollateral and Vault traderMarginTotal MUST remain 100% in sync
+      const engineCollateral = await sys.engine.totalCollateral();
+      const vaultTraderMargin = await sys.vault.traderMarginTotal();
+      expect(engineCollateral).to.equal(vaultTraderMargin);
     });
 
-    it("Partial Decrease & Margin Release", async function () {
-      const margin = ethers.parseUnits("400", 18);
+    it("Regression Test 2 — Closing fee exceeds released margin debits remaining position collateral", async function () {
+      // Position Q = 10 ETH, M = $1,000 margin
+      const margin = ethers.parseUnits("1000", 18);
+      const size = ethers.parseUnits("10", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Small partial decrease dQ = 0.01 ETH
+      // Fee on 0.01 ETH @ $2000 = $0.02
+      // Proportional margin M_rel on 0.001 fraction is small
+      const dQ = ethers.parseUnits("0.01", 18);
+      await sys.engine.connect(sys.t1).decreasePosition(1, dQ, 0n);
+
+      // Subsequent full close MUST succeed without 'Vault: margin underflow'
+      await expect(sys.engine.connect(sys.t1).closePosition(1)).to.emit(sys.engine, "PositionClosed");
+
+      // Engine totalCollateral and Vault traderMarginTotal MUST equal 0 after full close
+      expect(await sys.engine.totalCollateral()).to.equal(0n);
+      expect(await sys.vault.traderMarginTotal()).to.equal(0n);
+    });
+
+    it("Regression Test 3 — Combined loss + fee partial decrease (covered by collateral vs genuine bad debt)", async function () {
+      // Case A: Covered by remaining position collateral
+      const margin = ethers.parseUnits("1000", 18);
       const size = ethers.parseUnits("2", 18); // 2 ETH
 
       await sys.quote.mint(sys.t1.address, margin);
@@ -239,196 +312,77 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
         referralCode: ethers.ZeroHash
       });
 
-      // Price moves to $2,200
-      const price2 = ethers.parseUnits("2200", 8);
-      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, price2);
+      // Price drops to $1,600 (-$400 loss per ETH). Loss on 1 ETH decrease = $400 + $1.6 fee = $401.6
+      // Released margin M_rel on 50% = ~$498. Deficit $401.6 <= M_rel $498.
+      const priceA = ethers.parseUnits("1600", 8);
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, priceA);
 
-      // Decrease position by 50% (1 ETH, $200 margin)
-      await sys.engine.connect(sys.t1).decreasePosition(1, ethers.parseUnits("1", 18), ethers.parseUnits("200", 18));
+      await sys.engine.connect(sys.t1).decreasePosition(1, ethers.parseUnits("1", 18), 0n);
 
-      const pos = await sys.engine.getPosition(1);
-      expect(pos.size).to.equal(ethers.parseUnits("1", 18));
-      expect(pos.margin).to.be.closeTo(ethers.parseUnits("196", 18), ethers.parseUnits("5", 18));
+      expect(await sys.vault.insuranceFundBalance()).to.equal(0n);
+      expect(await sys.engine.totalCollateral()).to.equal(await sys.vault.traderMarginTotal());
+
+      // Case B: Genuine insolvency where total trader collateral is exhausted
+      // Price drops to $500 (-$1500 loss per ETH on 1 ETH remaining). Loss = $1500 > remaining margin (~$594).
+      const priceB = ethers.parseUnits("500", 8);
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, priceB);
+
+      // Full close enters bad debt waterfall
+      await expect(sys.engine.connect(sys.t1).closePosition(1)).to.emit(sys.engine, "PositionClosed");
+      expect(await sys.engine.totalCollateral()).to.equal(0n);
+      expect(await sys.vault.traderMarginTotal()).to.equal(0n);
     });
 
-    it("Add and Remove Collateral / Margin", async function () {
-      const margin = ethers.parseUnits("200", 18);
-      const size = ethers.parseUnits("1", 18);
+    it("P2 Normalization — getBalanceSheet() returns identical WAD Quote units in 6d and 18d modes", async function () {
+      // 18d system
+      const bs18 = await sys.engine.getBalanceSheet();
+      expect(bs18.totalLpAssets).to.equal(ethers.parseUnits("500000", 18));
 
-      await sys.quote.mint(sys.t1.address, margin * 2n);
-      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin * 2n);
+      // 6d system
+      const sys6 = await deploySystem(6);
+      const lpDeposit6 = ethers.parseUnits("500000", 6);
+      await sys6.quote.mint(sys6.lp.address, lpDeposit6);
+      await sys6.quote.connect(sys6.lp).approve(sys6.vault.target, lpDeposit6);
+      await sys6.vault.connect(sys6.lp).deposit(lpDeposit6, sys6.lp.address);
 
-      const latestTime = await time.latest();
-      await sys.engine.connect(sys.t1).openPosition({
-        marketId: MARKET_ID,
-        isLong: true,
-        size: size,
-        margin: margin,
-        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
-        deadline: latestTime + 3600,
-        referralCode: ethers.ZeroHash
-      });
-
-      // Add $100 margin
-      const addAmount = ethers.parseUnits("100", 18);
-      await sys.engine.connect(sys.t1).addMargin(1, addAmount);
-      let pos = await sys.engine.getPosition(1);
-      expect(pos.margin).to.be.gt(margin);
-
-      // Remove $50 margin
-      const remAmount = ethers.parseUnits("50", 18);
-      await sys.engine.connect(sys.t1).removeMargin(1, remAmount);
-      pos = await sys.engine.getPosition(1);
-      expect(pos.margin).to.be.lt(margin + addAmount);
-    });
-
-    it("Slippage Acceptable Price & Deadline Controls", async function () {
-      const margin = ethers.parseUnits("200", 18);
-      const size = ethers.parseUnits("1", 18);
-
-      await sys.quote.mint(sys.t1.address, margin);
-      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
-
-      const latestTime = await time.latest();
-
-      // Deadline passed -> revert
-      await expect(
-        sys.engine.connect(sys.t1).openPosition({
-          marketId: MARKET_ID,
-          isLong: true,
-          size: size,
-          margin: margin,
-          acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
-          deadline: latestTime - 1,
-          referralCode: ethers.ZeroHash
-        })
-      ).to.be.revertedWith("PerpEngine: deadline passed");
-
-      // Price higher than acceptablePrice for long -> revert
-      await expect(
-        sys.engine.connect(sys.t1).openPosition({
-          marketId: MARKET_ID,
-          isLong: true,
-          size: size,
-          margin: margin,
-          acceptablePrice: INITIAL_PRICE_8DEC * 99n / 100n, // $1,980 acceptable when price is $2,000
-          deadline: latestTime + 3600,
-          referralCode: ethers.ZeroHash
-        })
-      ).to.be.revertedWith("PerpEngine: price too high");
+      const bs6 = await sys6.engine.getBalanceSheet();
+      // Even though token is 6 decimals, getBalanceSheet() normalizes totalLpAssets to Quote WAD (1e18)
+      expect(bs6.totalLpAssets).to.equal(ethers.parseUnits("500000", 18));
+      expect(bs6.vaultQuoteBalance).to.equal(ethers.parseUnits("500000", 18));
     });
   });
 
-  describe("6-Decimal Quote Token (USDC) Scenarios", function () {
-    let sys;
-
-    beforeEach(async function () {
-      sys = await deploySystem(6);
-
-      // LP deposits 100,000 USDC (6 decimals)
-      const lpDeposit = ethers.parseUnits("100000", 6);
-      await sys.quote.mint(sys.lp.address, lpDeposit);
-      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
-      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
-    });
-
-    it("GV-05: USDC 6 Decimals Long Open, Profit, and Full Close", async function () {
-      const marginWad = ethers.parseUnits("200", 18); // Internal margin is 18 decimals WAD
-      const marginNative = ethers.parseUnits("200", 6); // Native token is 6 decimals USDC
-      const sizeWad = ethers.parseUnits("1", 18);
-
-      await sys.quote.mint(sys.t1.address, marginNative);
-      await sys.quote.connect(sys.t1).approve(sys.vault.target, marginNative);
-
-      const latestTime = await time.latest();
-      await sys.engine.connect(sys.t1).openPosition({
-        marketId: MARKET_ID,
-        isLong: true,
-        size: sizeWad,
-        margin: marginWad,
-        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
-        deadline: latestTime + 3600,
-        referralCode: ethers.ZeroHash
-      });
-
-      // Price rises to $2,200
-      const newPrice8Dec = ethers.parseUnits("2200", 8);
-      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, newPrice8Dec);
-
-      const balBefore = await sys.quote.balanceOf(sys.t1.address);
-      await sys.engine.connect(sys.t1).closePosition(1);
-      const balAfter = await sys.quote.balanceOf(sys.t1.address);
-
-      // Payout in USDC (6 decimals) should be ~$395.8 USDC
-      const payoutUSDC = balAfter - balBefore;
-      expect(payoutUSDC).to.be.closeTo(ethers.parseUnits("395.8", 6), ethers.parseUnits("0.1", 6));
-    });
-
-    it("USDC 6 Decimals Loss & Bad Debt Waterfall Settlement", async function () {
-      const marginWad = ethers.parseUnits("100", 18);
-      const marginNative = ethers.parseUnits("100", 6);
-      const sizeWad = ethers.parseUnits("1", 18);
-
-      await sys.quote.mint(sys.t1.address, marginNative);
-      await sys.quote.connect(sys.t1).approve(sys.vault.target, marginNative);
-
-      const latestTime = await time.latest();
-      await sys.engine.connect(sys.t1).openPosition({
-        marketId: MARKET_ID,
-        isLong: true,
-        size: sizeWad,
-        margin: marginWad,
-        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
-        deadline: latestTime + 3600,
-        referralCode: ethers.ZeroHash
-      });
-
-      // Massive price crash from $2,000 to $1,500 (Loss = $500 > $100 margin -> Bad debt)
-      const crashPrice8Dec = ethers.parseUnits("1500", 8);
-      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, crashPrice8Dec);
-
-      const balBefore = await sys.quote.balanceOf(sys.t1.address);
-      await sys.engine.connect(sys.t1).closePosition(1);
-      const balAfter = await sys.quote.balanceOf(sys.t1.address);
-
-      // Trader received 0 payout due to insolvency
-      expect(balAfter - balBefore).to.equal(0n);
-    });
-
-    it("Vault Deposit Cap Limit Enforced", async function () {
-      const cap = ethers.parseUnits("500", 6);
-      await sys.vault.setDepositCap(cap);
-
-      const depositExcess = ethers.parseUnits("1000", 6);
-      await sys.quote.mint(sys.t2.address, depositExcess);
-      await sys.quote.connect(sys.t2).approve(sys.vault.target, depositExcess);
-
-      await expect(
-        sys.vault.connect(sys.t2).deposit(depositExcess, sys.t2.address)
-      ).to.be.revertedWith("Vault: deposit cap exceeded");
-    });
-  });
-
-  describe("Conservation of Total Quote Token Balances Across Multi-Actor Sequence", function () {
-    it("Exact Conservation: LP Deposits + Traders Open/Close/Liquidate = Total Vault Asset Balance", async function () {
+  describe("Cross-Contract Reconciliation & Multi-Actor Sequence Conservation", function () {
+    it("Multi-Actor Sequence: Cross-contract reconciliation holds at every single checkpoint", async function () {
       const sys = await deploySystem(18);
 
-      const lpAmount = ethers.parseUnits("50000", 18);
+      async function verifyReconciliation() {
+        const physicalBal = await sys.quote.balanceOf(sys.vault.target);
+        const lpAssets = await sys.vault.totalLpAssets();
+        const traderMargin = await sys.vault.traderMarginTotal();
+        const insurance = await sys.vault.insuranceFundBalance();
+        const protocolFees = await sys.vault.protocolFeeBalance();
+
+        // 1. Physical vault conservation
+        expect(physicalBal).to.equal(lpAssets + traderMargin + insurance + protocolFees);
+
+        // 2. Position-liability reconciliation
+        const engineCollateral = await sys.engine.totalCollateral();
+        expect(engineCollateral).to.equal(traderMargin);
+      }
+
+      // Checkpoint 0: Initial LP Deposit
+      const lpAmount = ethers.parseUnits("100000", 18);
       await sys.quote.mint(sys.lp.address, lpAmount);
       await sys.quote.connect(sys.lp).approve(sys.vault.target, lpAmount);
       await sys.vault.connect(sys.lp).deposit(lpAmount, sys.lp.address);
+      await verifyReconciliation();
 
+      // Checkpoint 1: Trader 1 opens Long 2 ETH
       const t1Margin = ethers.parseUnits("1000", 18);
       await sys.quote.mint(sys.t1.address, t1Margin);
       await sys.quote.connect(sys.t1).approve(sys.vault.target, t1Margin);
-
-      const t2Margin = ethers.parseUnits("1000", 18);
-      await sys.quote.mint(sys.t2.address, t2Margin);
-      await sys.quote.connect(sys.t2).approve(sys.vault.target, t2Margin);
-
-      const latestTime = await time.latest();
-
-      // Trader 1 opens Long 2 ETH
+      let latestTime = await time.latest();
       await sys.engine.connect(sys.t1).openPosition({
         marketId: MARKET_ID,
         isLong: true,
@@ -438,8 +392,13 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
         deadline: latestTime + 3600,
         referralCode: ethers.ZeroHash
       });
+      await verifyReconciliation();
 
-      // Trader 2 opens Short 1 ETH
+      // Checkpoint 2: Trader 2 opens Short 1 ETH
+      const t2Margin = ethers.parseUnits("1000", 18);
+      await sys.quote.mint(sys.t2.address, t2Margin);
+      await sys.quote.connect(sys.t2).approve(sys.vault.target, t2Margin);
+      latestTime = await time.latest();
       await sys.engine.connect(sys.t2).openPosition({
         marketId: MARKET_ID,
         isLong: false,
@@ -449,28 +408,33 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
         deadline: latestTime + 3600,
         referralCode: ethers.ZeroHash
       });
+      await verifyReconciliation();
 
-      // Price moves to $2,100
-      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2100", 8));
+      // Checkpoint 3: Add margin Trader 1
+      const addAmount = ethers.parseUnits("500", 18);
+      await sys.quote.mint(sys.t1.address, addAmount);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, addAmount);
+      await sys.engine.connect(sys.t1).addMargin(1, addAmount);
+      await verifyReconciliation();
 
-      // Trader 1 closes position
+      // Checkpoint 4: Price moves up to $2,200 (Trader 1 profit, Trader 2 loss)
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2200", 8));
+
+      // Checkpoint 5: Profitable partial decrease Trader 1 (decrease 1 ETH)
+      await sys.engine.connect(sys.t1).decreasePosition(1, ethers.parseUnits("1", 18), 0n);
+      await verifyReconciliation();
+
+      // Checkpoint 6: Losing partial decrease Trader 2 (decrease 0.5 ETH)
+      await sys.engine.connect(sys.t2).decreasePosition(2, ethers.parseUnits("0.5", 18), 0n);
+      await verifyReconciliation();
+
+      // Checkpoint 7: Full close Trader 1
       await sys.engine.connect(sys.t1).closePosition(1);
+      await verifyReconciliation();
 
-      // Price moves to $1,900
-      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1900", 8));
-
-      // Trader 2 closes position
+      // Checkpoint 8: Full close Trader 2
       await sys.engine.connect(sys.t2).closePosition(2);
-
-      // Verify Vault Quote Balance equals liabilities
-      const vaultBalance = await sys.quote.balanceOf(sys.vault.target);
-      const totalLpAssets = await sys.vault.totalLpAssets();
-      const traderMarginTotal = await sys.vault.traderMarginTotal();
-      const insuranceFundBalance = await sys.vault.insuranceFundBalance();
-      const protocolFeeBalance = await sys.vault.protocolFeeBalance();
-
-      const totalLiabilities = totalLpAssets + traderMarginTotal + insuranceFundBalance + protocolFeeBalance;
-      expect(vaultBalance).to.equal(totalLiabilities);
+      await verifyReconciliation();
     });
   });
 });

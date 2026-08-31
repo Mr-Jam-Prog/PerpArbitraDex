@@ -107,23 +107,30 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     }
 
     struct SettlementResult {
+        uint256 preSize;
+        uint256 postFundingPreChangeMargin;
         uint256 sizeReduced;
-        uint256 marginReduced;
+        uint256 proportionalMarginReleased;
         int256 realizedPnl;
         uint256 protocolFee;
         uint256 traderPayout;
+        uint256 extraMarginDebit;
+        uint256 totalTraderCollateralConsumed;
+        uint256 residualBadDebt;
         uint256 unlockedNotional;
+        uint256 remainingPositionMargin;
+        uint256 remainingPositionSize;
     }
 
     struct BalanceSheet {
-        uint256 totalTraderCollateral;
-        uint256 totalLpAssets;
-        uint256 lockedLiquidity;
-        uint256 availableLiquidity;
-        uint256 insuranceFundBalance;
-        uint256 protocolFeeBalance;
-        uint256 totalOpenInterestBase;
-        uint256 vaultQuoteBalance;
+        uint256 totalTraderCollateral;   // WAD Quote (1e18)
+        uint256 totalLpAssets;          // WAD Quote (1e18)
+        uint256 lockedLiquidity;        // WAD Quote (1e18)
+        uint256 availableLiquidity;     // WAD Quote (1e18)
+        uint256 insuranceFundBalance;   // WAD Quote (1e18)
+        uint256 protocolFeeBalance;     // WAD Quote (1e18)
+        uint256 totalOpenInterestBase;  // WAD Base  (1e18)
+        uint256 vaultQuoteBalance;      // WAD Quote (1e18)
     }
 
     // ============ MODIFIERS ============
@@ -273,14 +280,14 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
 
     /**
      * @dev Core internal settlement function for position reduction / closure according to ECONOMIC_SPEC.md.
-     * Performs funding settlement on pre-modification size, calculates proportional margin,
-     * realized PnL, closing fees, unlocks LP liquidity, applies state updates (CEI),
-     * and interacts atomically with LiquidityVault.
+     * Performs funding settlement on pre-modification size, computes canonical proportional margin release,
+     * realized PnL, closing fees, consumes remaining position collateral for shortfalls before bad debt,
+     * applies state updates (CEI), and interacts atomically with LiquidityVault.
      */
     function _settlePositionChange(
         uint256 positionId,
         uint256 sizeReduced,
-        uint256 marginReduced,
+        uint256 requestedMarginReduced,
         uint256 currentPrice
     ) internal returns (SettlementResult memory res) {
         IPerpEngine.Position storage position = _positions[positionId];
@@ -288,15 +295,26 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         // 1. Settle pending funding on pre-decrease position size
         _settleFunding(position);
 
-        // If closing full position, marginReduced must equal post-funding position.margin
+        res.preSize = position.size;
+        res.postFundingPreChangeMargin = position.margin;
+        res.sizeReduced = sizeReduced;
+
+        // Canonical proportional margin release per ECONOMIC_SPEC.md §5.2
         if (sizeReduced == position.size) {
-            marginReduced = position.margin;
+            res.proportionalMarginReleased = position.margin;
+        } else {
+            res.proportionalMarginReleased = position.size > 0
+                ? position.margin.mulDiv(sizeReduced, position.size)
+                : 0;
+            if (requestedMarginReduced > 0) {
+                require(
+                    requestedMarginReduced == res.proportionalMarginReleased,
+                    "PerpEngine: invalid margin reduction"
+                );
+            }
         }
 
-        res.sizeReduced = sizeReduced;
-        res.marginReduced = marginReduced;
-
-        // 2. Realized PnL for reduced portion (in quote WAD)
+        // 2. Realized PnL for reduced size portion (in quote WAD)
         res.realizedPnl = PositionMath.calculatePnL(
             position.entryPrice,
             currentPrice,
@@ -304,26 +322,78 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             position.isLong
         );
 
-        // 3. Protocol fee for reduced portion (in quote WAD)
+        // 3. Protocol fee for reduced size portion (in quote WAD)
         Market storage market = _markets[position.marketId];
         uint256 reducedNotional = sizeReduced.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
         res.protocolFee = reducedNotional.mulDiv(market.protocolFeeRatio, PRECISION);
 
-        // 4. Proportional LP liquidity unlocked based on stored lockedNotional
+        // 4. Proportional LP locked liquidity released based on stored lockedNotional
         res.unlockedNotional = position.size > 0
             ? position.lockedNotional.mulDiv(sizeReduced, position.size)
             : position.lockedNotional;
 
-        // 5. Checks-Effects (state updates)
-        position.size -= sizeReduced;
-        position.margin -= marginReduced;
-        position.lockedNotional -= res.unlockedNotional;
+        // 5. Calculate payout, collateral debits, and bad debt waterfall according to ECONOMIC_SPEC.md §5.2
+        uint256 realizedLoss = res.realizedPnl < 0 ? uint256(-res.realizedPnl) : 0;
+        uint256 realizedProfit = res.realizedPnl > 0 ? uint256(res.realizedPnl) : 0;
+
+        uint256 totalDeduction = realizedLoss + res.protocolFee;
+
+        if (totalDeduction <= res.proportionalMarginReleased) {
+            // Net positive or non-negative payout from released margin
+            uint256 netReleasedMargin = res.proportionalMarginReleased - totalDeduction;
+            res.traderPayout = netReleasedMargin + realizedProfit;
+            res.extraMarginDebit = 0;
+            res.totalTraderCollateralConsumed = res.proportionalMarginReleased;
+            res.residualBadDebt = 0;
+        } else {
+            // Deficit exceeds proportional released margin
+            res.traderPayout = realizedProfit; // If loss, realizedProfit is 0
+            uint256 deficit = totalDeduction - res.proportionalMarginReleased;
+            uint256 remainingCollateral = position.margin > res.proportionalMarginReleased
+                ? position.margin - res.proportionalMarginReleased
+                : 0;
+
+            if (deficit <= remainingCollateral) {
+                // Retained position margin can cover the entire deficit
+                res.extraMarginDebit = deficit;
+                res.totalTraderCollateralConsumed = res.proportionalMarginReleased + deficit;
+                res.residualBadDebt = 0;
+            } else {
+                // ALL trader collateral on this position is exhausted
+                res.extraMarginDebit = remainingCollateral;
+                res.totalTraderCollateralConsumed = position.margin; // All collateral consumed
+                res.residualBadDebt = deficit - remainingCollateral;
+            }
+        }
+
+        res.remainingPositionMargin = position.margin > res.totalTraderCollateralConsumed
+            ? position.margin - res.totalTraderCollateralConsumed
+            : 0;
+        res.remainingPositionSize = position.size - sizeReduced;
+
+        // If ALL collateral was consumed, close the remaining position size as well
+        if (res.remainingPositionMargin == 0 && res.remainingPositionSize > 0) {
+            sizeReduced = position.size; // Full close due to total collateral exhaustion
+            res.sizeReduced = sizeReduced;
+            res.remainingPositionSize = 0;
+            res.unlockedNotional = position.lockedNotional;
+        }
+
+        // 6. CHECKS-EFFECTS (Apply state updates prior to external calls)
+        position.size = res.remainingPositionSize;
+        position.margin = res.remainingPositionMargin;
+        if (position.lockedNotional >= res.unlockedNotional) {
+            position.lockedNotional -= res.unlockedNotional;
+        } else {
+            position.lockedNotional = 0;
+        }
+
         if (position.size == 0) {
             position.isActive = false;
         }
         position.lastUpdated = block.timestamp;
 
-        totalCollateral -= marginReduced;
+        totalCollateral -= res.totalTraderCollateralConsumed;
         totalPositionSize -= sizeReduced;
 
         IAMMPool(ammPool).updateSkew(
@@ -333,42 +403,50 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         );
         _totalOpenInterest[position.marketId] -= sizeReduced;
 
-        // 6. Interactions (with LiquidityVault)
+        // 7. INTERACTIONS (With LiquidityVault)
         ILiquidityVault(liquidityVault).unlockLiquidity(_toVaultUnits(res.unlockedNotional));
 
-        if (res.protocolFee > 0) {
-            _protocolFees[address(quoteToken)] += res.protocolFee;
-            totalFeesAccrued += res.protocolFee;
-            ILiquidityVault(liquidityVault).collectProtocolFees(_toVaultUnits(res.protocolFee));
-        }
+        if (res.residualBadDebt == 0) {
+            // Position collateral fully covered fees and loss
+            if (res.protocolFee > 0) {
+                _protocolFees[address(quoteToken)] += res.protocolFee;
+                totalFeesAccrued += res.protocolFee;
+                ILiquidityVault(liquidityVault).collectProtocolFees(_toVaultUnits(res.protocolFee));
+            }
 
-        uint256 netMargin = marginReduced > res.protocolFee ? marginReduced - res.protocolFee : 0;
-
-        if (res.realizedPnl >= 0) {
-            uint256 profit = uint256(res.realizedPnl);
-            (uint256 profitPaidVaultUnits, ) = ILiquidityVault(liquidityVault).settleTraderProfit(
-                position.trader,
-                _toVaultUnits(netMargin),
-                _toVaultUnits(profit)
-            );
-            res.traderPayout = netMargin + _fromVaultUnits(profitPaidVaultUnits);
-        } else {
-            uint256 loss = uint256(-res.realizedPnl);
-            if (netMargin >= loss) {
-                res.traderPayout = netMargin - loss;
+            if (realizedProfit > 0) {
+                (uint256 profitPaidVaultUnits, ) = ILiquidityVault(liquidityVault).settleTraderProfit(
+                    position.trader,
+                    _toVaultUnits(res.totalTraderCollateralConsumed - res.protocolFee),
+                    _toVaultUnits(realizedProfit)
+                );
+                res.traderPayout = (res.totalTraderCollateralConsumed - res.protocolFee) + _fromVaultUnits(profitPaidVaultUnits);
+            } else {
                 ILiquidityVault(liquidityVault).settleTraderLoss(
                     position.trader,
                     _toVaultUnits(res.traderPayout),
-                    _toVaultUnits(loss)
+                    _toVaultUnits(realizedLoss)
                 );
-            } else {
-                ILiquidityVault(liquidityVault).settleBadDebt(
-                    position.trader,
-                    _toVaultUnits(netMargin),
-                    _toVaultUnits(loss)
-                );
-                res.traderPayout = 0;
             }
+        } else {
+            // ALL position collateral was exhausted -> enter bad debt waterfall
+            // Protocol fee is capped at what collateral can cover after loss or fee deduction
+            uint256 feeCollected = res.protocolFee;
+            if (res.totalTraderCollateralConsumed < res.protocolFee) {
+                feeCollected = res.totalTraderCollateralConsumed;
+            }
+
+            if (feeCollected > 0) {
+                _protocolFees[address(quoteToken)] += feeCollected;
+                totalFeesAccrued += feeCollected;
+                ILiquidityVault(liquidityVault).collectProtocolFees(_toVaultUnits(feeCollected));
+            }
+
+            ILiquidityVault(liquidityVault).settleBadDebt(
+                position.trader,
+                _toVaultUnits(res.totalTraderCollateralConsumed - feeCollected),
+                _toVaultUnits(totalDeduction - feeCollected)
+            );
         }
     }
 
@@ -588,7 +666,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         emit PositionDecreased(
             positionId,
             sizeReduced,
-            marginReduced,
+            res.proportionalMarginReleased,
             uint256(res.realizedPnl >= 0 ? res.realizedPnl : -res.realizedPnl),
             res.protocolFee
         );
@@ -915,16 +993,18 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
 
     /**
      * @notice Balance sheet view for real-time risk monitoring
+     * @dev All quote-denominated values are normalized to WAD Quote (1e18 decimals).
+     *      totalOpenInterestBase is in WAD Base asset units (1e18 decimals).
      */
     function getBalanceSheet() external view returns (BalanceSheet memory bs) {
-        bs.totalTraderCollateral = totalCollateral;
-        bs.totalLpAssets = ILiquidityVault(liquidityVault).totalLpAssets();
-        bs.lockedLiquidity = ILiquidityVault(liquidityVault).lockedLiquidity();
-        bs.availableLiquidity = ILiquidityVault(liquidityVault).availableLiquidity();
-        bs.insuranceFundBalance = ILiquidityVault(liquidityVault).insuranceFundBalance();
-        bs.protocolFeeBalance = ILiquidityVault(liquidityVault).protocolFeeBalance();
-        bs.totalOpenInterestBase = totalPositionSize;
-        bs.vaultQuoteBalance = quoteToken.balanceOf(liquidityVault);
+        bs.totalTraderCollateral = totalCollateral; // Quote WAD 1e18
+        bs.totalLpAssets = _fromVaultUnits(ILiquidityVault(liquidityVault).totalLpAssets()); // Quote WAD 1e18
+        bs.lockedLiquidity = _fromVaultUnits(ILiquidityVault(liquidityVault).lockedLiquidity()); // Quote WAD 1e18
+        bs.availableLiquidity = _fromVaultUnits(ILiquidityVault(liquidityVault).availableLiquidity()); // Quote WAD 1e18
+        bs.insuranceFundBalance = _fromVaultUnits(ILiquidityVault(liquidityVault).insuranceFundBalance()); // Quote WAD 1e18
+        bs.protocolFeeBalance = _fromVaultUnits(ILiquidityVault(liquidityVault).protocolFeeBalance()); // Quote WAD 1e18
+        bs.totalOpenInterestBase = totalPositionSize; // Base WAD 1e18
+        bs.vaultQuoteBalance = _fromVaultUnits(quoteToken.balanceOf(liquidityVault)); // Quote WAD 1e18
     }
 
     // ============ VIEW FUNCTIONS ============
