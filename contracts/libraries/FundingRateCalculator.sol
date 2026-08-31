@@ -5,7 +5,7 @@ import {SafeDecimalMath} from "./SafeDecimalMath.sol";
 
 /**
  * @title FundingRateCalculator
- * @notice Dynamic funding rate calculation based on market skew
+ * @notice Dynamic funding rate calculation and cumulative index tracking based on market skew according to ECONOMIC_SPEC.md
  * @dev Time-weighted, bounded, and dependent only on AMM state
  */
 library FundingRateCalculator {
@@ -24,8 +24,7 @@ library FundingRateCalculator {
     struct FundingState {
         int256 currentFundingRate;
         uint256 lastFundingTime;
-        uint256 fundingAccumulatedLong;
-        uint256 fundingAccumulatedShort;
+        int256 cumulativeFundingIndex;
         uint256 skewScale;
         uint256 maxFundingRate;
     }
@@ -34,11 +33,11 @@ library FundingRateCalculator {
 
     /**
      * @notice Calculate funding rate based on skew
-     * @param longOpenInterest Long open interest
-     * @param shortOpenInterest Short open interest
-     * @param skewScale Normalization factor for skew
+     * @param longOpenInterest Long open interest (WAD 1e18)
+     * @param shortOpenInterest Short open interest (WAD 1e18)
+     * @param skewScale Normalization factor for skew (WAD 1e18)
      * @param timeElapsed Seconds since last funding update
-     * @return fundingRate Calculated funding rate (positive = longs pay shorts)
+     * @return fundingRate Calculated funding rate per interval (WAD 1e18, signed, positive = longs pay shorts)
      */
     function calculateFundingRate(
         uint256 longOpenInterest,
@@ -61,7 +60,6 @@ library FundingRateCalculator {
         }
         
         // Funding rate = normalizedSkew * fundingVelocity * timeElapsed
-        // Clamp to max funding rate
         fundingRate = (normalizedSkew * int256(FUNDING_VELOCITY_MAX) * int256(timeElapsed)) / int256(PRECISION);
         
         // Apply bounds
@@ -69,31 +67,39 @@ library FundingRateCalculator {
     }
 
     /**
-     * @notice Calculate funding payment for a position
-     * @param positionSize Size of position
-     * @param fundingRate Current funding rate
-     * @param timeElapsed Seconds since last funding accrual
-     * @param isLong True for long position
-     * @return fundingPayment Funding payment (positive = receive, negative = pay)
+     * @notice Calculate funding payment for a position according to ECONOMIC_SPEC.md
+     * @dev Exact units and formula:
+     *   deltaIndex = currentFundingIndex - entryFundingIndex                     (WAD 1e18, signed)
+     *   rawPayment = positionSize * abs(deltaIndex) / 1e18                       (Quote WAD 1e18)
+     *   if deltaIndex > 0 (longs pay shorts):
+     *     isLong  => fundingPayment = +rawPayment (trader owes, reduces equity)
+     *     isShort => fundingPayment = -rawPayment (trader receives, increases equity)
+     *   if deltaIndex < 0 (shorts pay longs):
+     *     isLong  => fundingPayment = -rawPayment (trader receives, increases equity)
+     *     isShort => fundingPayment = +rawPayment (trader owes, reduces equity)
+     * @param positionSize Size of position in base asset units (WAD 1e18)
+     * @param entryFundingIndex Cumulative funding index at position entry/settlement (WAD 1e18)
+     * @param currentFundingIndex Current cumulative funding index of market (WAD 1e18)
+     * @param isLong True for long position, false for short position
+     * @return fundingPayment Funding payment in Quote WAD (1e18, positive = trader owes, negative = trader receives)
      */
     function calculateFundingPayment(
         uint256 positionSize,
-        int256 fundingRate,
-        uint256 timeElapsed,
+        int256 entryFundingIndex,
+        int256 currentFundingIndex,
         bool isLong
     ) internal pure returns (int256 fundingPayment) {
-        // Funding payment = size * fundingRate * timeElapsed / PRECISION
-        // Longs pay when fundingRate > 0, receive when fundingRate < 0
-        // Shorts receive when fundingRate > 0, pay when fundingRate < 0
+        int256 deltaFunding = currentFundingIndex - entryFundingIndex;
+        if (deltaFunding == 0 || positionSize == 0) return 0;
         
-        int256 rawPayment = (int256(positionSize) * fundingRate * int256(timeElapsed)) / int256(PRECISION);
+        int256 rawPayment = int256(positionSize.mulDiv(uint256(abs(deltaFunding)), PRECISION));
         
-        if (isLong) {
-            // Longs pay positive funding rates
-            fundingPayment = -rawPayment;
+        if (deltaFunding > 0) {
+            // Index increased: longs pay shorts
+            fundingPayment = isLong ? rawPayment : -rawPayment;
         } else {
-            // Shorts receive positive funding rates
-            fundingPayment = rawPayment;
+            // Index decreased: shorts pay longs
+            fundingPayment = isLong ? -rawPayment : rawPayment;
         }
     }
 
@@ -111,17 +117,9 @@ library FundingRateCalculator {
     ) internal pure returns (FundingState memory updatedState) {
         uint256 timeElapsed = currentTime - state.lastFundingTime;
         
-        // Update accumulated funding
+        // Accumulate rate into cumulative index
         if (timeElapsed > 0) {
-            // Positive funding rate: longs pay to shorts
-            // Negative funding rate: shorts pay to longs
-            uint256 fundingAccumulated = uint256(abs(newFundingRate)).mulDiv(timeElapsed, PRECISION);
-            
-            if (newFundingRate > 0) {
-                state.fundingAccumulatedLong += fundingAccumulated;
-            } else if (newFundingRate < 0) {
-                state.fundingAccumulatedShort += fundingAccumulated;
-            }
+            state.cumulativeFundingIndex += newFundingRate;
         }
         
         state.currentFundingRate = newFundingRate;
@@ -259,17 +257,17 @@ library FundingRateCalculator {
     // ============ BATCH CALCULATIONS ============
 
     /**
-     * @notice Batch calculate funding payments
-     * @param positionSizes Array of position sizes
-     * @param fundingRate Current funding rate
-     * @param timeElapsed Seconds since last funding accrual
+     * @notice Batch calculate funding payments according to ECONOMIC_SPEC.md
+     * @param positionSizes Array of position sizes (WAD 1e18)
+     * @param entryFundingIndex Entry cumulative funding index (WAD 1e18)
+     * @param currentFundingIndex Current cumulative funding index (WAD 1e18)
      * @param isLongs Array of position directions
-     * @return fundingPayments Array of funding payments
+     * @return fundingPayments Array of funding payments (Quote WAD 1e18)
      */
     function batchCalculateFundingPayments(
         uint256[] memory positionSizes,
-        int256 fundingRate,
-        uint256 timeElapsed,
+        int256 entryFundingIndex,
+        int256 currentFundingIndex,
         bool[] memory isLongs
     ) internal pure returns (int256[] memory fundingPayments) {
         uint256 length = positionSizes.length;
@@ -280,8 +278,8 @@ library FundingRateCalculator {
         for (uint256 i = 0; i < length; i++) {
             fundingPayments[i] = calculateFundingPayment(
                 positionSizes[i],
-                fundingRate,
-                timeElapsed,
+                entryFundingIndex,
+                currentFundingIndex,
                 isLongs[i]
             );
         }

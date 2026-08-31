@@ -187,9 +187,10 @@ contract AdversarialTests is Test {
         int256 fundingRate = ammPool.getFundingRate(1);
         assertTrue(fundingRate > 0, "Funding rate should be positive for longs");
         
-        // Longs should be paying
-        int256 payment = ammPool.calculateFundingPayment(1, size, true, block.timestamp - 1 days);
-        assertTrue(payment < 0, "Longs should have negative funding payment (paying)");
+        // Longs should be paying (positive funding payment owed by trader)
+        int256 cumIndex = ammPool.getCumulativeFundingIndex(1);
+        int256 payment = ammPool.calculateFundingPayment(1, size, true, 0);
+        assertTrue(payment > 0, "Longs should have positive funding payment (trader owes)");
     }
 
     /**

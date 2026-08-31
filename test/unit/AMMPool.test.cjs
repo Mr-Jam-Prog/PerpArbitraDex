@@ -100,10 +100,11 @@ describe("💰 AMMPool - Unit Tests", function () {
       const positionSize = ethers.parseUnits("10000", 18);
       const elapsed = 3600;
       
-      const payment = await ammPool.calculateFundingPayment(MARKET_ID, positionSize, true, (await time.latest()) - elapsed);
+      const cumIndex = await ammPool.getCumulativeFundingIndex(MARKET_ID);
+      const payment = await ammPool.calculateFundingPayment(MARKET_ID, positionSize, true, 0n);
       
-      const expected = -(positionSize * fundingRate * BigInt(elapsed)) / ethers.parseUnits("1", 18);
-      expect(payment).to.be.closeTo(expected, 100n);
+      const expected = (positionSize * cumIndex) / ethers.parseUnits("1", 18);
+      expect(payment).to.equal(expected);
     });
   });
 

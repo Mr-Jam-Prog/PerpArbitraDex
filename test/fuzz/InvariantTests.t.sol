@@ -94,7 +94,7 @@ contract InvariantTestsTest is Test {
         return (true, "");
     }
     function updateSkew(uint256, bool, int256) external pure {}
-    function calculateFundingPayment(uint256, uint256, bool, uint256) external pure returns (int256) {
+    function calculateFundingPayment(uint256, uint256, bool, int256) external pure returns (int256) {
         return 0;
     }
 

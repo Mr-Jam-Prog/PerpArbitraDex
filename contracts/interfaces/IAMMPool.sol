@@ -20,8 +20,7 @@ interface IAMMPool {
     struct FundingInfo {
         int256 currentFundingRate;
         uint256 lastFundingTime;
-        uint256 fundingAccumulatedLong;
-        uint256 fundingAccumulatedShort;
+        int256 cumulativeFundingIndex;
         uint256 fundingVelocity; // rate of change per second
     }
 
@@ -31,8 +30,7 @@ interface IAMMPool {
         uint256 indexed marketId,
         int256 fundingRate,
         uint256 fundingTimestamp,
-        uint256 longPayment,
-        uint256 shortPayment
+        int256 cumulativeFundingIndex
     );
 
     event SkewUpdated(
@@ -78,14 +76,14 @@ interface IAMMPool {
      * @param marketId Market ID
      * @param positionSize Size of position
      * @param isLong Whether position is long
-     * @param lastFundingAccrued Last funding timestamp for position
-     * @return fundingPayment Amount to pay/receive (positive = receive, negative = pay)
+     * @param lastFundingIndex Last funding index recorded for position
+     * @return fundingPayment Amount to pay/receive (positive = owe/pay, negative = receive)
      */
     function applyFunding(
         uint256 marketId,
         uint256 positionSize,
         bool isLong,
-        uint256 lastFundingAccrued
+        int256 lastFundingIndex
     ) external returns (int256 fundingPayment);
 
     // ============ VIEW FUNCTIONS ============
@@ -132,15 +130,25 @@ interface IAMMPool {
      * @param marketId Market ID
      * @param positionSize Size of position
      * @param isLong Whether position is long
-     * @param lastFundingAccrued Last funding timestamp
-     * @return fundingPayment Funding payment amount
+     * @param lastFundingIndex Last funding index recorded for position
+     * @return fundingPayment Funding payment amount (positive = trader owes, negative = trader receives)
      */
     function calculateFundingPayment(
         uint256 marketId,
         uint256 positionSize,
         bool isLong,
-        uint256 lastFundingAccrued
+        int256 lastFundingIndex
     ) external view returns (int256 fundingPayment);
+
+    /**
+     * @notice Get current cumulative funding index for a market
+     * @param marketId Market ID
+     * @return cumulativeFundingIndex Cumulative funding index in WAD
+     */
+    function getCumulativeFundingIndex(uint256 marketId)
+        external
+        view
+        returns (int256 cumulativeFundingIndex);
 
     /**
      * @notice Get time-weighted average funding rate

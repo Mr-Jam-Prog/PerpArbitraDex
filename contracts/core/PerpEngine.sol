@@ -22,8 +22,18 @@ import {FundingRateCalculator} from "../libraries/FundingRateCalculator.sol";
 
 /**
  * @title PerpEngine
- * @notice Core perpetual DEX engine - manages positions, funding, and liquidations (ADR-001)
+ * @notice Core perpetual DEX engine - manages positions, funding, and liquidations according to ECONOMIC_SPEC.md (ADR-001)
  * @dev Central business logic with economic safety invariants using LiquidityVault as counterparty.
+ *
+ * FUNDING SPECIFICATION & FORMULAS (ECONOMIC_SPEC.md):
+ * - fundingRate: Rate per interval (WAD 1e18, signed)
+ * - cumulativeFundingIndex: Accumulated funding per unit size (WAD 1e18, signed)
+ * - lastFundingIndex: Cumulative funding index at position's last settlement (WAD 1e18, signed)
+ * - position.size: Position size in base asset units (WAD 1e18)
+ * - deltaIndex = market.cumulativeFundingIndex - position.lastFundingIndex (WAD 1e18, signed)
+ * - fundingPayment = position.isLong ? (size * deltaIndex / 1e18) : -(size * deltaIndex / 1e18) (Quote WAD 1e18, signed)
+ * - Positive funding payment owed by trader reduces trader equity:
+ *     Equity = Margin + PnL - fundingPayment
  */
 contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
@@ -164,8 +174,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     struct FundingState {
         int256 fundingRate;
         uint256 lastFundingTime;
-        uint256 fundingAccumulatedLong;
-        uint256 fundingAccumulatedShort;
+        int256 cumulativeFundingIndex;
     }
 
     // ============ MODIFIERS ============
@@ -242,6 +251,42 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         governance = newGovernance;
     }
 
+    // ============ CANONICAL FUNDING SETTLEMENT HELPER ============
+
+    /**
+     * @dev Settles pending funding payment for position's current pre-modification size.
+     * Calculates funding payment based on deltaIndex between market.cumulativeFundingIndex
+     * and position.lastFundingIndex. Updates position.margin and sets
+     * position.lastFundingIndex = marketCumulativeIndex exactly once.
+     * Returns the funding payment (positive = trader owed, reducing margin).
+     */
+    function _settleFunding(IPerpEngine.Position storage position) internal returns (int256 fundingPayment) {
+        _accrueFunding(position.marketId);
+        int256 marketCumIndex = IAMMPool(ammPool).getCumulativeFundingIndex(position.marketId);
+
+        if (position.size > 0 && position.lastFundingIndex != marketCumIndex) {
+            fundingPayment = IAMMPool(ammPool).calculateFundingPayment(
+                position.marketId,
+                position.size,
+                position.isLong,
+                position.lastFundingIndex
+            );
+            if (fundingPayment != 0) {
+                if (fundingPayment > 0) {
+                    uint256 debt = uint256(fundingPayment);
+                    if (position.margin >= debt) {
+                        position.margin -= debt;
+                    } else {
+                        position.margin = 0;
+                    }
+                } else {
+                    position.margin += uint256(-fundingPayment);
+                }
+            }
+        }
+        position.lastFundingIndex = marketCumIndex;
+    }
+
     // ============ POSITION MANAGEMENT ============
 
     /**
@@ -281,7 +326,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         // Check risk parameters
         _validatePositionRisk(params.marketId, params.size, params.margin, leverage);
         
-        // Lock LP liquidity backstop and deposit trader margin into vault (normalized to vault quote decimals)
+        // Lock LP liquidity backstop and deposit trader margin into vault
         ILiquidityVault(liquidityVault).lockLiquidity(_toVaultUnits(notionalValue));
         ILiquidityVault(liquidityVault).depositTraderMargin(msg.sender, _toVaultUnits(params.margin));
         
@@ -297,6 +342,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         
         // Create position
         positionId = _nextPositionId++;
+        int256 marketCumIndex = IAMMPool(ammPool).getCumulativeFundingIndex(params.marketId);
         
         _positions[positionId] = IPerpEngine.Position({
             trader: msg.sender,
@@ -306,7 +352,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             margin: params.margin,
             entryPrice: currentPrice,
             leverage: leverage,
-            lastFundingAccrued: block.timestamp,
+            lastFundingIndex: marketCumIndex,
             openTime: block.timestamp,
             lastUpdated: block.timestamp,
             isActive: true,
@@ -364,9 +410,9 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         (uint256 currentPrice, bool priceValid) = _getMarketPrice(position.marketId);
         require(priceValid, "PerpEngine: invalid price");
         
-        // Accrue funding before modification
-        _accrueFunding(position.marketId);
-        
+        // Settle funding on pre-increase size Q before adding dQ
+        _settleFunding(position);
+
         // Calculate new values
         uint256 newSize = position.size + sizeAdded;
         uint256 newMargin = position.margin + marginAdded;
@@ -450,31 +496,16 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         (uint256 currentPrice, bool priceValid) = _getMarketPrice(position.marketId);
         require(priceValid, "PerpEngine: invalid price");
         
-        // Accrue funding before modification
-        _accrueFunding(position.marketId);
-        
+        // Settle funding on pre-decrease size Q before reducing
+        _settleFunding(position);
+
         // Calculate PnL for reduced portion (in quote units)
-        int256 pnl = PositionMath.calculatePnL(
+        int256 totalPnl = PositionMath.calculatePnL(
             position.entryPrice,
             currentPrice,
             sizeReduced,
             position.isLong
         );
-        
-        // Calculate funding payment for reduced portion (in base units)
-        int256 fundingPaymentBase = IAMMPool(ammPool).calculateFundingPayment(
-            position.marketId,
-            sizeReduced,
-            position.isLong,
-            position.lastFundingAccrued
-        );
-        
-        // Convert funding payment to quote units
-        int256 fundingPayment = int256(uint256(fundingPaymentBase > 0 ? fundingPaymentBase : -fundingPaymentBase)
-            .mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION));
-        if (fundingPaymentBase < 0) fundingPayment = -fundingPayment;
-        
-        int256 totalPnl = pnl + fundingPayment;
         
         // Unlock proportional LP liquidity based on stored lockedNotional
         uint256 reducedNotional = position.size > 0
@@ -508,7 +539,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         // Update total open interest
         _totalOpenInterest[position.marketId] -= sizeReduced;
         
-        // Settle PnL via LiquidityVault (normalized to vault units)
+        // Settle PnL via LiquidityVault
         if (totalPnl >= 0) {
             ILiquidityVault(liquidityVault).settleTraderProfit(
                 msg.sender,
@@ -529,7 +560,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             positionId,
             sizeReduced,
             marginReduced,
-            uint256(pnl >= 0 ? pnl : -pnl),
+            uint256(totalPnl >= 0 ? totalPnl : -totalPnl),
             0
         );
     }
@@ -551,31 +582,16 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         (uint256 currentPrice, bool priceValid) = _getMarketPrice(position.marketId);
         require(priceValid, "PerpEngine: invalid price");
         
-        // Accrue funding before closing
-        _accrueFunding(position.marketId);
+        // Settle funding on full pre-close size before closing
+        _settleFunding(position);
         
         // Calculate PnL (in quote units)
-        int256 pnl = PositionMath.calculatePnL(
+        int256 totalPnl = PositionMath.calculatePnL(
             position.entryPrice,
             currentPrice,
             position.size,
             position.isLong
         );
-        
-        // Calculate funding payment (in base units)
-        int256 fundingPaymentBase = IAMMPool(ammPool).calculateFundingPayment(
-            position.marketId,
-            position.size,
-            position.isLong,
-            position.lastFundingAccrued
-        );
-        
-        // Convert funding payment to quote units
-        int256 fundingPayment = int256(uint256(fundingPaymentBase > 0 ? fundingPaymentBase : -fundingPaymentBase)
-            .mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION));
-        if (fundingPaymentBase < 0) fundingPayment = -fundingPayment;
-        
-        int256 totalPnl = pnl + fundingPayment;
         
         // Unlock exact stored LP liquidity
         ILiquidityVault(liquidityVault).unlockLiquidity(_toVaultUnits(position.lockedNotional));
@@ -632,7 +648,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         emit PositionClosed(
             positionId,
             currentPrice,
-            uint256(pnl >= 0 ? pnl : -pnl),
+            uint256(totalPnl >= 0 ? totalPnl : -totalPnl),
             0,
             returnAmount
         );
@@ -656,18 +672,27 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         require(position.trader == params.trader, "PerpEngine: trader mismatch");
         require(position.marketId == params.marketId, "PerpEngine: market mismatch");
         
+        // Accrue funding before liquidation checks
+        _accrueFunding(position.marketId);
+
         // Get current price
         (uint256 currentPrice, bool priceValid) = _getMarketPrice(position.marketId);
         require(priceValid, "PerpEngine: invalid price");
         
-        // Verify position is liquidatable
+        // Verify position is liquidatable using up-to-date accrued funding
         {
+            int256 fundingPayment = IAMMPool(ammPool).calculateFundingPayment(
+                position.marketId,
+                position.size,
+                position.isLong,
+                position.lastFundingIndex
+            );
             PositionMath.PositionParams memory posParams = PositionMath.PositionParams({
                 size: position.size,
                 collateral: position.margin,
                 entryPrice: position.entryPrice,
                 isLong: position.isLong,
-                fundingAccrued: 0
+                fundingAccrued: fundingPayment
             });
             PositionMath.PositionRiskParams memory riskParams = PositionMath.PositionRiskParams({
                 maintenanceMarginBps: _markets[position.marketId].minMarginRatio / (PRECISION / 10000),
@@ -678,9 +703,6 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
                 "PerpEngine: not liquidatable"
             );
         }
-        
-        // Accrue funding before liquidation
-        _accrueFunding(position.marketId);
         
         // Calculate liquidation
         uint256 liquidatedSize = params.sizeToLiquidate;
@@ -809,6 +831,8 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         
         (uint256 currentPrice, ) = _getMarketPrice(position.marketId);
         
+        _settleFunding(position);
+
         ILiquidityVault(liquidityVault).depositTraderMargin(msg.sender, _toVaultUnits(amount));
         
         position.margin += amount;
@@ -833,13 +857,13 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         IPerpEngine.Position storage position = _positions[positionId];
         require(position.trader == msg.sender, "PerpEngine: not position owner");
         require(amount > 0, "PerpEngine: zero amount");
-        require(amount <= position.margin, "PerpEngine: insufficient margin");
         
         (uint256 currentPrice, bool priceValid) = _getMarketPrice(position.marketId);
         require(priceValid, "PerpEngine: invalid price");
         
-        _accrueFunding(position.marketId);
-        
+        _settleFunding(position);
+        require(amount <= position.margin, "PerpEngine: insufficient margin");
+
         uint256 newMargin = position.margin - amount;
         uint256 healthFactor;
         {
@@ -887,15 +911,12 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         (uint256 currentPrice, bool priceValid) = _getMarketPrice(position.marketId);
         require(priceValid, "PerpEngine: invalid price");
         
-        int256 fundingPaymentBase = IAMMPool(ammPool).calculateFundingPayment(
+        int256 fundingPayment = IAMMPool(ammPool).calculateFundingPayment(
             position.marketId,
             position.size,
             position.isLong,
-            position.lastFundingAccrued
+            position.lastFundingIndex
         );
-        int256 fundingPayment = int256(uint256(fundingPaymentBase > 0 ? fundingPaymentBase : -fundingPaymentBase)
-            .mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION));
-        if (fundingPaymentBase < 0) fundingPayment = -fundingPayment;
         
         PositionMath.PositionParams memory posParams = PositionMath.PositionParams({
             size: position.size,
@@ -924,17 +945,12 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         IPerpEngine.Position storage position = _positions[positionId];
         require(position.isActive, "PerpEngine: position inactive");
         
-        (uint256 currentPrice, ) = _getMarketPrice(position.marketId);
-
-        int256 fundingPaymentBase = IAMMPool(ammPool).calculateFundingPayment(
+        int256 fundingPayment = IAMMPool(ammPool).calculateFundingPayment(
             position.marketId,
             position.size,
             position.isLong,
-            position.lastFundingAccrued
+            position.lastFundingIndex
         );
-        int256 fundingPayment = int256(uint256(fundingPaymentBase > 0 ? fundingPaymentBase : -fundingPaymentBase)
-            .mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION));
-        if (fundingPaymentBase < 0) fundingPayment = -fundingPayment;
         
         PositionMath.PositionParams memory posParams = PositionMath.PositionParams({
             size: position.size,
@@ -971,17 +987,15 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             position.isLong
         );
         
-        int256 fundingPaymentBase = IAMMPool(ammPool).calculateFundingPayment(
+        int256 fundingPayment = IAMMPool(ammPool).calculateFundingPayment(
             position.marketId,
             position.size,
             position.isLong,
-            position.lastFundingAccrued
+            position.lastFundingIndex
         );
-        int256 fundingPayment = int256(uint256(fundingPaymentBase > 0 ? fundingPaymentBase : -fundingPaymentBase)
-            .mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION));
-        if (fundingPaymentBase < 0) fundingPayment = -fundingPayment;
         
-        pnl += fundingPayment;
+        // PnL net of funding owed by trader
+        pnl -= fundingPayment;
     }
 
     /**
@@ -1005,15 +1019,12 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         IPerpEngine.Position storage position = _positions[positionId];
         if (!position.isActive) return false;
         
-        int256 fundingPaymentBase = IAMMPool(ammPool).calculateFundingPayment(
+        int256 fundingPayment = IAMMPool(ammPool).calculateFundingPayment(
             position.marketId,
             position.size,
             position.isLong,
-            position.lastFundingAccrued
+            position.lastFundingIndex
         );
-        int256 fundingPayment = int256(uint256(fundingPaymentBase > 0 ? fundingPaymentBase : -fundingPaymentBase)
-            .mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION));
-        if (fundingPaymentBase < 0) fundingPayment = -fundingPayment;
         
         PositionMath.PositionParams memory posParams = PositionMath.PositionParams({
             size: position.size,
@@ -1046,15 +1057,12 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
 
         (uint256 currentPrice, ) = _getMarketPrice(position.marketId);
         
-        int256 fundingPaymentBase = IAMMPool(ammPool).calculateFundingPayment(
+        int256 fundingPayment = IAMMPool(ammPool).calculateFundingPayment(
             position.marketId,
             position.size,
             position.isLong,
-            position.lastFundingAccrued
+            position.lastFundingIndex
         );
-        int256 fundingPayment = int256(uint256(fundingPaymentBase > 0 ? fundingPaymentBase : -fundingPaymentBase)
-            .mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION));
-        if (fundingPaymentBase < 0) fundingPayment = -fundingPayment;
 
         PositionMath.PositionParams memory posParams = PositionMath.PositionParams({
             size: position.size,
@@ -1070,7 +1078,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
 
         PositionMath.LiquidationResult memory liqResult = PositionMath.calculateLiquidationPriceSafe(posParams, riskParams);
         uint256 healthFactor = PositionMath.calculateHealthFactor(posParams, currentPrice, riskParams);
-        int256 pnl = PositionMath.calculatePnL(position.entryPrice, currentPrice, position.size, position.isLong) + fundingPayment;
+        int256 pnl = PositionMath.calculatePnL(position.entryPrice, currentPrice, position.size, position.isLong) - fundingPayment;
 
         return PositionView({
             positionId: positionId,
@@ -1164,17 +1172,18 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
      */
     function _accrueFunding(uint256 marketId) internal {
         int256 fundingRate = IAMMPool(ammPool).updateFundingRate(marketId);
+        int256 cumIndex = IAMMPool(ammPool).getCumulativeFundingIndex(marketId);
+
+        _fundingStates[marketId].fundingRate = fundingRate;
+        _fundingStates[marketId].lastFundingTime = block.timestamp;
+        _fundingStates[marketId].cumulativeFundingIndex = cumIndex;
         
         if (fundingRate != 0) {
-            _fundingStates[marketId].fundingRate = fundingRate;
-            _fundingStates[marketId].lastFundingTime = block.timestamp;
-            
             emit FundingAccrued(
                 marketId,
                 fundingRate,
                 block.timestamp,
-                _fundingStates[marketId].fundingAccumulatedLong,
-                _fundingStates[marketId].fundingAccumulatedShort
+                cumIndex
             );
         }
     }
@@ -1336,15 +1345,12 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
 
         (uint256 currentPrice, ) = _getMarketPrice(position.marketId);
         
-        int256 fundingPaymentBase = IAMMPool(ammPool).calculateFundingPayment(
+        int256 fundingPayment = IAMMPool(ammPool).calculateFundingPayment(
             position.marketId,
             position.size,
             position.isLong,
-            position.lastFundingAccrued
+            position.lastFundingIndex
         );
-        int256 fundingPayment = int256(uint256(fundingPaymentBase > 0 ? fundingPaymentBase : -fundingPaymentBase)
-            .mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION));
-        if (fundingPaymentBase < 0) fundingPayment = -fundingPayment;
 
         int256 pnl = PositionMath.calculatePnL(position.entryPrice, currentPrice, position.size, position.isLong);
         int256 equity = int256(position.margin) + pnl - fundingPayment;
