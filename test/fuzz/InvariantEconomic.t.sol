@@ -11,6 +11,7 @@ import {PositionManager} from "../../contracts/core/PositionManager.sol";
 import {AMMPool} from "../../contracts/core/AMMPool.sol";
 import {ProtocolConfig} from "../../contracts/core/ProtocolConfig.sol";
 import {LiquidationEngine} from "../../contracts/liquidation/LiquidationEngine.sol";
+import {LiquidityVault} from "../../contracts/core/LiquidityVault.sol";
 
 /**
  * @title MockERC20 standard for tests
@@ -70,6 +71,7 @@ contract InvariantEconomicTest is StdInvariant, Test {
     AMMPool public ammPool;
     ProtocolConfig public protocolConfig;
     LiquidationEngine public liquidationEngine;
+    LiquidityVault public liquidityVault;
 
     // Tokens
     MockERC20 public usdc;
@@ -114,7 +116,8 @@ contract InvariantEconomicTest is StdInvariant, Test {
         vm.computeCreateAddress(address(this), nonce + 2); // PositionManager
         address ammAddr = vm.computeCreateAddress(address(this), nonce + 3);
         address liqAddr = vm.computeCreateAddress(address(this), nonce + 4);
-        address perpAddr = vm.computeCreateAddress(address(this), nonce + 5);
+        address vaultAddr = vm.computeCreateAddress(address(this), nonce + 5);
+        address perpAddr = vm.computeCreateAddress(address(this), nonce + 6);
 
         positionManager = new PositionManager(perpAddr);
         ammPool = new AMMPool(perpAddr, address(this));
@@ -128,6 +131,8 @@ contract InvariantEconomicTest is StdInvariant, Test {
             address(0)  // incentiveDistributor
         );
 
+        liquidityVault = new LiquidityVault(address(usdc), "Vault USDC", "vUSDC");
+
         perpEngine = new PerpEngine(
             address(positionManager),
             ammAddr,
@@ -135,10 +140,17 @@ contract InvariantEconomicTest is StdInvariant, Test {
             liqAddr,
             address(this), // riskManager mock
             address(protocolConfig),
-            insuranceFund,
+            address(liquidityVault),
             address(usdc),
             address(usdc)
         );
+
+        liquidityVault.setPerpEngine(address(perpEngine));
+
+        // Fund LiquidityVault with LP capital
+        usdc.mint(address(this), 100_000_000e18);
+        usdc.approve(address(liquidityVault), type(uint256).max);
+        liquidityVault.deposit(100_000_000e18, address(this));
     }
 
     // Mock OracleAggregator
@@ -158,7 +170,6 @@ contract InvariantEconomicTest is StdInvariant, Test {
     }
 
     function _setupMarkets() internal {
-        vm.prank(insuranceFund);
         perpEngine.initializeMarket(
             1,
             bytes32("ETH-USD"),
@@ -234,9 +245,10 @@ contract TraderActor {
     uint256[] public myPositions;
 
     constructor(address engine, address token) {
-        perpEngine = PerpEngine(engine);
+        perpEngine = PerpEngine(payable(engine));
         usdc = IERC20(token);
-        usdc.approve(engine, type(uint256).max);
+        address vault = perpEngine.liquidityVault();
+        usdc.approve(vault, type(uint256).max);
     }
 
     function openRandomPosition(uint256 seed) external {

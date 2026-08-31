@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IAMMPool} from "../interfaces/IAMMPool.sol";
 import {IPerpEngine} from "../interfaces/IPerpEngine.sol";
@@ -13,10 +12,10 @@ import {L2GasOptimized} from "../libraries/L2GasOptimized.sol";
 
 /**
  * @title AMMPool
- * @notice Virtual AMM pool for funding rate calculation and skew management
- * @dev No real swaps, only tracks open interest and calculates funding
+ * @notice Virtual AMM pool for funding rate calculation and skew management (ADR-001)
+ * @dev No real swaps or liquidity backing; acts purely as a price discovery, funding rate, and skew model.
  */
-contract AMMPool is IAMMPool, ERC20, Ownable {
+contract AMMPool is IAMMPool, Ownable {
     using SafeDecimalMath for uint256;
     using L2GasOptimized for uint256[];
     using FundingRateCalculator for FundingRateCalculator.FundingState;
@@ -68,7 +67,7 @@ contract AMMPool is IAMMPool, ERC20, Ownable {
 
     // ============ CONSTRUCTOR ============
     
-    constructor(address perpEngine_, address oracleAggregator_) ERC20("PerpDEX LP", "PLP") {
+    constructor(address perpEngine_, address oracleAggregator_) {
         _transferOwnership(msg.sender);
         require(perpEngine_ != address(0), "AMMPool: zero address");
         require(oracleAggregator_ != address(0), "AMMPool: zero address");
@@ -236,20 +235,6 @@ contract AMMPool is IAMMPool, ERC20, Ownable {
     // ============ VIEW FUNCTIONS ============
 
     /**
-     * @notice Get total liquidity in the pool
-     */
-    function totalLiquidity() public view returns (uint256) {
-        return totalSupply(); // Simplified
-    }
-
-    /**
-     * @notice Get LP balance
-     */
-    function getLpBalance(address lp) public view returns (uint256) {
-        return balanceOf(lp); // Simplified
-    }
-
-    /**
      * @inheritdoc IAMMPool
      */
     function getFundingRate(uint256 marketId)
@@ -301,6 +286,7 @@ contract AMMPool is IAMMPool, ERC20, Ownable {
 
     /**
      * @inheritdoc IAMMPool
+     * @notice Warning: Simplified TWAP implementation. In production uses oracle history.
      */
     function getTWAFundingRate(uint256 marketId, uint256 period)
         external
@@ -308,7 +294,6 @@ contract AMMPool is IAMMPool, ERC20, Ownable {
         override
         returns (int256 avgFundingRate)
     {
-        // Simplified implementation - in production would use oracle history
         return _fundingStates[marketId].currentFundingRate;
     }
 
@@ -350,20 +335,7 @@ contract AMMPool is IAMMPool, ERC20, Ownable {
      * @inheritdoc IAMMPool
      */
     function emergencyResetSkew(uint256 marketId) external override onlyPerpEngine {
-        MarketSkew storage skew = _marketSkews[marketId];
-        
-        // Only reset if skew is extremely unbalanced (10:1 ratio)
-        if (skew.longOpenInterest > skew.shortOpenInterest * 10 || 
-            skew.shortOpenInterest > skew.longOpenInterest * 10) {
-            
-            uint256 avgOI = (skew.longOpenInterest + skew.shortOpenInterest) / 2;
-            skew.longOpenInterest = avgOI;
-            skew.shortOpenInterest = avgOI;
-            skew.netSkew = 0;
-            skew.totalOpenInterest = avgOI * 2;
-            
-            emit SkewUpdated(marketId, 0, avgOI, avgOI);
-        }
+        revert("AMMPool: emergencyResetSkew disabled");
     }
 
     // ============ MARKET MANAGEMENT ============
@@ -425,8 +397,6 @@ contract AMMPool is IAMMPool, ERC20, Ownable {
     function _updateSkewScale(uint256 marketId, MarketSkew storage skew) internal {
         MarketConfig storage config = _marketConfigs[marketId];
         
-        // Dynamic adjustment: if OI > 2x skew scale, increase skew scale
-        // If OI < 0.5x skew scale, decrease skew scale
         if (skew.totalOpenInterest > config.skewScale * 2) {
             config.skewScale = config.skewScale * 105 / 100; // +5%
         } else if (skew.totalOpenInterest < config.skewScale / 2) {
