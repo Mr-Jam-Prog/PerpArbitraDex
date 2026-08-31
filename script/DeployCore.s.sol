@@ -12,6 +12,7 @@ import {RiskManager} from "../contracts/core/RiskManager.sol";
 import {LiquidationEngine} from "../contracts/liquidation/LiquidationEngine.sol";
 import {LiquidationQueue} from "../contracts/liquidation/LiquidationQueue.sol";
 import {IncentiveDistributor} from "../contracts/liquidation/IncentiveDistributor.sol";
+import {LiquidityVault} from "../contracts/core/LiquidityVault.sol";
 import {OracleAggregator} from "../contracts/oracles/OracleAggregator.sol";
 import {OracleSecurity} from "../contracts/oracles/OracleSecurity.sol";
 import {OracleSanityChecker} from "../contracts/oracles/OracleSanityChecker.sol";
@@ -30,8 +31,8 @@ contract DeployCore is Script {
 
         // 2. Address Prediction
         uint256 nonce = vm.getNonce(deployer);
-        address[] memory addrs = new address[](12);
-        for(uint8 i=0; i<12; i++) {
+        address[] memory addrs = new address[](13);
+        for(uint8 i=0; i<13; i++) {
             addrs[i] = vm.computeCreateAddress(deployer, nonce + i);
         }
         
@@ -41,13 +42,13 @@ contract DeployCore is Script {
         OracleSanityChecker sanityChecker = new OracleSanityChecker(1, 1e30, 500);
         OracleAggregator aggregator = new OracleAggregator(addrs[4], addrs[2]);
         OracleSecurity security = new OracleSecurity(deployer, addrs[3], addrs[2]);
-        PositionManager posMgr = new PositionManager(addrs[11]);
-        AMMPool amm = new AMMPool(addrs[11], addrs[3]);
-        LiquidationQueue liqQueue = new LiquidationQueue(addrs[9]);
+        PositionManager posMgr = new PositionManager(addrs[12]);
+        AMMPool amm = new AMMPool(addrs[12], addrs[3]);
+        LiquidationQueue liqQueue = new LiquidationQueue(addrs[10]);
         
         IncentiveDistributor incentive = new IncentiveDistributor(
             address(quoteToken),
-            addrs[11],
+            addrs[12],
             addrs[0],
             deployer,
             deployer,
@@ -55,7 +56,7 @@ contract DeployCore is Script {
         );
 
         LiquidationEngine liqEngine = new LiquidationEngine(
-            addrs[11],
+            addrs[12],
             addrs[0],
             addrs[3],
             address(quoteToken),
@@ -63,19 +64,23 @@ contract DeployCore is Script {
             addrs[8]
         );
 
-        RiskManager riskMgr = new RiskManager(addrs[1], addrs[11], addrs[0]);
+        LiquidityVault vault = new LiquidityVault(address(quoteToken), "Vault USDC", "vUSDC");
+
+        RiskManager riskMgr = new RiskManager(addrs[1], addrs[12], addrs[0]);
 
         PerpEngine perp = new PerpEngine(
             addrs[5],
             addrs[6],
             addrs[3],
-            addrs[9],
             addrs[10],
+            addrs[11],
             addrs[0],
-            deployer,
+            address(vault),
             address(baseToken),
             address(quoteToken)
         );
+
+        vault.setPerpEngine(address(perp));
 
         // 4. Initial Configuration
         perp.setGovernance(deployer);
@@ -92,6 +97,7 @@ contract DeployCore is Script {
         vm.stopBroadcast();
 
         console.log("PerpEngine deployed at:", address(perp));
+        console.log("LiquidityVault deployed at:", address(vault));
         console.log("AMMPool deployed at:", address(amm));
         console.log("OracleAggregator deployed at:", address(aggregator));
         console.log("ProtocolConfig deployed at:", address(config));

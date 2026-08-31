@@ -34,6 +34,7 @@ interface ILiquidityVault is IERC20 {
 
     // ============ ERC4626 & ACCOUNTING VIEWS ============
 
+    function decimals() external view returns (uint8);
     function asset() external view returns (address);
     function totalAssets() external view returns (uint256);
     function lockedLiquidity() external view returns (uint256);
@@ -85,6 +86,7 @@ interface ILiquidityVault is IERC20 {
 
     function collectProtocolFees(uint256 feeAmount) external;
     function fundInsuranceFund(uint256 amount) external;
+    function payLiquidationReward(address liquidator, uint256 amount) external;
 
     // ============ ADMIN ACTIONS ============
 

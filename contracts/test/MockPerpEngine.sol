@@ -43,7 +43,8 @@ contract MockPerpEngine is IPerpEngine {
             lastFundingAccrued: block.timestamp,
             openTime: block.timestamp,
             lastUpdated: block.timestamp,
-            isActive: true
+            isActive: true,
+            lockedNotional: size * entryPrice / 1e8
         });
     }
 

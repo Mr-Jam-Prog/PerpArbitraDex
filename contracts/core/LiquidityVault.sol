@@ -58,7 +58,7 @@ contract LiquidityVault is ILiquidityVault, ERC20, Ownable, ReentrancyGuard, Pau
         _tokenDecimals = dec;
     }
 
-    function decimals() public view override returns (uint8) {
+    function decimals() public view override(ERC20, ILiquidityVault) returns (uint8) {
         return _tokenDecimals;
     }
 
@@ -89,8 +89,8 @@ contract LiquidityVault is ILiquidityVault, ERC20, Ownable, ReentrancyGuard, Pau
 
     function convertToAssets(uint256 shares) public view override returns (uint256) {
         uint256 supply = totalSupply();
-        if (supply == 0) {
-            return shares;
+        if (supply == 0 || totalLpAssets == 0) {
+            return 0;
         }
         return (shares * totalLpAssets) / supply;
     }
@@ -391,6 +391,19 @@ contract LiquidityVault is ILiquidityVault, ERC20, Ownable, ReentrancyGuard, Pau
         traderMarginTotal -= amount;
         insuranceFundBalance += amount;
         emit InsuranceFundDeposited(amount, insuranceFundBalance);
+    }
+
+    function payLiquidationReward(address liquidator, uint256 amount) external override onlyPerpEngine nonReentrant {
+        if (amount == 0) return;
+        if (insuranceFundBalance >= amount) {
+            insuranceFundBalance -= amount;
+        } else {
+            uint256 remaining = amount - insuranceFundBalance;
+            insuranceFundBalance = 0;
+            require(totalLpAssets >= remaining, "Vault: insufficient LP assets for reward");
+            totalLpAssets -= remaining;
+        }
+        quoteToken.safeTransfer(liquidator, amount);
     }
 
     // ============ ADMIN ACTIONS ============

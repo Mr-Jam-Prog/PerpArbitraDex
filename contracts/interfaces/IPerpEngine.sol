@@ -25,6 +25,7 @@ interface IPerpEngine is IPositionViewer {
         uint256 openTime;
         uint256 lastUpdated;
         bool isActive;
+        uint256 lockedNotional;
     }
 
     struct TradeParams {
