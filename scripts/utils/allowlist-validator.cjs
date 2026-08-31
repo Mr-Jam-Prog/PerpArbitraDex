@@ -11,6 +11,21 @@ function loadAllowlist() {
   return JSON.parse(raw);
 }
 
+function getActiveNetworkName() {
+  if (process.env.HARDHAT_NETWORK) {
+    return process.env.HARDHAT_NETWORK;
+  }
+  try {
+    const hardhat = require("hardhat");
+    if (hardhat && hardhat.network && hardhat.network.name) {
+      return hardhat.network.name;
+    }
+  } catch (e) {
+    // Hardhat might not be required in pure node test scripts
+  }
+  return process.env.NODE_ENV === "test" ? "arbitrumSepolia" : "unknown";
+}
+
 function validateContractDeployment(contractName) {
   const allowlist = loadAllowlist();
   const status = allowlist.contracts[contractName];
@@ -44,6 +59,14 @@ function validateContractDeployment(contractName) {
 
 function validateScriptExecution(scriptName) {
   const allowlist = loadAllowlist();
+  const activeNetwork = getActiveNetworkName();
+
+  if (allowlist.targetNetwork && activeNetwork !== allowlist.targetNetwork && activeNetwork !== "hardhat") {
+    throw new Error(
+      `[MVP DEPLOYMENT BLOCKED] Active network '${activeNetwork}' does not match target network '${allowlist.targetNetwork}' in mvp_allowlist.json`
+    );
+  }
+
   const status = allowlist.deploymentScripts[scriptName];
 
   if (!status) {
@@ -63,6 +86,7 @@ function validateScriptExecution(scriptName) {
 
 module.exports = {
   loadAllowlist,
+  getActiveNetworkName,
   validateContractDeployment,
   validateScriptExecution,
 };

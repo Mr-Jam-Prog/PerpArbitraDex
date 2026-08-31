@@ -15,7 +15,7 @@ Le présent document remplace toute mention antérieure de statut "Audit Ready" 
 | :--- | :--- | :--- |
 | **Compilation Hardhat** | PASS (08/2026) | `pnpm run compile:hardhat` |
 | **Compilation Foundry** | PASS (08/2026) | `pnpm run compile:forge` |
-| **Tests Unitaires JS** | PASS (36/36 tests) | `pnpm run test:unit` |
+| **Tests Unitaires JS** | PASS (43/43 tests) | `pnpm run test:unit` |
 | **Fuzzing & Invariants** | PASS (32 suites tests) | `pnpm run test:forge` |
 | **Build SDK & Math** | PASS | `pnpm run build:packages` |
 | **Audit Externe** | **NON RÉALISÉ** | En attente de finalisation Tâche 13B |

@@ -4,8 +4,10 @@
 
 const { ethers, upgrades } = require("hardhat");
 const { saveDeployment, getDeployment } = require("../utils/deployment-utils");
+const { validateContractDeployment, validateScriptExecution } = require("../utils/allowlist-validator.cjs");
 
 module.exports = async () => {
+  validateScriptExecution("03_deploy_liquidation.js");
   console.log("⚡ Déploiement Liquidation System");
   
   // Récupération des adresses core
@@ -13,6 +15,7 @@ module.exports = async () => {
   if (!core) throw new Error("Core deployment not found");
   
   // 1. Déploiement LiquidationEngine
+  validateContractDeployment("LiquidationEngine");
   const LiquidationEngine = await ethers.getContractFactory("LiquidationEngine");
   const liquidationEngine = await upgrades.deployProxy(LiquidationEngine, [
     core.PerpEngine,
@@ -26,6 +29,7 @@ module.exports = async () => {
   console.log(`✅ LiquidationEngine: ${liquidationEngine.address}`);
   
   // 2. Déploiement LiquidationQueue
+  validateContractDeployment("LiquidationQueue");
   const LiquidationQueue = await ethers.getContractFactory("LiquidationQueue");
   const liquidationQueue = await upgrades.deployProxy(LiquidationQueue, [
     liquidationEngine.address,
@@ -37,7 +41,8 @@ module.exports = async () => {
   await liquidationQueue.deployed();
   console.log(`✅ LiquidationQueue: ${liquidationQueue.address}`);
   
-  // 3. Déploiement IncentiveDistributor
+  // 3. Déploiement IncentiveDistributor (TEST_ONLY in MVP)
+  validateContractDeployment("IncentiveDistributor");
   const IncentiveDistributor = await ethers.getContractFactory("IncentiveDistributor");
   const incentiveDistributor = await upgrades.deployProxy(IncentiveDistributor, [
     core.ProtocolConfig,
@@ -49,7 +54,8 @@ module.exports = async () => {
   await incentiveDistributor.deployed();
   console.log(`✅ IncentiveDistributor: ${incentiveDistributor.address}`);
   
-  // 4. Déploiement FlashLiquidator (optionnel)
+  // 4. Déploiement FlashLiquidator (QUARANTINED in MVP)
+  validateContractDeployment("FlashLiquidator");
   const FlashLiquidator = await ethers.getContractFactory("FlashLiquidator");
   const flashLiquidator = await upgrades.deployProxy(FlashLiquidator, [
     liquidationEngine.address,

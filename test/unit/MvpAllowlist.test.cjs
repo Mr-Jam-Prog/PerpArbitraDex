@@ -49,6 +49,9 @@ describe("🛡️ MVP Scope & Allowlist Validation", function () {
     expect(() => validateContractDeployment("IncentiveDistributor")).to.throw(
       /marked TEST_ONLY and cannot be deployed in MVP/
     );
+    expect(() => validateContractDeployment("PythOracle")).to.throw(
+      /marked TEST_ONLY and cannot be deployed in MVP/
+    );
     expect(() => validateContractDeployment("PerpDexToken")).to.throw(
       /marked TEST_ONLY and cannot be deployed in MVP/
     );
@@ -62,5 +65,17 @@ describe("🛡️ MVP Scope & Allowlist Validation", function () {
       /blocked from execution/
     );
     expect(validateScriptExecution("01_deploy_core.js")).to.be.true;
+  });
+
+  it("Should enforce network target check if active network differs from arbitrumSepolia", function () {
+    const originalEnv = process.env.HARDHAT_NETWORK;
+    try {
+      process.env.HARDHAT_NETWORK = "mainnet";
+      expect(() => validateScriptExecution("01_deploy_core.js")).to.throw(
+        /Active network 'mainnet' does not match target network 'arbitrumSepolia'/
+      );
+    } finally {
+      process.env.HARDHAT_NETWORK = originalEnv;
+    }
   });
 });
