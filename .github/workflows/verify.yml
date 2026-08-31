@@ -12,24 +12,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.5
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
       - name: Install dependencies
-        run: npm ci
-        
+        run: pnpm install --frozen-lockfile
+
       - name: Compile contracts
-        run: npx hardhat compile
-        
+        run: pnpm run compile:hardhat
+
       - name: Verify contracts on Arbitrum
-        run: |
-          npx hardhat run scripts/verification/verify_all.js --network arbitrum
+        run: pnpm exec hardhat run scripts/verification/verify_all.js --network arbitrum
         env:
           ARBISCAN_API_KEY: ${{ secrets.ARBISCAN_API_KEY }}
-          
+
       - name: Upload verification results
         uses: actions/upload-artifact@v4
         with:
