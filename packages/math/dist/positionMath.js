@@ -52,7 +52,7 @@ function _validatePnLInputs(entryPrice, currentPrice, size) {
 function _calculatePnLLong(entryNormalized, currentNormalized, size) {
     if (currentNormalized > entryNormalized) {
         const priceDiff = currentNormalized - entryNormalized;
-        const profit = mulDiv(priceDiff, size, entryNormalized);
+        const profit = mulDiv(priceDiff, size, DECIMALS);
         return {
             pnl: profit,
             absolutePnL: profit,
@@ -61,7 +61,7 @@ function _calculatePnLLong(entryNormalized, currentNormalized, size) {
     }
     else {
         const priceDiff = entryNormalized - currentNormalized;
-        const loss = mulDiv(priceDiff, size, entryNormalized);
+        const loss = mulDiv(priceDiff, size, DECIMALS);
         return {
             pnl: -loss,
             absolutePnL: loss,
@@ -72,7 +72,7 @@ function _calculatePnLLong(entryNormalized, currentNormalized, size) {
 function _calculatePnLShort(entryNormalized, currentNormalized, size) {
     if (currentNormalized < entryNormalized) {
         const priceDiff = entryNormalized - currentNormalized;
-        const profit = mulDiv(priceDiff, size, entryNormalized);
+        const profit = mulDiv(priceDiff, size, DECIMALS);
         return {
             pnl: profit,
             absolutePnL: profit,
@@ -81,7 +81,7 @@ function _calculatePnLShort(entryNormalized, currentNormalized, size) {
     }
     else {
         const priceDiff = currentNormalized - entryNormalized;
-        const loss = mulDiv(priceDiff, size, entryNormalized);
+        const loss = mulDiv(priceDiff, size, DECIMALS);
         return {
             pnl: -loss,
             absolutePnL: loss,
@@ -137,8 +137,8 @@ export function calculatePnL(entryPrice, currentPrice, size, isLong) {
 function _calculatePnLLongOptimized(entryNormalized, currentNormalized, size) {
     try {
         return currentNormalized > entryNormalized
-            ? mulDiv(currentNormalized - entryNormalized, size, entryNormalized)
-            : -mulDiv(entryNormalized - currentNormalized, size, entryNormalized);
+            ? mulDiv(currentNormalized - entryNormalized, size, DECIMALS)
+            : -mulDiv(entryNormalized - currentNormalized, size, DECIMALS);
     }
     catch {
         return 0n;
@@ -147,8 +147,8 @@ function _calculatePnLLongOptimized(entryNormalized, currentNormalized, size) {
 function _calculatePnLShortOptimized(entryNormalized, currentNormalized, size) {
     try {
         return currentNormalized < entryNormalized
-            ? mulDiv(entryNormalized - currentNormalized, size, entryNormalized)
-            : -mulDiv(currentNormalized - entryNormalized, size, entryNormalized);
+            ? mulDiv(entryNormalized - currentNormalized, size, DECIMALS)
+            : -mulDiv(currentNormalized - entryNormalized, size, DECIMALS);
     }
     catch {
         return 0n;
@@ -202,8 +202,9 @@ export function calculateHealthFactor(params, currentPrice, riskParams) {
     if (totalValue <= 0n) {
         return 0n;
     }
-    // Calculate maintenance margin
-    const maintenanceMargin = mulDiv(params.size, riskParams.maintenanceMarginBps, 10000n);
+    // Calculate maintenance margin in quote units
+    const notionalValue = mulDiv(params.size, validateAndNormalizePrice(currentPrice), DECIMALS);
+    const maintenanceMargin = mulDiv(notionalValue, riskParams.maintenanceMarginBps, 10000n);
     // Prevent division by zero (should never happen with validation)
     if (maintenanceMargin === 0n) {
         return MAX_HEALTH_FACTOR;
@@ -242,43 +243,37 @@ function _validateLiquidationInputs(params, riskParams) {
 export function calculateLiquidationPriceSafe(params, riskParams) {
     // Validate inputs
     _validateLiquidationInputs(params, riskParams);
-    // Calculate maintenance margin
-    const maintenanceMargin = mulDiv(params.size, riskParams.maintenanceMarginBps, 10000n);
-    // Calculate required PnL for liquidation
-    const requiredPnL = maintenanceMargin - params.collateral + params.fundingAccrued;
-    // If required PnL >= 0, position cannot be liquidated (healthy)
-    if (requiredPnL >= 0n) {
-        return { isLiquidatable: false, liquidationPrice: 0n };
-    }
-    // Calculate liquidation price
+    // Calculate maintenance margin ratio
+    const mmRatio = mulDiv(DECIMALS, riskParams.maintenanceMarginBps, 10000n);
     const entryNormalized = validateAndNormalizePrice(params.entryPrice);
-    const absRequiredPnL = abs(requiredPnL);
-    let liquidationPriceNormalized;
     if (params.isLong) {
-        // For long: price = entry - (absRequiredPnL * entry) / size
-        const priceReduction = mulDiv(absRequiredPnL, entryNormalized, params.size);
-        // Check bounds
-        if (priceReduction >= entryNormalized) {
+        const numerator = int256(mulDiv(params.size, entryNormalized, DECIMALS)) - int256(params.collateral) + int256(params.fundingAccrued);
+        if (numerator <= 0n)
             return { isLiquidatable: false, liquidationPrice: 0n };
-        }
-        liquidationPriceNormalized = entryNormalized - priceReduction;
+        const denominator = mulDiv(params.size, DECIMALS - mmRatio, DECIMALS);
+        if (denominator === 0n)
+            return { isLiquidatable: false, liquidationPrice: 0n };
+        const liqPriceNormalized = mulDiv(uint256(numerator), DECIMALS, denominator);
+        return {
+            isLiquidatable: true,
+            liquidationPrice: denormalizePrice(liqPriceNormalized)
+        };
     }
     else {
-        // For short: price = entry + (absRequiredPnL * entry) / size
-        const priceIncrease = mulDiv(absRequiredPnL, entryNormalized, params.size);
-        // Check overflow
-        try {
-            liquidationPriceNormalized = entryNormalized + priceIncrease;
-        }
-        catch {
+        const numerator = int256(mulDiv(params.size, entryNormalized, DECIMALS)) + int256(params.collateral) - int256(params.fundingAccrued);
+        if (numerator <= 0n)
             return { isLiquidatable: false, liquidationPrice: 0n };
-        }
+        const denominator = mulDiv(params.size, DECIMALS + mmRatio, DECIMALS);
+        const liqPriceNormalized = mulDiv(uint256(numerator), DECIMALS, denominator);
+        return {
+            isLiquidatable: true,
+            liquidationPrice: denormalizePrice(liqPriceNormalized)
+        };
     }
-    return {
-        isLiquidatable: true,
-        liquidationPrice: denormalizePrice(liquidationPriceNormalized)
-    };
 }
+// Helpers for int256/uint256 casting simulation in TS
+function int256(x) { return x; }
+function uint256(x) { return x < 0n ? 0n : x; }
 // ============ EXPORT CONSTANTS ============
 export const Constants = {
     PRICE_DECIMALS,
