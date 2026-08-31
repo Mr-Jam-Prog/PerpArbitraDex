@@ -1,16 +1,19 @@
 // @title: Déploiement Core Protocol (PerpEngine, RiskManager, MarketRegistry)
 // @audit: Critical Path - Doit être idempotent et sécurisé
-// @network: Arbitrum, Base, Optimism
+// @network: Arbitrum Sepolia
 // @dependencies: ProxyAdmin, ProtocolConfig
 
 const { ethers, upgrades } = require("hardhat");
 const { saveDeployment, validateDeployment } = require("../utils/deployment-utils");
 const { PROTOCOL_PARAMS, NETWORK_CONFIG } = require("../utils/constants");
+const { validateContractDeployment, validateScriptExecution } = require("../utils/allowlist-validator.cjs");
 
 module.exports = async () => {
+  validateScriptExecution("01_deploy_core.js");
   console.log("🚀 Déploiement Core Protocol");
   
   // 1. Déploiement ProtocolConfig
+  validateContractDeployment("ProtocolConfig");
   const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
   const config = await upgrades.deployProxy(ProtocolConfig, [], {
     kind: 'uups',
@@ -20,6 +23,7 @@ module.exports = async () => {
   console.log(`✅ ProtocolConfig: ${config.address}`);
   
   // 2. Déploiement MarketRegistry
+  validateContractDeployment("MarketRegistry");
   const MarketRegistry = await ethers.getContractFactory("MarketRegistry");
   const registry = await upgrades.deployProxy(MarketRegistry, [config.address], {
     kind: 'uups',
@@ -29,6 +33,7 @@ module.exports = async () => {
   console.log(`✅ MarketRegistry: ${registry.address}`);
   
   // 3. Déploiement PositionManager (ERC-721)
+  validateContractDeployment("PositionManager");
   const PositionManager = await ethers.getContractFactory("PositionManager");
   const positionManager = await upgrades.deployProxy(PositionManager, [
     "PerpArbitraDEX Positions",
@@ -42,6 +47,7 @@ module.exports = async () => {
   console.log(`✅ PositionManager: ${positionManager.address}`);
   
   // 4. Déploiement PerpEngine
+  validateContractDeployment("PerpEngine");
   const PerpEngine = await ethers.getContractFactory("PerpEngine");
   const perpEngine = await upgrades.deployProxy(PerpEngine, [
     config.address,
@@ -55,6 +61,7 @@ module.exports = async () => {
   console.log(`✅ PerpEngine: ${perpEngine.address}`);
   
   // 5. Déploiement RiskManager
+  validateContractDeployment("RiskManager");
   const RiskManager = await ethers.getContractFactory("RiskManager");
   const riskManager = await upgrades.deployProxy(RiskManager, [
     config.address,

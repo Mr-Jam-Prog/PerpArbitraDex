@@ -1,60 +1,43 @@
 /**
  * Main SDK client for PerpArbitraDEX
- * Version: 1.0.0
- * Developer-facing interface
+ * Version: 1.1.0 (MVP Testnet - Checked 2026-08-31)
  */
 import { ethers } from 'ethers';
-import { SDKConfig, Position, Market, OpenPositionParams, ClosePositionParams, LiquidationParams, MarketStats, SimulationResult, TransactionOptions, MarketFilter, PositionOpenedEvent, PositionClosedEvent } from './types';
+import { SDKConfig, OpenPositionParams, TransactionOptions } from './types';
 export declare class PerpDexClient {
     private config;
     private provider;
     private signer?;
     private contracts;
-    private subgraphClient?;
     constructor(config: SDKConfig);
     /**
-     * Connect a new provider/signer
+     * Preview PnL in quote units (USD)
      */
-    connect(provider: ethers.Provider | ethers.Signer): void;
-    getMarkets(filter?: MarketFilter): Promise<Market[]>;
-    getPositions(address?: string): Promise<Position[]>;
+    previewPnL(positionId: string, currentPrice?: bigint): Promise<bigint>;
+    /**
+     * Preview accrued funding in quote units
+     */
+    previewFunding(positionId: string): Promise<bigint>;
+    /**
+     * Get liquidation price
+     */
+    previewLiquidationPrice(positionId: string): Promise<bigint>;
+    /**
+     * Get max withdrawable margin
+     */
+    getAvailableMargin(positionId: string): Promise<bigint>;
+    /**
+     * Get max size increase allowed
+     */
+    getMaxAdditionalSize(positionId: string, additionalMargin?: bigint): Promise<bigint>;
     openPosition(params: OpenPositionParams, options?: TransactionOptions): Promise<ethers.ContractTransactionResponse>;
-    closePosition(params: ClosePositionParams, options?: TransactionOptions): Promise<ethers.ContractTransactionResponse>;
-    liquidate(params: LiquidationParams, options?: TransactionOptions): Promise<ethers.ContractTransactionResponse>;
-    getMarket(marketId: string): Promise<Market>;
-    getPosition(positionId: string): Promise<Position>;
-    getMarketStats(marketId: string): Promise<MarketStats>;
-    getOraclePrice(marketId: string): Promise<any>;
-    simulateOpenPosition(params: OpenPositionParams): Promise<SimulationResult>;
-    simulateClosePosition(params: ClosePositionParams): Promise<SimulationResult>;
-    estimateGasForTransaction(tx: ethers.TransactionRequest, multiplier?: number): Promise<any>;
-    onPositionOpened(callback: (event: PositionOpenedEvent) => void, filter?: {
-        user?: string;
-        marketId?: string;
-    }): () => void;
-    onPositionClosed(callback: (event: PositionClosedEvent) => void, filter?: {
-        user?: string;
-        positionId?: string;
-    }): () => void;
-    private validateConfig;
-    private loadAddresses;
+    closePosition(positionId: string, options?: TransactionOptions): Promise<ethers.ContractTransactionResponse>;
     private initializeContracts;
-    private initializeSubgraphClient;
     private getContract;
-    private validateOpenPositionParams;
-    private validateClosePositionParams;
-    private validateLiquidationParams;
-    private prepareTransaction;
-    private calculateLeverageFromSize;
-    private getMarketsFromSubgraph;
-    private getMarketsFromContract;
-    private getPositionsFromSubgraph;
-    private get24hVolume;
-    private simulateLiquidation;
-    get chainId(): number;
-    get signerAddress(): string | undefined;
-    get isReadOnly(): boolean;
+    getOraclePrice(marketId: string): Promise<{
+        price: bigint;
+        timestamp: number;
+    }>;
+    private validateConfig;
 }
-export declare function createPerpDexClient(config: SDKConfig): PerpDexClient;
-export default PerpDexClient;
 //# sourceMappingURL=PerpDexClient.d.ts.map

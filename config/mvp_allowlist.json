@@ -1,0 +1,55 @@
+{
+  "version": "1.0.0",
+  "updatedAt": "2026-08-31",
+  "targetNetwork": "arbitrumSepolia",
+  "statusDescriptions": {
+    "ENABLED_MVP": "Allowed for MVP testnet deployment on Arbitrum Sepolia",
+    "TEST_ONLY": "Allowed only for local unit tests and fuzzing suites; excluded from deployment",
+    "QUARANTINED": "Forbidden from deployment; incomplete, dummy, or insecure module"
+  },
+  "contracts": {
+    "ProtocolConfig": "ENABLED_MVP",
+    "MarketRegistry": "ENABLED_MVP",
+    "PositionManager": "ENABLED_MVP",
+    "PerpEngine": "ENABLED_MVP",
+    "RiskManager": "ENABLED_MVP",
+    "AMMPool": "ENABLED_MVP",
+    "LiquidationEngine": "ENABLED_MVP",
+    "LiquidationQueue": "ENABLED_MVP",
+    "OracleAggregator": "ENABLED_MVP",
+    "OracleSanityChecker": "ENABLED_MVP",
+    "ChainlinkOracle": "ENABLED_MVP",
+    "OracleSecurity": "ENABLED_MVP",
+    "AccessControlManager": "ENABLED_MVP",
+    "EmergencyGuardian": "ENABLED_MVP",
+    "PausableController": "ENABLED_MVP",
+    "RateLimiter": "ENABLED_MVP",
+    "CircuitBreaker": "ENABLED_MVP",
+    "CollateralWrapper": "ENABLED_MVP",
+    "PerpDexLPToken": "ENABLED_MVP",
+
+    "IncentiveDistributor": "TEST_ONLY",
+    "PythOracle": "TEST_ONLY",
+    "PerpDexToken": "TEST_ONLY",
+    "TimelockController": "TEST_ONLY",
+    "Governor": "TEST_ONLY",
+    "VotingEscrow": "TEST_ONLY",
+
+    "FlashLiquidator": "QUARANTINED",
+    "TWAPOracle": "QUARANTINED",
+    "RWAOracleAdapter": "QUARANTINED",
+    "AaveFlashLoanIntegrator": "QUARANTINED",
+    "LidoStETHIntegrator": "QUARANTINED",
+    "CrossChainMessenger": "QUARANTINED",
+    "AccountAbstractionAdapter": "QUARANTINED",
+    "SyntheticAsset": "QUARANTINED"
+  },
+  "deploymentScripts": {
+    "01_deploy_core.js": "ENABLED_MVP",
+    "02_deploy_oracles.js": "ENABLED_MVP",
+    "03_deploy_liquidation.js": "ENABLED_MVP",
+    "04_deploy_governance.js": "TEST_ONLY",
+    "05_deploy_integrations.js": "QUARANTINED",
+    "06_configure_protocol.js": "ENABLED_MVP"
+  }
+}

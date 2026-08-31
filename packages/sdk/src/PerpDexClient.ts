@@ -1,6 +1,6 @@
 /**
  * Main SDK client for PerpArbitraDEX
- * Version: 1.1.0 (Integration Ready)
+ * Version: 1.1.0 (MVP Testnet - Checked 2026-08-31)
  */
 
 import { ethers } from 'ethers';

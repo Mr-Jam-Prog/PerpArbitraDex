@@ -5,14 +5,17 @@
 const { ethers, upgrades } = require("hardhat");
 const { saveDeployment, validateOracleSetup } = require("../utils/deployment-utils");
 const { ORACLE_CONFIG, NETWORK_CONFIG } = require("../utils/constants");
+const { validateContractDeployment, validateScriptExecution } = require("../utils/allowlist-validator.cjs");
 
 module.exports = async () => {
+  validateScriptExecution("02_deploy_oracles.js");
   console.log("🔮 Déploiement Oracle System");
   
   const [deployer] = await ethers.getSigners();
   const network = await ethers.provider.getNetwork();
   
   // 1. Déploiement OracleAggregator
+  validateContractDeployment("OracleAggregator");
   const OracleAggregator = await ethers.getContractFactory("OracleAggregator");
   const aggregator = await upgrades.deployProxy(OracleAggregator, [], {
     kind: 'uups',
@@ -22,6 +25,7 @@ module.exports = async () => {
   console.log(`✅ OracleAggregator: ${aggregator.address}`);
   
   // 2. Déploiement OracleSanityChecker
+  validateContractDeployment("OracleSanityChecker");
   const OracleSanityChecker = await ethers.getContractFactory("OracleSanityChecker");
   const sanityChecker = await upgrades.deployProxy(OracleSanityChecker, [], {
     kind: 'uups',
@@ -38,6 +42,7 @@ module.exports = async () => {
   );
   
   // 4. Déploiement ChainlinkOracle (Primary)
+  validateContractDeployment("ChainlinkOracle");
   const ChainlinkOracle = await ethers.getContractFactory("ChainlinkOracle");
   const chainlinkOracle = await upgrades.deployProxy(ChainlinkOracle, [
     ORACLE_CONFIG.CHAINLINK_REGISTRY[network.chainId],
@@ -49,7 +54,8 @@ module.exports = async () => {
   await chainlinkOracle.deployed();
   console.log(`✅ ChainlinkOracle: ${chainlinkOracle.address}`);
   
-  // 5. Déploiement PythOracle (Secondary)
+  // 5. Déploiement PythOracle (Secondary - TEST_ONLY in MVP)
+  validateContractDeployment("PythOracle");
   const PythOracle = await ethers.getContractFactory("PythOracle");
   const pythOracle = await upgrades.deployProxy(PythOracle, [
     ORACLE_CONFIG.PYTH_ADDRESS[network.chainId],
@@ -61,7 +67,8 @@ module.exports = async () => {
   await pythOracle.deployed();
   console.log(`✅ PythOracle: ${pythOracle.address}`);
   
-  // 6. Déploiement TWAPOracle (Tertiary)
+  // 6. Déploiement TWAPOracle (Tertiary - QUARANTINED in MVP)
+  validateContractDeployment("TWAPOracle");
   const TWAPOracle = await ethers.getContractFactory("TWAPOracle");
   const twapOracle = await upgrades.deployProxy(TWAPOracle, [
     ORACLE_CONFIG.UNISWAP_V3_FACTORY[network.chainId],
