@@ -1,58 +1,36 @@
-name: Tests
+name: Core CI Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
 
 jobs:
-  foundry:
-    name: Foundry Tests
+  check-core:
+    name: Core Protocol Check Gates
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 9.15.5
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
 
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Install Foundry
+      - name: Install Foundry Toolchain
         uses: foundry-rs/foundry-toolchain@v1
-
-      - name: Run tests
-        run: forge test --summary
-
-  hardhat:
-    name: Hardhat Tests
-    runs-on: ubuntu-latest
-    continue-on-error: true # Legacy Hardhat tests - Foundry is the source of truth for economic invariants
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
         with:
-          version: 8
+          version: v1.8.1
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Run tests
-        run: npx hardhat test
+      - name: Run the Reproducible Core Gates
+        run: pnpm check:core

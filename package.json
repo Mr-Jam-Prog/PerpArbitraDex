@@ -3,6 +3,11 @@
     "version": "1.0.0",
     "private": true,
     "type": "module",
+    "packageManager": "pnpm@9.15.5",
+    "engines": {
+        "node": "^20.0.0",
+        "pnpm": ">=9.15.5"
+    },
     "workspaces": [
         "frontend",
         "packages/*",
@@ -10,9 +15,16 @@
         "monitoring"
     ],
     "scripts": {
-        "install:clean": "rm -rf node_modules package-lock.json **/node_modules && npm install",
-        "build": "npm run build --workspaces",
-        "lint": "npm run lint --workspaces"
+        "install:frozen": "pnpm install --frozen-lockfile",
+        "compile:hardhat": "pnpm exec hardhat compile",
+        "compile:forge": "forge build",
+        "compile": "pnpm run compile:hardhat && pnpm run compile:forge",
+        "test:unit": "pnpm exec hardhat test --no-compile test/unit/*.test.cjs",
+        "test:forge": "forge test --offline --summary",
+        "build:packages": "pnpm --filter @perpdex/math run build && pnpm --filter @perpdex/sdk run build",
+        "check:core": "pnpm run install:frozen && pnpm run compile && pnpm run test:unit && pnpm run test:forge && pnpm run build:packages",
+        "build": "pnpm --recursive run build",
+        "lint": "pnpm --recursive run lint"
     },
     "description": "",
     "main": ".eslintrc.js",

@@ -1,0 +1,3 @@
+# Explicitly Disabled Workflow: Deployment
+# This workflow is intentionally disabled as deployment pipelines require audited contract ABIs
+# and verified network parameters. To enable, define target environment triggers and deployment jobs.
