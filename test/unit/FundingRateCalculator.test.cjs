@@ -60,22 +60,21 @@ describe("📊 FundingRateCalculator - Unit Tests", function () {
   describe("💸 Funding Payment Calculation", function () {
     it("Should calculate funding payment for long position (paying)", async function () {
       const size = ethers.parseUnits("10000", 18);
-      const rate = ethers.parseUnits("0.001", 18);
-      const timeElapsed = 3600;
+      const entryIndex = 0n;
+      const currentIndex = ethers.parseUnits("0.001", 18);
       
-      // Payment = -(size * rate * elapsed) / 1e18
-      const expected = -(size * rate * BigInt(timeElapsed)) / ethers.parseUnits("1", 18);
-      const payment = await fundingRateCalculator.calculateFundingPayment(size, rate, timeElapsed, true);
+      const expected = (size * (currentIndex - entryIndex)) / ethers.parseUnits("1", 18);
+      const payment = await fundingRateCalculator.calculateFundingPayment(size, entryIndex, currentIndex, true);
       expect(payment).to.equal(expected);
     });
 
     it("Should calculate funding payment for short position (receiving)", async function () {
       const size = ethers.parseUnits("10000", 18);
-      const rate = ethers.parseUnits("0.001", 18);
-      const timeElapsed = 3600;
+      const entryIndex = 0n;
+      const currentIndex = ethers.parseUnits("0.001", 18);
       
-      const expected = (size * rate * BigInt(timeElapsed)) / ethers.parseUnits("1", 18);
-      const payment = await fundingRateCalculator.calculateFundingPayment(size, rate, timeElapsed, false);
+      const expected = -((size * (currentIndex - entryIndex)) / ethers.parseUnits("1", 18));
+      const payment = await fundingRateCalculator.calculateFundingPayment(size, entryIndex, currentIndex, false);
       expect(payment).to.equal(expected);
     });
   });

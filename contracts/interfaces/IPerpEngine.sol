@@ -21,7 +21,7 @@ interface IPerpEngine is IPositionViewer {
         uint256 margin;
         uint256 entryPrice;
         uint256 leverage;
-        uint256 lastFundingAccrued;
+        int256 lastFundingIndex;
         uint256 openTime;
         uint256 lastUpdated;
         bool isActive;
@@ -96,8 +96,7 @@ interface IPerpEngine is IPositionViewer {
         uint256 indexed marketId,
         int256 fundingRate,
         uint256 fundingTimestamp,
-        uint256 longFundingPayment,
-        uint256 shortFundingPayment
+        int256 cumulativeFundingIndex
     );
 
     event ProtocolFeeUpdated(uint256 newProtocolFee);

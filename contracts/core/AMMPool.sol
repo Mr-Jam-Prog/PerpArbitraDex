@@ -12,7 +12,7 @@ import {L2GasOptimized} from "../libraries/L2GasOptimized.sol";
 
 /**
  * @title AMMPool
- * @notice Virtual AMM pool for funding rate calculation and skew management (ADR-001)
+ * @notice Virtual AMM pool for cumulative funding rate index tracking and skew management according to ECONOMIC_SPEC.md
  * @dev No real swaps or liquidity backing; acts purely as a price discovery, funding rate, and skew model.
  */
 contract AMMPool is IAMMPool, Ownable {
@@ -121,6 +121,11 @@ contract AMMPool is IAMMPool, Ownable {
 
     /**
      * @inheritdoc IAMMPool
+     * @dev Updates cumulative funding index once per funding interval according to ECONOMIC_SPEC.md:
+     *   intervals = timeElapsed / fundingInterval
+     *   ratePerInterval = calculateFundingRate(skew, fundingInterval) clamped to maxFundingRate
+     *   cumulativeFundingIndex += ratePerInterval * intervals
+     *   lastFundingTime += intervals * fundingInterval
      */
     function updateFundingRate(uint256 marketId)
         external
@@ -139,12 +144,14 @@ contract AMMPool is IAMMPool, Ownable {
             return state.currentFundingRate;
         }
         
-        // Calculate new funding rate based on skew
+        uint256 intervals = timeElapsed / config.fundingInterval;
+
+        // Calculate new funding rate based on skew per funding interval
         fundingRate = FundingRateCalculator.calculateFundingRate(
             skew.longOpenInterest,
             skew.shortOpenInterest,
             config.skewScale,
-            timeElapsed
+            config.fundingInterval
         );
         
         // Clamp to max funding rate
@@ -154,55 +161,38 @@ contract AMMPool is IAMMPool, Ownable {
             fundingRate = -int256(config.maxFundingRate);
         }
         
-        // Update funding state
-        _fundingStates[marketId] = FundingRateCalculator.updateFundingState(
-            state,
-            fundingRate,
-            block.timestamp
-        );
+        // Accumulate rate into cumulative index for all elapsed intervals
+        state.cumulativeFundingIndex += fundingRate * int256(intervals);
+        state.currentFundingRate = fundingRate;
+        state.lastFundingTime += intervals * config.fundingInterval;
         
         emit FundingUpdated(
             marketId,
             fundingRate,
-            block.timestamp,
-            state.fundingAccumulatedLong,
-            state.fundingAccumulatedShort
+            state.lastFundingTime,
+            state.cumulativeFundingIndex
         );
     }
 
     /**
      * @inheritdoc IAMMPool
+     * @dev Calculates funding payment for position based on deltaIndex:
+     *   fundingPayment = calculateFundingPayment(positionSize, lastFundingIndex, cumulativeFundingIndex, isLong)
      */
     function applyFunding(
         uint256 marketId,
         uint256 positionSize,
         bool isLong,
-        uint256 lastFundingAccrued
+        int256 lastFundingIndex
     ) external override onlyPerpEngine returns (int256 fundingPayment) {
         FundingRateCalculator.FundingState storage state = _fundingStates[marketId];
         
         fundingPayment = FundingRateCalculator.calculateFundingPayment(
             positionSize,
-            state.currentFundingRate,
-            block.timestamp - lastFundingAccrued,
+            lastFundingIndex,
+            state.cumulativeFundingIndex,
             isLong
         );
-        
-        // Update accumulated funding
-        if (fundingPayment > 0) {
-            if (isLong) {
-                state.fundingAccumulatedLong += uint256(fundingPayment);
-            } else {
-                state.fundingAccumulatedShort += uint256(fundingPayment);
-            }
-        } else {
-            uint256 paymentAbs = uint256(-fundingPayment);
-            if (isLong) {
-                state.fundingAccumulatedLong += paymentAbs;
-            } else {
-                state.fundingAccumulatedShort += paymentAbs;
-            }
-        }
     }
 
     // ============ MARK PRICE CALCULATION ============
@@ -272,16 +262,28 @@ contract AMMPool is IAMMPool, Ownable {
         uint256 marketId,
         uint256 positionSize,
         bool isLong,
-        uint256 lastFundingAccrued
+        int256 lastFundingIndex
     ) external view override returns (int256 fundingPayment) {
         FundingRateCalculator.FundingState storage state = _fundingStates[marketId];
         
         return FundingRateCalculator.calculateFundingPayment(
             positionSize,
-            state.currentFundingRate,
-            block.timestamp - lastFundingAccrued,
+            lastFundingIndex,
+            state.cumulativeFundingIndex,
             isLong
         );
+    }
+
+    /**
+     * @inheritdoc IAMMPool
+     */
+    function getCumulativeFundingIndex(uint256 marketId)
+        external
+        view
+        override
+        returns (int256 cumulativeFundingIndex)
+    {
+        return _fundingStates[marketId].cumulativeFundingIndex;
     }
 
     /**
@@ -365,8 +367,7 @@ contract AMMPool is IAMMPool, Ownable {
         _fundingStates[marketId] = FundingRateCalculator.FundingState({
             currentFundingRate: 0,
             lastFundingTime: block.timestamp,
-            fundingAccumulatedLong: 0,
-            fundingAccumulatedShort: 0,
+            cumulativeFundingIndex: 0,
             skewScale: skewScale,
             maxFundingRate: maxFundingRate
         });

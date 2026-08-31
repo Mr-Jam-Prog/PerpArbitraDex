@@ -40,7 +40,7 @@ contract MockPerpEngine is IPerpEngine {
             margin: margin,
             entryPrice: entryPrice,
             leverage: 0,
-            lastFundingAccrued: block.timestamp,
+            lastFundingIndex: 0,
             openTime: block.timestamp,
             lastUpdated: block.timestamp,
             isActive: true,

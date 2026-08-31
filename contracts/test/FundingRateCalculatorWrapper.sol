@@ -22,14 +22,14 @@ contract FundingRateCalculatorWrapper {
 
     function calculateFundingPayment(
         uint256 positionSize,
-        int256 fundingRate,
-        uint256 timeElapsed,
+        int256 entryFundingIndex,
+        int256 currentFundingIndex,
         bool isLong
     ) external pure returns (int256) {
         return FundingRateCalculator.calculateFundingPayment(
             positionSize,
-            fundingRate,
-            timeElapsed,
+            entryFundingIndex,
+            currentFundingIndex,
             isLong
         );
     }
