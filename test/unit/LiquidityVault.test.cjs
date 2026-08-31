@@ -163,18 +163,19 @@ describe("🏦 LiquidityVault - Comprehensive Unit Tests & Ledger Scenarios", fu
 
       // 4. Flash crash causes position deficit of $2,000 USDC (exceeds $1,000 margin by $1,000 bad debt)
       // Engine calls settleBadDebt(trader, marginForfeited=1000, totalDeficit=2000)
-      const tx = await vault6.connect(mockEngine).settleBadDebt(trader.address, parse6(1000), parse6(2000));
+      await vault6.connect(mockEngine).settleBadDebt(trader.address, parse6(1000), parse6(2000));
 
       // Bad Debt Waterfall Breakdown:
-      // - Step 1: Trader Margin Forfeited = $1,000 (covers 1st $1,000)
+      // - Step 1: Trader Margin Forfeited = $1,000 (transferred to totalLpAssets)
       // - Remaining Deficit = $1,000
-      // - Step 2: Insurance Fund Drawdown = $500 (covers next $500)
-      // - Remaining Deficit = $500
-      // - Step 3: LP Capital Drawdown = $500 (absorbs final $500)
+      // - Step 2: Insurance Fund Reclassification = $500 (transferred to totalLpAssets)
+      // - Uncovered Deficit = $500
+      // Physical vault quote balance = $51,500 USDC
+      // totalLpAssets = $50,000 (initial) + $1,000 (margin) + $500 (IF) = $51,500 USDC
 
       expect(await vault6.traderMarginTotal()).to.equal(0);
       expect(await vault6.insuranceFundBalance()).to.equal(0); // IF exhausted
-      expect(await vault6.totalLpAssets()).to.equal(parse6(49500)); // LP NAV reduced by $500
+      expect(await vault6.totalLpAssets()).to.equal(parse6(51500)); // Physical tokens = $51,500 = totalLpAssets!
     });
   });
 

@@ -64,6 +64,7 @@ interface ILiquidityVault is IERC20 {
 
     function depositTraderMargin(address trader, uint256 amount) external;
     function withdrawTraderMargin(address trader, uint256 amount) external;
+    function creditTraderMarginFromLP(address trader, uint256 amount) external;
     function lockLiquidity(uint256 amount) external;
     function unlockLiquidity(uint256 amount) external;
 

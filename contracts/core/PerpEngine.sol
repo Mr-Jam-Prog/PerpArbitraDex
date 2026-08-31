@@ -245,9 +245,8 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     /**
      * @dev Settles pending funding payment for position's current pre-modification size.
      * Calculates funding payment based on deltaIndex between market.cumulativeFundingIndex
-     * and position.lastFundingIndex. Updates position.margin and sets
-     * position.lastFundingIndex = marketCumulativeIndex exactly once.
-     * Returns the funding payment (positive = trader owed, reducing margin).
+     * and position.lastFundingIndex. Updates position.margin, engine totalCollateral,
+     * and Vault traderMarginTotal / totalLpAssets atomically. Sets position.lastFundingIndex = marketCumulativeIndex.
      */
     function _settleFunding(IPerpEngine.Position storage position) internal returns (int256 fundingPayment) {
         _accrueFunding(position.marketId);
@@ -265,11 +264,19 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
                     uint256 debt = uint256(fundingPayment);
                     if (position.margin >= debt) {
                         position.margin -= debt;
+                        totalCollateral -= debt;
+                        ILiquidityVault(liquidityVault).settleTraderLoss(position.trader, 0, _toVaultUnits(debt));
                     } else {
+                        uint256 marginForfeited = position.margin;
+                        totalCollateral -= marginForfeited;
                         position.margin = 0;
+                        ILiquidityVault(liquidityVault).settleTraderLoss(position.trader, 0, _toVaultUnits(marginForfeited));
                     }
                 } else {
-                    position.margin += uint256(-fundingPayment);
+                    uint256 credit = uint256(-fundingPayment);
+                    position.margin += credit;
+                    totalCollateral += credit;
+                    ILiquidityVault(liquidityVault).creditTraderMarginFromLP(position.trader, _toVaultUnits(credit));
                 }
             }
         }
@@ -371,12 +378,12 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             : 0;
         res.remainingPositionSize = position.size - sizeReduced;
 
-        // If ALL collateral was consumed, close the remaining position size as well
-        if (res.remainingPositionMargin == 0 && res.remainingPositionSize > 0) {
-            sizeReduced = position.size; // Full close due to total collateral exhaustion
-            res.sizeReduced = sizeReduced;
-            res.remainingPositionSize = 0;
-            res.unlockedNotional = position.lockedNotional;
+        // BLOCKER 1 FIX: A partial decrease MUST NOT silently erase remaining exposure if collateral is exhausted or below minimum.
+        if (sizeReduced < position.size) {
+            require(res.remainingPositionMargin > 0, "PerpEngine: remaining margin zero");
+            uint256 remainingNotional = res.remainingPositionSize.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
+            uint256 minMarginRequired = remainingNotional.mulDiv(market.minMarginRatio, PRECISION);
+            require(res.remainingPositionMargin >= minMarginRequired, "PerpEngine: remaining margin too low");
         }
 
         // 6. CHECKS-EFFECTS (Apply state updates prior to external calls)
@@ -430,7 +437,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             }
         } else {
             // ALL position collateral was exhausted -> enter bad debt waterfall
-            // Protocol fee is capped at what collateral can cover after loss or fee deduction
+            // BLOCKER 3 FIX: Protocol fee is capped at what collateral can cover, unpaid fee is not socialized
             uint256 feeCollected = res.protocolFee;
             if (res.totalTraderCollateralConsumed < res.protocolFee) {
                 feeCollected = res.totalTraderCollateralConsumed;
@@ -442,10 +449,15 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
                 ILiquidityVault(liquidityVault).collectProtocolFees(_toVaultUnits(feeCollected));
             }
 
+            uint256 lossCoveredByCollateral = res.totalTraderCollateralConsumed - feeCollected;
+            uint256 totalDeficitToVault = realizedLoss > lossCoveredByCollateral
+                ? realizedLoss - lossCoveredByCollateral
+                : 0;
+
             ILiquidityVault(liquidityVault).settleBadDebt(
                 position.trader,
-                _toVaultUnits(res.totalTraderCollateralConsumed - feeCollected),
-                _toVaultUnits(totalDeduction - feeCollected)
+                _toVaultUnits(lossCoveredByCollateral),
+                _toVaultUnits(totalDeficitToVault)
             );
         }
     }

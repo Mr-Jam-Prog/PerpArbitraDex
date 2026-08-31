@@ -252,6 +252,18 @@ contract LiquidityVault is ILiquidityVault, ERC20, Ownable, ReentrancyGuard, Pau
         emit MarginWithdrawn(trader, amount);
     }
 
+    function creditTraderMarginFromLP(address trader, uint256 amount)
+        external
+        override
+        onlyPerpEngine
+    {
+        if (amount == 0) return;
+        require(totalLpAssets >= amount, "Vault: insufficient LP assets for funding credit");
+        totalLpAssets -= amount;
+        traderMarginTotal += amount;
+        emit MarginDeposited(trader, amount);
+    }
+
     function lockLiquidity(uint256 amount) external override onlyPerpEngine {
         require(availableLiquidity() >= amount, "Vault: insufficient liquidity to lock");
         lockedLiquidity += amount;
@@ -347,31 +359,23 @@ contract LiquidityVault is ILiquidityVault, ERC20, Ownable, ReentrancyGuard, Pau
         } else {
             uint256 remainingDeficit = totalDeficit - marginForfeited;
 
-            // Step 2: Insurance Fund
+            // Transfer forfeited trader collateral to LP assets
+            totalLpAssets += marginForfeited;
+
+            // Reclassify Insurance Fund to LP assets if IF balance exists
             if (insuranceFundBalance >= remainingDeficit) {
                 coveredByIF = remainingDeficit;
-                insuranceFundBalance -= remainingDeficit;
-                remainingDeficit = 0;
             } else {
                 coveredByIF = insuranceFundBalance;
-                remainingDeficit -= insuranceFundBalance;
-                insuranceFundBalance = 0;
             }
 
-            // Step 3: LP Capital
-            if (remainingDeficit > 0) {
-                if (totalLpAssets >= remainingDeficit) {
-                    coveredByLP = remainingDeficit;
-                    totalLpAssets -= remainingDeficit;
-                    remainingDeficit = 0;
-                } else {
-                    coveredByLP = totalLpAssets;
-                    remainingDeficit -= totalLpAssets;
-                    totalLpAssets = 0;
-                }
+            if (coveredByIF > 0) {
+                insuranceFundBalance -= coveredByIF;
+                totalLpAssets += coveredByIF;
             }
 
-            residualBadDebt = remainingDeficit;
+            coveredByLP = 0;
+            residualBadDebt = remainingDeficit - coveredByIF;
         }
 
         emit BadDebtSettled(trader, marginForfeited, coveredByIF, coveredByLP, residualBadDebt);
