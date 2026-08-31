@@ -37,6 +37,7 @@ interface ILiquidityVault is IERC20 {
     function decimals() external view returns (uint8);
     function asset() external view returns (address);
     function totalAssets() external view returns (uint256);
+    function totalLpAssets() external view returns (uint256);
     function lockedLiquidity() external view returns (uint256);
     function availableLiquidity() external view returns (uint256);
     function traderMarginTotal() external view returns (uint256);
