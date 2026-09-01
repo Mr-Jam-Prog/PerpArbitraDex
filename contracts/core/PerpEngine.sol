@@ -436,14 +436,28 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
 
             uint256 posMarginAvailable = position.margin;
 
-            res.lossCoveredByCollateral = netDeficit < posMarginAvailable ? netDeficit : posMarginAvailable;
-            uint256 remainingCollateralAfterLoss = posMarginAvailable - res.lossCoveredByCollateral;
+            if (res.proportionalMarginReleased >= netDeficit + nominalProtocolFee) {
+                // Case 1: Proportional released margin covers deficit + fee fully
+                res.protocolFee = nominalProtocolFee;
+                res.traderPayout = res.proportionalMarginReleased - netDeficit - nominalProtocolFee;
+                res.totalTraderCollateralConsumed = res.proportionalMarginReleased;
+                res.lossCoveredByCollateral = netDeficit;
+                res.residualBadDebt = 0;
+            } else {
+                // Shortfall exceeds proportional released margin -> trader payout is 0, consume extra from retained collateral
+                res.traderPayout = 0;
 
-            res.protocolFee = nominalProtocolFee < remainingCollateralAfterLoss ? nominalProtocolFee : remainingCollateralAfterLoss;
+                // Priority 1: Loss covered by total position collateral
+                res.lossCoveredByCollateral = netDeficit < posMarginAvailable ? netDeficit : posMarginAvailable;
 
-            res.traderPayout = 0;
-            res.totalTraderCollateralConsumed = res.lossCoveredByCollateral + res.protocolFee;
-            res.residualBadDebt = netDeficit > res.lossCoveredByCollateral ? netDeficit - res.lossCoveredByCollateral : 0;
+                uint256 remainingCollateralAfterLoss = posMarginAvailable - res.lossCoveredByCollateral;
+
+                // Priority 2: Collectible Fee from remaining collateral after loss
+                res.protocolFee = nominalProtocolFee < remainingCollateralAfterLoss ? nominalProtocolFee : remainingCollateralAfterLoss;
+
+                res.totalTraderCollateralConsumed = res.lossCoveredByCollateral + res.protocolFee;
+                res.residualBadDebt = netDeficit > res.lossCoveredByCollateral ? netDeficit - res.lossCoveredByCollateral : 0;
+            }
 
             res.remainingPositionMargin = position.margin > res.totalTraderCollateralConsumed
                 ? position.margin - res.totalTraderCollateralConsumed
