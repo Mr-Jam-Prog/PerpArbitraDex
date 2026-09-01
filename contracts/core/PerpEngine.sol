@@ -575,7 +575,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
                 ILiquidityVault(liquidityVault).settleBadDebt(
                     position.trader,
                     _toVaultUnits(res.lossCoveredByCollateral),
-                    _toVaultUnits(res.grossTradingDeficit)
+                    _toVaultUnitsCeil(netDeficit)
                 );
             }
         }
@@ -896,7 +896,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         uint256 penalty
     ) internal returns (uint256 liquidationReward) {
         uint256 vaultMarginProp = _toVaultUnits(marginProportion);
-        uint256 vaultTotalDef = _toVaultUnits(totalDeficit);
+        uint256 vaultTotalDef = _toVaultUnitsCeil(totalDeficit);
 
         if (marginProportion >= totalDeficit) {
             liquidationReward = penalty / 2;

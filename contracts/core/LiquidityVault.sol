@@ -347,36 +347,28 @@ contract LiquidityVault is ILiquidityVault, ERC20, Ownable, ReentrancyGuard, Pau
         nonReentrant
         returns (uint256 coveredByIF, uint256 coveredByLP, uint256 residualBadDebt)
     {
+        require(totalDeficit > marginForfeited, "Vault: no bad debt");
         require(traderMarginTotal >= marginForfeited, "Vault: margin underflow");
+
         traderMarginTotal -= marginForfeited;
+        totalLpAssets += marginForfeited;
 
-        if (marginForfeited >= totalDeficit) {
-            uint256 excessMargin = marginForfeited - totalDeficit;
-            totalLpAssets += excessMargin;
-            coveredByIF = 0;
-            coveredByLP = 0;
-            residualBadDebt = 0;
+        uint256 remainingDeficit = totalDeficit - marginForfeited;
+
+        // Reclassify Insurance Fund to LP assets if IF balance exists
+        if (insuranceFundBalance >= remainingDeficit) {
+            coveredByIF = remainingDeficit;
         } else {
-            uint256 remainingDeficit = totalDeficit - marginForfeited;
-
-            // Transfer forfeited trader collateral to LP assets
-            totalLpAssets += marginForfeited;
-
-            // Reclassify Insurance Fund to LP assets if IF balance exists
-            if (insuranceFundBalance >= remainingDeficit) {
-                coveredByIF = remainingDeficit;
-            } else {
-                coveredByIF = insuranceFundBalance;
-            }
-
-            if (coveredByIF > 0) {
-                insuranceFundBalance -= coveredByIF;
-                totalLpAssets += coveredByIF;
-            }
-
-            coveredByLP = 0;
-            residualBadDebt = remainingDeficit - coveredByIF;
+            coveredByIF = insuranceFundBalance;
         }
+
+        if (coveredByIF > 0) {
+            insuranceFundBalance -= coveredByIF;
+            totalLpAssets += coveredByIF;
+        }
+
+        coveredByLP = 0;
+        residualBadDebt = remainingDeficit - coveredByIF;
 
         emit BadDebtSettled(trader, marginForfeited, coveredByIF, coveredByLP, residualBadDebt);
     }
