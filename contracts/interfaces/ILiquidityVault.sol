@@ -80,6 +80,19 @@ interface ILiquidityVault is IERC20 {
         uint256 loss
     ) external;
 
+    /**
+     * @notice Settles bad debt from an insolvent position using the protocol waterfall.
+     * @param trader Trader address whose position is insolvent.
+     * @param marginForfeited Collateral forfeited by trader to LP assets.
+     * @param totalDeficit Gross realized deficit of the position.
+     * @return coveredByIF Amount covered by Insurance Fund reclassification to LP assets.
+     * @return coveredByLP Economic amount of unrecovered trader deficit ultimately absorbed by LPs.
+     *         It does not trigger an additional totalLpAssets debit because the missing trader payment
+     *         is a foregone receivable, not a physical token outflow.
+     * @return residualBadDebt Amount remaining after the configured terminal waterfall.
+     *         Under the current MVP waterfall where LPs are the terminal absorber,
+     *         residualBadDebt is zero after successful settleBadDebt.
+     */
     function settleBadDebt(
         address trader,
         uint256 marginForfeited,

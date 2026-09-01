@@ -336,6 +336,16 @@ contract LiquidityVault is ILiquidityVault, ERC20, Ownable, ReentrancyGuard, Pau
         emit TraderLossSettled(trader, marginToReturn, loss);
     }
 
+    /**
+     * @notice Settles an insolvent position's bad debt according to the protocol waterfall:
+     * 1) Forfeit trader margin -> transferred to totalLpAssets.
+     * 2) Draw down Insurance Fund -> reclassified to totalLpAssets.
+     * 3) Socialize remaining deficit to LPs -> recorded in `coveredByLP`.
+     *
+     * @dev `coveredByLP` is the economic write-off of an uncollected trader receivable (foregone LP PnL).
+     * It does not trigger an additional totalLpAssets debit because the missing trader payment is a foregone receivable,
+     * not a physical token outflow. `residualBadDebt` is 0 under the LP terminal absorber model.
+     */
     function settleBadDebt(
         address trader,
         uint256 marginForfeited,
@@ -367,8 +377,9 @@ contract LiquidityVault is ILiquidityVault, ERC20, Ownable, ReentrancyGuard, Pau
             totalLpAssets += coveredByIF;
         }
 
-        coveredByLP = 0;
-        residualBadDebt = remainingDeficit - coveredByIF;
+        uint256 remainingAfterIF = remainingDeficit - coveredByIF;
+        coveredByLP = remainingAfterIF;
+        residualBadDebt = 0;
 
         emit BadDebtSettled(trader, marginForfeited, coveredByIF, coveredByLP, residualBadDebt);
     }

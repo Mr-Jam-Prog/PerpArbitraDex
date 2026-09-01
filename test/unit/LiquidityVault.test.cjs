@@ -218,4 +218,200 @@ describe("🏦 LiquidityVault - Comprehensive Unit Tests & Ledger Scenarios", fu
       ).to.be.revertedWith("Vault: insufficient fee balance");
     });
   });
+
+  describe("🛡️ Bad Debt Waterfall Regression Tests (BD-W1 through BD-W5)", function () {
+    it("BD-W1 — Codex numerical example: partial IF and LP write-off", async function () {
+      // Setup: LP = 50,000, Trader margin = 1,000, Insurance = 500, Deficit = 2,000
+      const lpDeposit = parse18(50000);
+      const traderMargin = parse18(1000);
+      const insuranceDeposit = parse18(500);
+      const totalDeficit = parse18(2000);
+
+      // LP deposit
+      await quoteToken18.mint(lp1.address, lpDeposit);
+      await quoteToken18.connect(lp1).approve(vault18.target, lpDeposit);
+      await vault18.connect(lp1).deposit(lpDeposit, lp1.address);
+
+      // Fund Insurance Fund by depositing margin first then reclassifying
+      await quoteToken18.mint(owner.address, insuranceDeposit);
+      await quoteToken18.connect(owner).approve(vault18.target, insuranceDeposit);
+      await vault18.connect(mockEngine).depositTraderMargin(owner.address, insuranceDeposit);
+      await vault18.connect(mockEngine).fundInsuranceFund(insuranceDeposit);
+
+      // Deposit trader margin
+      await quoteToken18.mint(trader.address, traderMargin);
+      await quoteToken18.connect(trader).approve(vault18.target, traderMargin);
+      await vault18.connect(mockEngine).depositTraderMargin(trader.address, traderMargin);
+
+      const physBefore = await quoteToken18.balanceOf(vault18.target);
+      expect(physBefore).to.equal(parse18(51500));
+
+      // Call settleBadDebt
+      const tx = await vault18.connect(mockEngine).settleBadDebt(trader.address, traderMargin, totalDeficit);
+      const receipt = await tx.wait();
+
+      const log = receipt.logs.map(l => {
+        try { return vault18.interface.parseLog(l); } catch { return null; }
+      }).find(l => l && l.name === "BadDebtSettled");
+
+      expect(log.args.marginForfeited).to.equal(parse18(1000));
+      expect(log.args.coveredByInsurance).to.equal(parse18(500));
+      expect(log.args.coveredByLP).to.equal(parse18(500));
+      expect(log.args.residualBadDebt).to.equal(0n);
+
+      // Final ledger assertions
+      expect(await vault18.traderMarginTotal()).to.equal(0n);
+      expect(await vault18.insuranceFundBalance()).to.equal(0n);
+      expect(await vault18.totalLpAssets()).to.equal(parse18(51500));
+
+      const physAfter = await quoteToken18.balanceOf(vault18.target);
+      expect(physAfter).to.equal(parse18(51500));
+
+      // Explicitly assert totalLpAssets MUST NOT be 51,000
+      expect((await vault18.totalLpAssets()) === parse18(51000)).to.be.false;
+    });
+
+    it("BD-W2 — Insurance fully covers remaining deficit", async function () {
+      const lpDeposit = parse18(50000);
+      const traderMargin = parse18(1000);
+      const insuranceDeposit = parse18(2000);
+      const totalDeficit = parse18(2000);
+
+      await quoteToken18.mint(lp1.address, lpDeposit);
+      await quoteToken18.connect(lp1).approve(vault18.target, lpDeposit);
+      await vault18.connect(lp1).deposit(lpDeposit, lp1.address);
+
+      await quoteToken18.mint(owner.address, insuranceDeposit);
+      await quoteToken18.connect(owner).approve(vault18.target, insuranceDeposit);
+      await vault18.connect(mockEngine).depositTraderMargin(owner.address, insuranceDeposit);
+      await vault18.connect(mockEngine).fundInsuranceFund(insuranceDeposit);
+
+      await quoteToken18.mint(trader.address, traderMargin);
+      await quoteToken18.connect(trader).approve(vault18.target, traderMargin);
+      await vault18.connect(mockEngine).depositTraderMargin(trader.address, traderMargin);
+
+      const tx = await vault18.connect(mockEngine).settleBadDebt(trader.address, traderMargin, totalDeficit);
+      const receipt = await tx.wait();
+      const log = receipt.logs.map(l => {
+        try { return vault18.interface.parseLog(l); } catch { return null; }
+      }).find(l => l && l.name === "BadDebtSettled");
+
+      expect(log.args.coveredByInsurance).to.equal(parse18(1000));
+      expect(log.args.coveredByLP).to.equal(0n);
+      expect(log.args.residualBadDebt).to.equal(0n);
+
+      expect(await vault18.traderMarginTotal()).to.equal(0n);
+      expect(await vault18.insuranceFundBalance()).to.equal(parse18(1000));
+      expect(await vault18.totalLpAssets()).to.equal(parse18(52000));
+
+      const physAfter = await quoteToken18.balanceOf(vault18.target);
+      const liabilities = (await vault18.totalLpAssets()) +
+                          (await vault18.traderMarginTotal()) +
+                          (await vault18.insuranceFundBalance()) +
+                          (await vault18.protocolFeeBalance());
+      expect(physAfter).to.equal(liabilities);
+    });
+
+    it("BD-W3 — No insurance coverage, LP absorbs all remaining deficit", async function () {
+      const lpDeposit = parse18(50000);
+      const traderMargin = parse18(1000);
+      const totalDeficit = parse18(2000);
+
+      await quoteToken18.mint(lp1.address, lpDeposit);
+      await quoteToken18.connect(lp1).approve(vault18.target, lpDeposit);
+      await vault18.connect(lp1).deposit(lpDeposit, lp1.address);
+
+      await quoteToken18.mint(trader.address, traderMargin);
+      await quoteToken18.connect(trader).approve(vault18.target, traderMargin);
+      await vault18.connect(mockEngine).depositTraderMargin(trader.address, traderMargin);
+
+      const tx = await vault18.connect(mockEngine).settleBadDebt(trader.address, traderMargin, totalDeficit);
+      const receipt = await tx.wait();
+      const log = receipt.logs.map(l => {
+        try { return vault18.interface.parseLog(l); } catch { return null; }
+      }).find(l => l && l.name === "BadDebtSettled");
+
+      expect(log.args.coveredByInsurance).to.equal(0n);
+      expect(log.args.coveredByLP).to.equal(parse18(1000));
+      expect(log.args.residualBadDebt).to.equal(0n);
+
+      expect(await vault18.totalLpAssets()).to.equal(parse18(51000));
+      expect((await vault18.totalLpAssets()) === parse18(50000)).to.be.false;
+
+      const physAfter = await quoteToken18.balanceOf(vault18.target);
+      const liabilities = (await vault18.totalLpAssets()) +
+                          (await vault18.traderMarginTotal()) +
+                          (await vault18.insuranceFundBalance()) +
+                          (await vault18.protocolFeeBalance());
+      expect(physAfter).to.equal(liabilities);
+    });
+
+    it("BD-W4 — Paired winner/loser conservation and LP NAV accuracy", async function () {
+      // 1. LP deposits 50,000
+      const lpDeposit = parse18(50000);
+      await quoteToken18.mint(lp1.address, lpDeposit);
+      await quoteToken18.connect(lp1).approve(vault18.target, lpDeposit);
+      await vault18.connect(lp1).deposit(lpDeposit, lp1.address);
+
+      // 2. Winner trader deposits 1,000 margin and receives 1,500 profit
+      const winnerMargin = parse18(1000);
+      const winnerProfit = parse18(1500);
+      await quoteToken18.mint(trader.address, winnerMargin);
+      await quoteToken18.connect(trader).approve(vault18.target, winnerMargin);
+      await vault18.connect(mockEngine).depositTraderMargin(trader.address, winnerMargin);
+      await vault18.connect(mockEngine).settleTraderProfit(trader.address, winnerMargin, winnerProfit);
+
+      // 3. Loser trader deposits 1,000 margin and realizes 2,000 insolvent loss
+      const loserMargin = parse18(1000);
+      const loserDeficit = parse18(2000);
+      await quoteToken18.mint(recipient.address, loserMargin);
+      await quoteToken18.connect(recipient).approve(vault18.target, loserMargin);
+      await vault18.connect(mockEngine).depositTraderMargin(recipient.address, loserMargin);
+
+      // 4. Settle bad debt for loser
+      await vault18.connect(mockEngine).settleBadDebt(recipient.address, loserMargin, loserDeficit);
+
+      // Assert final LP NAV reflects: initial LP (50,000) - winner payout (1,500) + loser recovered margin (1,000) = 49,500
+      expect(await vault18.totalLpAssets()).to.equal(parse18(49500));
+
+      const physAfter = await quoteToken18.balanceOf(vault18.target);
+      const liabilities = (await vault18.totalLpAssets()) +
+                          (await vault18.traderMarginTotal()) +
+                          (await vault18.insuranceFundBalance()) +
+                          (await vault18.protocolFeeBalance());
+      expect(physAfter).to.equal(liabilities);
+    });
+
+    it("BD-W5 — Event/output semantics against exact numerical vectors", async function () {
+      const lpDeposit = parse18(100000);
+      const margin = parse18(2500);
+      const insurance = parse18(1000);
+      const deficit = parse18(5000);
+
+      await quoteToken18.mint(lp1.address, lpDeposit);
+      await quoteToken18.connect(lp1).approve(vault18.target, lpDeposit);
+      await vault18.connect(lp1).deposit(lpDeposit, lp1.address);
+
+      await quoteToken18.mint(owner.address, insurance);
+      await quoteToken18.connect(owner).approve(vault18.target, insurance);
+      await vault18.connect(mockEngine).depositTraderMargin(owner.address, insurance);
+      await vault18.connect(mockEngine).fundInsuranceFund(insurance);
+
+      await quoteToken18.mint(trader.address, margin);
+      await quoteToken18.connect(trader).approve(vault18.target, margin);
+      await vault18.connect(mockEngine).depositTraderMargin(trader.address, margin);
+
+      const tx = await vault18.connect(mockEngine).settleBadDebt(trader.address, margin, deficit);
+      const receipt = await tx.wait();
+      const log = receipt.logs.map(l => {
+        try { return vault18.interface.parseLog(l); } catch { return null; }
+      }).find(l => l && l.name === "BadDebtSettled");
+
+      expect(log.args.trader).to.equal(trader.address);
+      expect(log.args.marginForfeited).to.equal(parse18(2500));
+      expect(log.args.coveredByInsurance).to.equal(parse18(1000));
+      expect(log.args.coveredByLP).to.equal(parse18(1500));
+      expect(log.args.residualBadDebt).to.equal(0n);
+    });
+  });
 });
