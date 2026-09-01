@@ -240,76 +240,7 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
       expect(physicalBal).to.equal(liabilities, `Physical Vault Identity Failed at ${label}`);
     }
 
-    it("P-L1: Solvent losing partial decrease releases proportional margin (M=1000, S=10, dS=2 -> M_rel=200, PnL=-100, fee=2 -> payout=98, M_after=800)", async function () {
-      // Set protocol fee to 0.1% on dQ notional ($3,800 notional = $3.80, but let's test exact parameters)
-      // Open position with M=1000, S=10 ETH at $2,000 ($20,000 notional, open fee = $20 -> deposit $1,020 to get $1,000 pos margin)
-      const margin = ethers.parseUnits("1020", 18);
-      const size = ethers.parseUnits("10", 18);
-
-      await sys.quote.mint(sys.t1.address, margin);
-      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
-
-      const latestTime = await time.latest();
-      await sys.engine.connect(sys.t1).openPosition({
-        marketId: MARKET_ID,
-        isLong: true,
-        size: size,
-        margin: margin,
-        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
-        deadline: latestTime + 3600,
-        referralCode: ethers.ZeroHash
-      });
-
-      // Turn off protocol fee ratio for predictable fee math in P-L1 / P-L2 or calculate exact fee
-      await sys.engine.connect(sys.deployer).updateProtocolFee(0n);
-
-      // Price drops from $2,000 to $1,950 (-$50/ETH). For dS = 2 ETH, realizedPnL = -$100.
-      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1950", 8));
-
-      const posBefore = await sys.engine.getPositionInternal(1);
-      expect(posBefore.margin).to.equal(ethers.parseUnits("1000", 18)); // M_before = 1000
-
-      const dS = ethers.parseUnits("2", 18);
-      const t1BalBefore = await sys.quote.balanceOf(sys.t1.address);
-
-      const tx = await sys.engine.connect(sys.t1).decreasePosition(1, dS, 0n);
-      const receipt = await tx.wait();
-
-      const t1BalAfter = await sys.quote.balanceOf(sys.t1.address);
-      const actualPayout = t1BalAfter - t1BalBefore;
-
-      // Payout MUST equal M_rel + realizedPnl = 200 - 100 = 100
-      expect(actualPayout).to.equal(ethers.parseUnits("100", 18));
-
-      const posAfter = await sys.engine.getPositionInternal(1);
-      expect(posAfter.margin).to.equal(ethers.parseUnits("800", 18)); // Remaining margin = 800
-
-      // Verify event consistency (marginReduced in PositionDecreased corresponds to canonical M_rel)
-      const parsedLogs = receipt.logs.map(log => {
-        try {
-          return sys.engine.interface.parseLog(log);
-        } catch {
-          return null;
-        }
-      }).filter(Boolean);
-
-      const decEvent = parsedLogs.find(e => e.name === "PositionDecreased");
-      expect(decEvent).to.not.be.undefined;
-      expect(decEvent.args.marginReduced).to.equal(ethers.parseUnits("200", 18)); // M_rel = 200
-
-      await verifyPartialIdentities(
-        "P-L1",
-        ethers.parseUnits("1000", 18),
-        ethers.parseUnits("200", 18),
-        -ethers.parseUnits("100", 18),
-        0n,
-        actualPayout,
-        posAfter.margin,
-        0n
-      );
-    });
-
-    it("P-L2: Negative payout covered by retained margin (M=1000, S=10, dS=2 -> M_rel=200, PnL=-250, fee=0 -> payout=0, M_after=750)", async function () {
+    it("P-L1 (Zero Fee): Solvent losing partial decrease releases proportional margin (M=1000, S=10, dS=2 -> M_rel=200, PnL=-100, fee=0 -> payout=100, M_after=800)", async function () {
       await sys.engine.connect(sys.deployer).updateProtocolFee(0n);
 
       const margin = ethers.parseUnits("1000", 18);
@@ -329,34 +260,236 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
         referralCode: ethers.ZeroHash
       });
 
-      // Price drops from $2,000 to $1,875 (-$125/ETH). For dS = 2 ETH, realizedPnL = -$250.
-      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1875", 8));
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1950", 8));
 
       const dS = ethers.parseUnits("2", 18);
       const t1BalBefore = await sys.quote.balanceOf(sys.t1.address);
 
-      await sys.engine.connect(sys.t1).decreasePosition(1, dS, 0n);
+      const tx = await sys.engine.connect(sys.t1).decreasePosition(1, dS, 0n);
+      const receipt = await tx.wait();
 
       const t1BalAfter = await sys.quote.balanceOf(sys.t1.address);
       const actualPayout = t1BalAfter - t1BalBefore;
 
-      // Payout MUST equal 0 (shortfall $50 consumed from retained collateral 800)
-      expect(actualPayout).to.equal(0n);
+      expect(actualPayout).to.equal(ethers.parseUnits("100", 18));
 
       const posAfter = await sys.engine.getPositionInternal(1);
-      // M_after MUST equal M_before - netDeficit = 1000 - 250 = 750
-      expect(posAfter.margin).to.equal(ethers.parseUnits("750", 18));
+      expect(posAfter.margin).to.equal(ethers.parseUnits("800", 18));
+
+      const parsedLogs = receipt.logs.map(log => {
+        try { return sys.engine.interface.parseLog(log); } catch { return null; }
+      }).filter(Boolean);
+
+      const decEvent = parsedLogs.find(e => e.name === "PositionDecreased");
+      expect(decEvent).to.not.be.undefined;
+      expect(decEvent.args.marginReduced).to.equal(ethers.parseUnits("200", 18));
 
       await verifyPartialIdentities(
-        "P-L2",
+        "P-L1 (Zero Fee)",
         ethers.parseUnits("1000", 18),
         ethers.parseUnits("200", 18),
-        -ethers.parseUnits("250", 18),
+        -ethers.parseUnits("100", 18),
         0n,
         actualPayout,
         posAfter.margin,
         0n
       );
+    });
+
+    it("P-L1 (Fee-Bearing): Solvent losing partial decrease with non-zero closing fee (M=1000, S=10, dS=2 -> M_rel=200, PnL=-100, fee=3.90 -> payout=96.10, M_after=800)", async function () {
+      // Market protocol fee ratio = 0.1% (10 bps)
+      // Open position with $1000 margin ($1020 deposited, $20 open fee)
+      const margin = ethers.parseUnits("1020", 18);
+      const size = ethers.parseUnits("10", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Price drops from $2,000 to $1,950 (-$50/ETH). For dS = 2 ETH, realizedPnL = -$100.
+      // Reduced notional = 2 ETH * $1,950 = $3,900. Fee (0.1%) = $3.90.
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1950", 8));
+
+      const dS = ethers.parseUnits("2", 18);
+      const feeBalBefore = await sys.vault.protocolFeeBalance();
+      const t1BalBefore = await sys.quote.balanceOf(sys.t1.address);
+
+      await sys.engine.connect(sys.t1).decreasePosition(1, dS, 0n);
+
+      const feeBalAfter = await sys.vault.protocolFeeBalance();
+      const t1BalAfter = await sys.quote.balanceOf(sys.t1.address);
+
+      const feeCollected = feeBalAfter - feeBalBefore;
+      const actualPayout = t1BalAfter - t1BalBefore;
+
+      // Exact WAD fee = $3.90
+      const expectedFee = ethers.parseUnits("3.9", 18);
+      // Exact payout = M_rel ($200) - loss ($100) - fee ($3.90) = $96.10
+      const expectedPayout = ethers.parseUnits("96.1", 18);
+
+      expect(feeCollected).to.equal(expectedFee);
+      expect(actualPayout).to.equal(expectedPayout);
+
+      const posAfter = await sys.engine.getPositionInternal(1);
+      expect(posAfter.margin).to.equal(ethers.parseUnits("800", 18));
+      expect(await sys.engine.totalCollateral()).to.equal(ethers.parseUnits("800", 18));
+      expect(await sys.vault.traderMarginTotal()).to.equal(ethers.parseUnits("800", 18));
+
+      await verifyPartialIdentities(
+        "P-L1 Fee-Bearing",
+        ethers.parseUnits("1000", 18),
+        ethers.parseUnits("200", 18),
+        -ethers.parseUnits("100", 18),
+        feeCollected,
+        actualPayout,
+        posAfter.margin,
+        0n
+      );
+    });
+
+    it("P-L2 (Fee-Bearing): Negative payout covered by retained margin with non-zero closing fee (M=1000, S=10, dS=2 -> M_rel=200, PnL=-250, fee=3.75 -> payout=0, M_after=746.25)", async function () {
+      // Market protocol fee ratio = 0.1% (10 bps)
+      const margin = ethers.parseUnits("1020", 18);
+      const size = ethers.parseUnits("10", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Price drops from $2,000 to $1,875 (-$125/ETH). For dS = 2 ETH, realizedPnL = -$250.
+      // Reduced notional = 2 ETH * $1,875 = $3,750. Fee (0.1%) = $3.75.
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1875", 8));
+
+      const dS = ethers.parseUnits("2", 18);
+      const feeBalBefore = await sys.vault.protocolFeeBalance();
+      const t1BalBefore = await sys.quote.balanceOf(sys.t1.address);
+
+      await sys.engine.connect(sys.t1).decreasePosition(1, dS, 0n);
+
+      const feeBalAfter = await sys.vault.protocolFeeBalance();
+      const t1BalAfter = await sys.quote.balanceOf(sys.t1.address);
+
+      const feeCollected = feeBalAfter - feeBalBefore;
+      const actualPayout = t1BalAfter - t1BalBefore;
+
+      const expectedFee = ethers.parseUnits("3.75", 18);
+      expect(feeCollected).to.equal(expectedFee);
+      expect(actualPayout).to.equal(0n);
+
+      // Shortfall = realizedLoss ($250) + fee ($3.75) - M_rel ($200) = $53.75 debited from retained margin ($800)
+      // Remaining margin = $800 - $53.75 = $746.25
+      const expectedM_after = ethers.parseUnits("746.25", 18);
+      const posAfter = await sys.engine.getPositionInternal(1);
+
+      expect(posAfter.margin).to.equal(expectedM_after);
+      expect(await sys.engine.totalCollateral()).to.equal(expectedM_after);
+      expect(await sys.vault.traderMarginTotal()).to.equal(expectedM_after);
+
+      await verifyPartialIdentities(
+        "P-L2 Fee-Bearing",
+        ethers.parseUnits("1000", 18),
+        ethers.parseUnits("200", 18),
+        -ethers.parseUnits("250", 18),
+        feeCollected,
+        actualPayout,
+        posAfter.margin,
+        0n
+      );
+    });
+
+    it("P-L4: Explicit multi-assertion suite on partial decrease consistency", async function () {
+      const margin = ethers.parseUnits("1020", 18);
+      const size = ethers.parseUnits("10", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      const initialOI = await sys.engine.getTotalOpenInterest(MARKET_ID);
+
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2100", 8));
+
+      const dS = ethers.parseUnits("2", 18);
+      const t1BalBefore = await sys.quote.balanceOf(sys.t1.address);
+
+      const tx = await sys.engine.connect(sys.t1).decreasePosition(1, dS, 0n);
+      const receipt = await tx.wait();
+
+      const t1BalAfter = await sys.quote.balanceOf(sys.t1.address);
+      const actualPayout = t1BalAfter - t1BalBefore;
+
+      // 1. Emitted Event Asserts
+      const parsedLogs = receipt.logs.map(log => {
+        try { return sys.engine.interface.parseLog(log); } catch { return null; }
+      }).filter(Boolean);
+
+      const decEvent = parsedLogs.find(e => e.name === "PositionDecreased");
+      expect(decEvent).to.not.be.undefined;
+      expect(decEvent.args.sizeReduced).to.equal(dS);
+      expect(decEvent.args.marginReduced).to.equal(ethers.parseUnits("200", 18)); // M_rel
+
+      // 2. Exact Trader Payout & Remaining Margin
+      // Notional = 2 * $2,100 = $4,200. Fee (0.1%) = $4.20. Realized PnL = +$200.
+      // Payout = M_rel ($200) + PnL ($200) - Fee ($4.20) = $395.80
+      const expectedPayout = ethers.parseUnits("395.8", 18);
+      expect(actualPayout).to.equal(expectedPayout);
+
+      const posAfter = await sys.engine.getPositionInternal(1);
+      expect(posAfter.margin).to.equal(ethers.parseUnits("800", 18));
+      expect(posAfter.size).to.equal(ethers.parseUnits("8", 18));
+
+      // 3. Open Interest & AMM Skew Deltas
+      const finalOI = await sys.engine.getTotalOpenInterest(MARKET_ID);
+
+      expect(initialOI - finalOI).to.equal(dS);
+
+      // 4. Ledger Reconciliation & Active Margin Sum
+      const engineCollateral = await sys.engine.totalCollateral();
+      const vaultTraderMargin = await sys.vault.traderMarginTotal();
+      expect(engineCollateral).to.equal(vaultTraderMargin);
+
+      let activeMarginSum = 0n;
+      const pos1 = await sys.engine.getPositionInternal(1);
+      if (pos1.isActive) activeMarginSum += pos1.margin;
+      expect(engineCollateral).to.equal(activeMarginSum);
+
+      // 5. Physical Vault Conservation
+      const physicalBal = await sys.quote.balanceOf(sys.vault.target);
+      const liabilities = (await sys.vault.totalLpAssets()) +
+                          (await sys.vault.traderMarginTotal()) +
+                          (await sys.vault.insuranceFundBalance()) +
+                          (await sys.vault.protocolFeeBalance());
+      expect(physicalBal).to.equal(liabilities);
     });
 
     it("P-L3: Profitable partial decrease control (M=1000, S=10, dS=2 -> M_rel=200, PnL=+200 -> payout=400, M_after=800)", async function () {
