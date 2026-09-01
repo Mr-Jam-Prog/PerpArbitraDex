@@ -15,7 +15,27 @@ contract MockAMMPool is IAMMPool {
         _fundingRates[marketId] = rate;
     }
 
-    function updateSkew(uint256, bool, int256) external override {}
+    mapping(uint256 => uint256) private _longOI;
+    mapping(uint256 => uint256) private _shortOI;
+
+    function updateSkew(uint256 marketId, bool isLong, int256 sizeDelta) external override {
+        if (isLong) {
+            if (sizeDelta > 0) {
+                _longOI[marketId] += uint256(sizeDelta);
+            } else if (sizeDelta < 0) {
+                uint256 absDelta = uint256(-sizeDelta);
+                _longOI[marketId] = _longOI[marketId] >= absDelta ? _longOI[marketId] - absDelta : 0;
+            }
+        } else {
+            if (sizeDelta > 0) {
+                _shortOI[marketId] += uint256(sizeDelta);
+            } else if (sizeDelta < 0) {
+                uint256 absDelta = uint256(-sizeDelta);
+                _shortOI[marketId] = _shortOI[marketId] >= absDelta ? _shortOI[marketId] - absDelta : 0;
+            }
+        }
+    }
+
     function updateFundingRate(uint256 marketId) external override returns (int256) {
         return _fundingRates[marketId];
     }
@@ -24,7 +44,11 @@ contract MockAMMPool is IAMMPool {
     function getFundingRate(uint256 marketId) external view override returns (int256) {
         return _fundingRates[marketId];
     }
-    function getMarketSkew(uint256) external view override returns (uint256, uint256, int256) { return (0, 0, 0); }
+    function getMarketSkew(uint256 marketId) external view override returns (uint256 longOI, uint256 shortOI, int256 skew) {
+        longOI = _longOI[marketId];
+        shortOI = _shortOI[marketId];
+        skew = int256(longOI) - int256(shortOI);
+    }
 
     function calculateFundingPayment(
         uint256 marketId,

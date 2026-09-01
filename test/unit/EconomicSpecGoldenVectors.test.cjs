@@ -436,6 +436,7 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
       });
 
       const initialOI = await sys.engine.getTotalOpenInterest(MARKET_ID);
+      const [initialLongOI, initialShortOI, initialSkew] = await sys.amm.getMarketSkew(MARKET_ID);
 
       await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2100", 8));
 
@@ -470,8 +471,11 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
 
       // 3. Open Interest & AMM Skew Deltas
       const finalOI = await sys.engine.getTotalOpenInterest(MARKET_ID);
+      const [finalLongOI, finalShortOI, finalSkew] = await sys.amm.getMarketSkew(MARKET_ID);
 
       expect(initialOI - finalOI).to.equal(dS);
+      expect(initialLongOI - finalLongOI).to.equal(dS);
+      expect(initialSkew - finalSkew).to.equal(BigInt(dS)); // Net skew delta = -dS
 
       // 4. Ledger Reconciliation & Active Margin Sum
       const engineCollateral = await sys.engine.totalCollateral();
