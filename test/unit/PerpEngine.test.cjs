@@ -127,17 +127,18 @@ describe("🚀 PerpEngine - Unit Tests", function () {
     });
 
     it("Should reject position with too much leverage", async function () {
-        await mockUSD.mint(user1.address, COLLATERAL_AMOUNT);
-        await mockUSD.connect(user1).approve(liquidityVault.target, COLLATERAL_AMOUNT);
+        const marginAmount = ethers.parseUnits("10000", 18); // $10k margin
+        await mockUSD.mint(user1.address, marginAmount);
+        await mockUSD.connect(user1).approve(liquidityVault.target, marginAmount);
 
-        const hugeSize = ethers.parseUnits("1000", 18); // $2M notional with $1k margin = 2000x
+        const hugeSize = ethers.parseUnits("1000", 18); // $2M notional with $8k post-fee margin = 250x
 
         await expect(
           perpEngine.connect(user1).openPosition({
             marketId: MARKET_ID,
             isLong: true,
             size: hugeSize,
-            margin: COLLATERAL_AMOUNT,
+            margin: marginAmount,
             acceptablePrice: INITIAL_PRICE * 101n / 100n,
             deadline: (await time.latest()) + 3600,
             referralCode: ethers.ZeroHash

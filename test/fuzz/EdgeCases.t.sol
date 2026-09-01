@@ -27,7 +27,7 @@ contract EdgeCasesTest is AdversarialTests {
     }
 
     function test_max_leverage_position() public {
-        uint256 margin = 1000e18;
+        uint256 margin = 1100e18; // $1100 gross margin - $100 fee = $1000 post-fee margin -> 100x leverage
         uint256 size = 50e18; // 100,000 USD notional, 100x leverage
 
         vm.prank(trader);

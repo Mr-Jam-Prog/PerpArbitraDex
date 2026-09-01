@@ -198,8 +198,8 @@ contract AdversarialTests is Test {
      */
     function test_cascade_liquidation_stress() public {
         // Open 10 positions near liquidation
-        uint256 margin = 1000e18;
-        uint256 size = 47e18; // ~95x leverage, very close to 1% margin ratio
+        uint256 margin = 1100e18; // $1100 margin -> post-fee margin $1006 -> 93.4x leverage <= 100x max
+        uint256 size = 47e18; // $94,000 notional at $2000 price
         
         uint256[] memory posIds = new uint256[](10);
         for(uint256 i=0; i<10; i++) {
