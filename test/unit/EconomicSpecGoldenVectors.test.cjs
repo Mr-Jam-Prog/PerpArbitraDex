@@ -212,6 +212,255 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
     });
   });
 
+  describe("6D Native Representability Invariants Suite (D-R1 through D-R9)", function () {
+    let sys;
+
+    beforeEach(async function () {
+      sys = await deploySystem(6); // 6-decimal quote token USDC
+
+      const lpDeposit = ethers.parseUnits("100000", 6);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      await sys.engine.connect(sys.deployer).updateProtocolFee(0n); // Turn off fee for pure collateral tests
+    });
+
+    async function assert6dInvariants(label) {
+      const nativeVaultMargin = await sys.vault.traderMarginTotal();
+      const normalizedVaultMargin = nativeVaultMargin * 10n**12n;
+      const engineCollateral = await sys.engine.totalCollateral();
+
+      expect(engineCollateral).to.equal(normalizedVaultMargin, `Engine Collateral != Vault Margin at ${label}`);
+
+      let activeMarginSum = 0n;
+      for (let i = 1; i <= 5; i++) {
+        try {
+          const pos = await sys.engine.getPositionInternal(i);
+          if (pos.isActive) activeMarginSum += pos.margin;
+        } catch {}
+      }
+      expect(engineCollateral).to.equal(activeMarginSum, `Engine Collateral != Sum(active pos.margin) at ${label}`);
+
+      const physicalBal = await sys.quote.balanceOf(sys.vault.target);
+      const liabilities = (await sys.vault.totalLpAssets()) +
+                          nativeVaultMargin +
+                          (await sys.vault.insuranceFundBalance()) +
+                          (await sys.vault.protocolFeeBalance());
+      expect(physicalBal).to.equal(liabilities, `Physical Vault Conservation Failed at ${label}`);
+    }
+
+    it("D-R1: non-representable openPosition margin (1e18 + 1 WAD)", async function () {
+      const marginReq = ethers.parseUnits("100", 18) + 1n; // 100.000000000000000001 WAD
+      const size = ethers.parseUnits("1", 18);
+
+      // Mint 100.000001 USDC (100000001 native units = 100.000001e18 WAD)
+      await sys.quote.mint(sys.t1.address, 100000001n);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, 100000001n);
+
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: marginReq,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Position margin MUST equal exactly 100000000000000000000 WAD (100.000000 USDC), no +1 WAD phantom claim
+      const pos = await sys.engine.getPositionInternal(1);
+      expect(pos.margin).to.equal(ethers.parseUnits("100", 18));
+      await assert6dInvariants("D-R1");
+    });
+
+    it("D-R2: non-representable addMargin (1e12 + 1 WAD)", async function () {
+      const marginReq = ethers.parseUnits("100", 18);
+      const size = ethers.parseUnits("1", 18);
+
+      await sys.quote.mint(sys.t1.address, 100000000n);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, 100000000n);
+
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: marginReq,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Add non-representable margin: 1e12 + 1 WAD (0.000001000000000001 USDC)
+      const addWad = 10n**12n + 1n;
+      await sys.quote.mint(sys.t1.address, 1n);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, 1n);
+
+      await sys.engine.connect(sys.t1).addMargin(1, addWad);
+
+      const pos = await sys.engine.getPositionInternal(1);
+      // Added margin MUST equal 1e12 WAD (0.000001 USDC)
+      expect(pos.margin).to.equal(ethers.parseUnits("100.000001", 18));
+      await assert6dInvariants("D-R2");
+    });
+
+    it("D-R3: non-representable removeMargin (1e12 + 1 WAD)", async function () {
+      const marginReq = ethers.parseUnits("100", 18);
+      const size = ethers.parseUnits("1", 18);
+
+      await sys.quote.mint(sys.t1.address, 100000000n);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, 100000000n);
+
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: marginReq,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Remove non-representable margin 1e12 + 1 WAD -> native payout = 1 native unit = 1e12 WAD
+      const remWad = 10n**12n + 1n;
+      await sys.engine.connect(sys.t1).removeMargin(1, remWad);
+
+      const pos = await sys.engine.getPositionInternal(1);
+      expect(pos.margin).to.equal(ethers.parseUnits("99.999999", 18));
+      await assert6dInvariants("D-R3");
+    });
+
+    it("D-R4: proportional release below 1 native unit (0 < M_rel < 1e12 WAD)", async function () {
+      // M = 200 USDC = 200e18 WAD. S = 10 ETH ($20,000 notional -> 100x max leverage).
+      const marginReq = ethers.parseUnits("200", 18);
+      const size = ethers.parseUnits("10", 18);
+
+      await sys.quote.mint(sys.t1.address, 200000000n); // 200 USDC
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, 200000000n);
+
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: marginReq,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Partial decrease 1e9 wei base (0.00000000001 ETH). Raw M_rel = 200e18 * 1e9 / 10e18 = 20e9 WAD (< 1 native micro-unit).
+      // Floor native M_rel = 0 native units = 0 WAD. M_rel WAD is 0. Full 200e18 WAD margin is retained in position margin!
+      const dS = 10n**9n; // 1e9 wei
+      await sys.engine.connect(sys.t1).decreasePosition(1, dS, 0n);
+
+      const pos = await sys.engine.getPositionInternal(1);
+      expect(pos.margin).to.equal(ethers.parseUnits("200", 18)); // Retained full 200 WAD margin
+      await assert6dInvariants("D-R4");
+    });
+
+    it("D-R5: sub-native funding owed (0 < fundingDebtWad < 1e12)", async function () {
+      const marginReq = ethers.parseUnits("100", 18);
+      const size = ethers.parseUnits("1", 18);
+
+      await sys.quote.mint(sys.t1.address, 100000000n);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, 100000000n);
+
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: marginReq,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Accrue sub-native funding debt: 1e10 WAD (0.00000001 USDC < 1 native unit)
+      // Ceil native debt = 1 native micro-unit (1e12 WAD = 0.000001 USDC)
+      await sys.amm.getFunction("setCumulativeFundingIndex")(MARKET_ID, 10n**10n);
+      await sys.engine.accrueFunding(MARKET_ID);
+
+      // Perform a partial decrease (10%) to trigger funding settlement
+      await sys.engine.connect(sys.t1).decreasePosition(1, ethers.parseUnits("0.1", 18), 0n);
+
+      const pos = await sys.engine.getPositionInternal(1);
+      // Vault traderMarginTotal = 100 - 10 (10% release payout) = 90 USDC = 90000000 native
+      // Pos margin = 90e18 - 1e12 (funding debt) = 89.999999e18 WAD
+      expect(await sys.vault.traderMarginTotal()).to.equal(90000000n);
+      expect(pos.margin).to.equal(ethers.parseUnits("90", 18));
+      await assert6dInvariants("D-R5");
+    });
+
+    it("D-R6: sub-native funding credit (0 < creditWad < 1e12)", async function () {
+      const marginReq = ethers.parseUnits("100", 18);
+      const size = ethers.parseUnits("1", 18);
+
+      await sys.quote.mint(sys.t1.address, 100000000n);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, 100000000n);
+
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: marginReq,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Accrue negative sub-native funding credit: -1e10 WAD (0.00000001 USDC)
+      // Floor native credit = 0 native units. No unsupported WAD claim created.
+      await sys.amm.getFunction("setCumulativeFundingIndex")(MARKET_ID, -(10n**10n));
+      await sys.engine.accrueFunding(MARKET_ID);
+
+      await sys.engine.connect(sys.t1).decreasePosition(1, ethers.parseUnits("0.1", 18), 0n);
+
+      const pos = await sys.engine.getPositionInternal(1);
+      expect(await sys.vault.traderMarginTotal()).to.equal(90000000n); // 90.000000 USDC
+      expect(pos.margin).to.equal(ethers.parseUnits("90", 18));
+      await assert6dInvariants("D-R6");
+    });
+
+    it("D-R7 & D-R8: sub-native realized trading loss and sub-native realized profit in 6d", async function () {
+      const marginReq = ethers.parseUnits("100", 18);
+      const size = ethers.parseUnits("1", 18);
+
+      await sys.quote.mint(sys.t1.address, 100000000n);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, 100000000n);
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: marginReq,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Price drops by 0.00000001 ($2000.00000000 -> $1999.99999999). 8-decimal representation: 200000000000n -> 199999999999n.
+      // Loss on 0.1 ETH = 1e9 WAD (< 1 native micro-unit). Native loss ceil = 1 native micro-unit (1e12 WAD)
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, 199999999999n);
+
+      await sys.engine.connect(sys.t1).decreasePosition(1, ethers.parseUnits("0.1", 18), 0n);
+      await assert6dInvariants("D-R7");
+
+      // Price surges back ($1999.99999999 -> $2000.00000000). Profit on 0.1 ETH = 1e9 WAD (< 1 native micro-unit)
+      // Native profit floor = 0 native units
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, 200000000000n);
+
+      await sys.engine.connect(sys.t1).decreasePosition(1, ethers.parseUnits("0.1", 18), 0n);
+      await assert6dInvariants("D-R8");
+    });
+  });
+
   describe("P2 Protocol Fee Ceil Rounding Tests (F-R1 through F-R7)", function () {
     it("F-R1: WAD multiplication rounds protocol fee upward when remainder exists", async function () {
       const sys = await deploySystem(18);
