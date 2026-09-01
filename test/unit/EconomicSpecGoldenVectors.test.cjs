@@ -90,6 +90,405 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
     return vaultAmount * BigInt(10 ** (18 - dec));
   }
 
+  describe("P1 Fix 1 Regression Tests — Unpaid funding debt MUST cause non-terminal mutations to revert", function () {
+    let sys;
+
+    beforeEach(async function () {
+      sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+    });
+
+    async function setupExhaustedPosition() {
+      // Open position with M = $100, S = 1 ETH
+      const margin = ethers.parseUnits("100", 18);
+      const size = ethers.parseUnits("1", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Accrue massive funding debt ($150 > $98 remaining position margin after $2 open fee)
+      await sys.amm.getFunction("setCumulativeFundingIndex")(MARKET_ID, ethers.parseUnits("150", 18));
+      return { margin, size };
+    }
+
+    it("increasePosition reverts atomically when unpaid funding debt exists", async function () {
+      await setupExhaustedPosition();
+
+      const posBefore = await sys.engine.getPositionInternal(1);
+      const marginBefore = posBefore.margin;
+      const lastIndexBefore = posBefore.lastFundingIndex;
+      const vaultTraderMarginBefore = await sys.vault.traderMarginTotal();
+      const vaultLpAssetsBefore = await sys.vault.totalLpAssets();
+
+      const addSize = ethers.parseUnits("1", 18);
+      const addMargin = ethers.parseUnits("500", 18);
+      await sys.quote.mint(sys.t1.address, addMargin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, addMargin);
+
+      await expect(
+        sys.engine.connect(sys.t1).increasePosition(1, addSize, addMargin)
+      ).to.be.revertedWith("PerpEngine: unpaid funding debt");
+
+      const posAfter = await sys.engine.getPositionInternal(1);
+      expect(posAfter.margin).to.equal(marginBefore);
+      expect(posAfter.lastFundingIndex).to.equal(lastIndexBefore);
+      expect(await sys.vault.traderMarginTotal()).to.equal(vaultTraderMarginBefore);
+      expect(await sys.vault.totalLpAssets()).to.equal(vaultLpAssetsBefore);
+    });
+
+    it("addMargin reverts atomically when unpaid funding debt exists", async function () {
+      await setupExhaustedPosition();
+
+      const posBefore = await sys.engine.getPositionInternal(1);
+      const marginBefore = posBefore.margin;
+      const lastIndexBefore = posBefore.lastFundingIndex;
+      const vaultTraderMarginBefore = await sys.vault.traderMarginTotal();
+      const vaultLpAssetsBefore = await sys.vault.totalLpAssets();
+
+      const addMargin = ethers.parseUnits("200", 18);
+      await sys.quote.mint(sys.t1.address, addMargin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, addMargin);
+
+      await expect(
+        sys.engine.connect(sys.t1).addMargin(1, addMargin)
+      ).to.be.revertedWith("PerpEngine: unpaid funding debt");
+
+      const posAfter = await sys.engine.getPositionInternal(1);
+      expect(posAfter.margin).to.equal(marginBefore);
+      expect(posAfter.lastFundingIndex).to.equal(lastIndexBefore);
+      expect(await sys.vault.traderMarginTotal()).to.equal(vaultTraderMarginBefore);
+      expect(await sys.vault.totalLpAssets()).to.equal(vaultLpAssetsBefore);
+    });
+
+    it("removeMargin reverts atomically when unpaid funding debt exists", async function () {
+      await setupExhaustedPosition();
+
+      const posBefore = await sys.engine.getPositionInternal(1);
+      const marginBefore = posBefore.margin;
+      const lastIndexBefore = posBefore.lastFundingIndex;
+      const vaultTraderMarginBefore = await sys.vault.traderMarginTotal();
+      const vaultLpAssetsBefore = await sys.vault.totalLpAssets();
+
+      await expect(
+        sys.engine.connect(sys.t1).removeMargin(1, ethers.parseUnits("10", 18))
+      ).to.be.revertedWith("PerpEngine: unpaid funding debt");
+
+      const posAfter = await sys.engine.getPositionInternal(1);
+      expect(posAfter.margin).to.equal(marginBefore);
+      expect(posAfter.lastFundingIndex).to.equal(lastIndexBefore);
+      expect(await sys.vault.traderMarginTotal()).to.equal(vaultTraderMarginBefore);
+      expect(await sys.vault.totalLpAssets()).to.equal(vaultLpAssetsBefore);
+    });
+
+    it("partial decreasePosition reverts atomically when unpaid funding debt exists", async function () {
+      await setupExhaustedPosition();
+
+      const posBefore = await sys.engine.getPositionInternal(1);
+      const marginBefore = posBefore.margin;
+      const lastIndexBefore = posBefore.lastFundingIndex;
+
+      await expect(
+        sys.engine.connect(sys.t1).decreasePosition(1, ethers.parseUnits("0.5", 18), 0n)
+      ).to.be.revertedWith("PerpEngine: margin exhausted by funding");
+
+      const posAfter = await sys.engine.getPositionInternal(1);
+      expect(posAfter.margin).to.equal(marginBefore);
+      expect(posAfter.lastFundingIndex).to.equal(lastIndexBefore);
+    });
+  });
+
+  describe("P1 Fix 2 Terminal Settlement Vectors A, B, C, D & Identity Gates", function () {
+    let sys;
+
+    beforeEach(async function () {
+      sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+    });
+
+    async function verifyDualIdentities(label, initialMargin, realizedPnl, totalFundingOwed, collectibleFee, expectedPayout, expectedBadDebt) {
+      // 1. Economic Terminal Identity Gate per ECONOMIC_SPEC
+      // initialMargin + realizedPnl - totalFundingOwed - collectibleFee == traderPayout - residualDeficit
+      const LHS = initialMargin + realizedPnl - totalFundingOwed - collectibleFee;
+      const RHS = expectedPayout - expectedBadDebt;
+      expect(LHS).to.equal(RHS, `Economic Identity Failed at ${label}`);
+
+      // 2. Physical Vault Identity Gate
+      const physicalBal = await sys.quote.balanceOf(sys.vault.target);
+      const liabilities = (await sys.vault.totalLpAssets()) +
+                          (await sys.vault.traderMarginTotal()) +
+                          (await sys.vault.insuranceFundBalance()) +
+                          (await sys.vault.protocolFeeBalance());
+      expect(physicalBal).to.equal(liabilities, `Physical Identity Failed at ${label}`);
+    }
+
+    it("Vector A: M=100, Funding=150, PnL=+100, Fee=0 -> Payout=50, BadDebt=0", async function () {
+      // Turn off protocol fee ratio for Vector A
+      await sys.engine.connect(sys.deployer).updateProtocolFee(0n);
+
+      const margin = ethers.parseUnits("100", 18);
+      const size = ethers.parseUnits("1", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Accrue $150 funding
+      await sys.amm.getFunction("setCumulativeFundingIndex")(MARKET_ID, ethers.parseUnits("150", 18));
+      // Price increases by $100 ($2,000 -> $2,100) -> PnL = +$100
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2100", 8));
+
+      const t1BalBefore = await sys.quote.balanceOf(sys.t1.address);
+      await sys.engine.connect(sys.t1).closePosition(1);
+      const t1BalAfter = await sys.quote.balanceOf(sys.t1.address);
+
+      const payout = t1BalAfter - t1BalBefore;
+      expect(payout).to.equal(ethers.parseUnits("50", 18));
+
+      await verifyDualIdentities(
+        "Vector A",
+        margin,
+        ethers.parseUnits("100", 18),
+        ethers.parseUnits("150", 18),
+        0n,
+        payout,
+        0n
+      );
+    });
+
+    it("Vector B: M=100, Funding=150, PnL=+40, Fee=0 -> Residual Bad Debt=10, Payout=0", async function () {
+      await sys.engine.connect(sys.deployer).updateProtocolFee(0n);
+
+      const margin = ethers.parseUnits("100", 18);
+      const size = ethers.parseUnits("1", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      await sys.amm.getFunction("setCumulativeFundingIndex")(MARKET_ID, ethers.parseUnits("150", 18));
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2040", 8)); // PnL = +$40
+
+      const t1BalBefore = await sys.quote.balanceOf(sys.t1.address);
+      await sys.engine.connect(sys.t1).closePosition(1);
+      const t1BalAfter = await sys.quote.balanceOf(sys.t1.address);
+
+      const payout = t1BalAfter - t1BalBefore;
+      expect(payout).to.equal(0n);
+
+      await verifyDualIdentities(
+        "Vector B",
+        margin,
+        ethers.parseUnits("40", 18),
+        ethers.parseUnits("150", 18),
+        0n,
+        payout,
+        ethers.parseUnits("10", 18)
+      );
+    });
+
+    it("Vector C: M=100, Funding=150, PnL=+100, Nominal Fee=20 -> Fee=20, Payout=30, BadDebt=0", async function () {
+      // Set protocol fee to 1% (200 bps) on $2,100 notional = $21 nominal closing fee
+      await sys.engine.connect(sys.deployer).updateProtocolFee(ethers.parseUnits("0.01", 18));
+
+      // Open fee = 1% on $2,000 = $20. So initial margin = $120 ($100 margin after open fee)
+      const margin = ethers.parseUnits("120", 18);
+      const size = ethers.parseUnits("1", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      await sys.amm.getFunction("setCumulativeFundingIndex")(MARKET_ID, ethers.parseUnits("150", 18));
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2100", 8)); // PnL = +$100
+
+      const feeBalBefore = await sys.vault.protocolFeeBalance();
+      const t1BalBefore = await sys.quote.balanceOf(sys.t1.address);
+      await sys.engine.connect(sys.t1).closePosition(1);
+      const t1BalAfter = await sys.quote.balanceOf(sys.t1.address);
+      const feeBalAfter = await sys.vault.protocolFeeBalance();
+
+      const feeCollected = feeBalAfter - feeBalBefore;
+      const payout = t1BalAfter - t1BalBefore;
+
+      expect(feeCollected).to.equal(ethers.parseUnits("21", 18));
+      expect(payout).to.equal(ethers.parseUnits("29", 18));
+
+      await verifyDualIdentities(
+        "Vector C",
+        ethers.parseUnits("100", 18),
+        ethers.parseUnits("100", 18),
+        ethers.parseUnits("150", 18),
+        feeCollected,
+        payout,
+        0n
+      );
+    });
+
+    it("Vector D: M=100, Funding=150, PnL=-100 -> Total System Deficit = 150", async function () {
+      await sys.engine.connect(sys.deployer).updateProtocolFee(0n);
+
+      const margin = ethers.parseUnits("100", 18);
+      const size = ethers.parseUnits("1", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      await sys.amm.getFunction("setCumulativeFundingIndex")(MARKET_ID, ethers.parseUnits("150", 18));
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1900", 8)); // PnL = -$100
+
+      const t1BalBefore = await sys.quote.balanceOf(sys.t1.address);
+      await sys.engine.connect(sys.t1).closePosition(1);
+      const t1BalAfter = await sys.quote.balanceOf(sys.t1.address);
+
+      const payout = t1BalAfter - t1BalBefore;
+      expect(payout).to.equal(0n);
+
+      await verifyDualIdentities(
+        "Vector D",
+        margin,
+        -ethers.parseUnits("100", 18),
+        ethers.parseUnits("150", 18),
+        0n,
+        payout,
+        ethers.parseUnits("150", 18)
+      );
+    });
+  });
+
+  describe("P1 Fix 3 Regression Tests — Unbacked trader profit MUST REVERT (18d & 6d)", function () {
+    async function testUnbackedProfitRevert(quoteDecimals) {
+      const sys = await deploySystem(quoteDecimals);
+
+      // LP deposits 3,000 quote units so openPosition (locking $2,000) succeeds
+      const lpDeposit = ethers.parseUnits("3000", quoteDecimals);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      // Trader 1 opens position with $100 margin, 1 ETH size
+      const margin = ethers.parseUnits("100", 18);
+      const marginNative = ethers.parseUnits("100", quoteDecimals);
+      const size = ethers.parseUnits("1", 18);
+
+      await sys.quote.mint(sys.t1.address, marginNative);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, marginNative);
+
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Trader 2 opens a short position, makes a massive profit, draining LP assets to only $100
+      // We can simulate depleted totalLpAssets by impersonating engine and settling a large profit to t2
+      const engineSigner = await ethers.getImpersonatedSigner(sys.engine.target);
+      await ethers.provider.send("hardhat_setBalance", [sys.engine.target, "0x1000000000000000000"]);
+
+      // Deposit $2,800 trader margin for t2, then settleTraderProfit of $2,800 profit -> leaves $200 LP assets
+      const t2Margin = ethers.parseUnits("2800", quoteDecimals);
+      await sys.quote.mint(sys.t2.address, t2Margin);
+      await sys.quote.connect(sys.t2).approve(sys.vault.target, t2Margin);
+      await sys.vault.connect(engineSigner).depositTraderMargin(sys.t2.address, t2Margin);
+
+      // Deplete LP assets to $50
+      const lpAssetsToDeplete = (await sys.vault.totalLpAssets()) - ethers.parseUnits("50", quoteDecimals);
+      await sys.vault.connect(engineSigner).settleTraderProfit(sys.t2.address, t2Margin, lpAssetsToDeplete);
+
+      // Price surges to $2,500 (+ $500 profit > $50 LP assets!)
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2500", 8));
+
+      // Attempting closePosition when vault lacks sufficient LP assets MUST REVERT
+      await expect(
+        sys.engine.connect(sys.t1).closePosition(1)
+      ).to.be.revertedWith("PerpEngine: unbacked profit");
+
+      // Assert position remains active and trader claim is preserved
+      const pos = await sys.engine.getPositionInternal(1);
+      expect(pos.isActive).to.be.true;
+
+      // Assert physical quote balance equals liabilities
+      const physBal = await sys.quote.balanceOf(sys.vault.target);
+      const liabilities = (await sys.vault.totalLpAssets()) +
+                          (await sys.vault.traderMarginTotal()) +
+                          (await sys.vault.insuranceFundBalance()) +
+                          (await sys.vault.protocolFeeBalance());
+      expect(physBal).to.equal(liabilities);
+    }
+
+    it("18D Unbacked profit reverts atomically", async function () {
+      await testUnbackedProfitRevert(18);
+    });
+
+    it("6D Unbacked profit reverts atomically", async function () {
+      await testUnbackedProfitRevert(6);
+    });
+  });
+
   describe("Blocker 1 Regression Test — Partial decrease cannot silently delete exposure", function () {
     let sys;
 

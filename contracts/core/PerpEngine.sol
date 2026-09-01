@@ -353,121 +353,151 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             ? position.lockedNotional.mulDiv(sizeReduced, position.size)
             : position.lockedNotional;
 
-        // 5. Apply Priority Order on Position Collateral (M = position.margin) according to BLOCKER 2:
-        //    Priority 1: Realized Trading Loss + Unpaid Funding Debt
-        //    Priority 2: Collectible Protocol Fee from remaining collateral
-        //    Priority 3: Net Trader Payout / Collateral Consumed
-        uint256 realizedLoss = res.realizedPnl < 0 ? uint256(-res.realizedPnl) : 0;
-        uint256 realizedProfit = res.realizedPnl > 0 ? uint256(res.realizedPnl) : 0;
+        // 5. Canonical Signed Netting & Priority Order
+        int256 netPnl = res.realizedPnl - int256(res.unpaidFundingDebt);
 
-        res.grossTradingDeficit = realizedLoss + res.unpaidFundingDebt;
+        if (netPnl >= 0) {
+            uint256 netProfit = uint256(netPnl);
+            uint256 grossEquity = res.proportionalMarginReleased + netProfit;
 
-        uint256 posMarginAvailable = position.margin;
+            res.protocolFee = nominalProtocolFee < grossEquity ? nominalProtocolFee : grossEquity;
 
-        // Priority 1: Trading Loss covered by collateral
-        res.lossCoveredByCollateral = res.grossTradingDeficit < posMarginAvailable
-            ? res.grossTradingDeficit
-            : posMarginAvailable;
+            uint256 feeFromMargin = res.protocolFee < res.proportionalMarginReleased
+                ? res.protocolFee
+                : res.proportionalMarginReleased;
+            uint256 feeFromProfit = res.protocolFee - feeFromMargin;
 
-        uint256 remainingCollateralAfterLoss = posMarginAvailable - res.lossCoveredByCollateral;
+            uint256 marginToReturn = res.proportionalMarginReleased - feeFromMargin;
+            uint256 profitToPayout = netProfit - feeFromProfit;
 
-        // Priority 2: Collectible Fee from remaining collateral
-        res.protocolFee = nominalProtocolFee < remainingCollateralAfterLoss
-            ? nominalProtocolFee
-            : remainingCollateralAfterLoss;
-
-        // Priority 3: Determine Trader Payout & Total Collateral Consumed
-        if (res.grossTradingDeficit + res.protocolFee <= res.proportionalMarginReleased) {
-            // Released margin covers trading deficit and fee fully
-            uint256 netReleased = res.proportionalMarginReleased - (res.grossTradingDeficit + res.protocolFee);
-            res.traderPayout = netReleased + realizedProfit;
+            res.traderPayout = marginToReturn + profitToPayout;
             res.totalTraderCollateralConsumed = res.proportionalMarginReleased;
+            res.lossCoveredByCollateral = 0;
             res.residualBadDebt = 0;
-        } else {
-            // Deficit/fee exceeds released margin -> consume extra margin from retained collateral up to posMarginAvailable
-            res.traderPayout = realizedProfit;
-            res.totalTraderCollateralConsumed = res.lossCoveredByCollateral + res.protocolFee;
-            res.residualBadDebt = res.grossTradingDeficit > res.lossCoveredByCollateral
-                ? res.grossTradingDeficit - res.lossCoveredByCollateral
+
+            res.remainingPositionMargin = position.margin > res.proportionalMarginReleased
+                ? position.margin - res.proportionalMarginReleased
                 : 0;
-        }
+            res.remainingPositionSize = position.size - sizeReduced;
 
-        res.remainingPositionMargin = position.margin > res.totalTraderCollateralConsumed
-            ? position.margin - res.totalTraderCollateralConsumed
-            : 0;
-        res.remainingPositionSize = position.size - sizeReduced;
+            if (sizeReduced < position.size) {
+                require(res.remainingPositionMargin > 0, "PerpEngine: remaining margin zero");
+                uint256 remainingNotional = res.remainingPositionSize.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
+                uint256 minMarginRequired = remainingNotional.mulDiv(market.minMarginRatio, PRECISION);
+                require(res.remainingPositionMargin >= minMarginRequired, "PerpEngine: remaining margin too low");
+            }
 
-        // BLOCKER 1 FIX: Partial decrease MUST NOT silently erase remaining exposure if collateral is exhausted or below minimum.
-        if (sizeReduced < position.size) {
-            require(res.remainingPositionMargin > 0, "PerpEngine: remaining margin zero");
-            uint256 remainingNotional = res.remainingPositionSize.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
-            uint256 minMarginRequired = remainingNotional.mulDiv(market.minMarginRatio, PRECISION);
-            require(res.remainingPositionMargin >= minMarginRequired, "PerpEngine: remaining margin too low");
-        }
+            // 6. CHECKS-EFFECTS
+            position.size = res.remainingPositionSize;
+            position.margin = res.remainingPositionMargin;
+            if (position.lockedNotional >= res.unlockedNotional) {
+                position.lockedNotional -= res.unlockedNotional;
+            } else {
+                position.lockedNotional = 0;
+            }
+            if (position.size == 0) {
+                position.isActive = false;
+            }
+            position.lastUpdated = block.timestamp;
 
-        // 6. CHECKS-EFFECTS (Apply state updates prior to external calls)
-        position.size = res.remainingPositionSize;
-        position.margin = res.remainingPositionMargin;
-        if (position.lockedNotional >= res.unlockedNotional) {
-            position.lockedNotional -= res.unlockedNotional;
+            totalCollateral -= res.totalTraderCollateralConsumed;
+            totalPositionSize -= sizeReduced;
+
+            IAMMPool(ammPool).updateSkew(position.marketId, position.isLong, -int256(sizeReduced));
+            _totalOpenInterest[position.marketId] -= sizeReduced;
+
+            // 7. INTERACTIONS
+            ILiquidityVault(liquidityVault).unlockLiquidity(_toVaultUnits(res.unlockedNotional));
+
+            if (res.protocolFee > 0) {
+                _protocolFees[address(quoteToken)] += res.protocolFee;
+                totalFeesAccrued += res.protocolFee;
+                if (feeFromProfit > 0) {
+                    ILiquidityVault(liquidityVault).creditTraderMarginFromLP(position.trader, _toVaultUnits(feeFromProfit));
+                }
+                ILiquidityVault(liquidityVault).collectProtocolFees(_toVaultUnits(res.protocolFee));
+            }
+
+            if (netProfit > 0) {
+                (uint256 profitPaidVaultUnits, uint256 unbackedProfitVaultUnits) = ILiquidityVault(liquidityVault).settleTraderProfit(
+                    position.trader,
+                    _toVaultUnits(marginToReturn),
+                    _toVaultUnits(profitToPayout)
+                );
+                require(unbackedProfitVaultUnits == 0, "PerpEngine: unbacked profit");
+                res.traderPayout = marginToReturn + _fromVaultUnits(profitPaidVaultUnits);
+            } else if (marginToReturn > 0) {
+                ILiquidityVault(liquidityVault).withdrawTraderMargin(position.trader, _toVaultUnits(marginToReturn));
+            }
         } else {
-            position.lockedNotional = 0;
-        }
+            // netPnl < 0
+            uint256 netDeficit = uint256(-netPnl);
+            res.grossTradingDeficit = netDeficit;
 
-        if (position.size == 0) {
-            position.isActive = false;
-        }
-        position.lastUpdated = block.timestamp;
+            uint256 posMarginAvailable = position.margin;
 
-        totalCollateral -= res.totalTraderCollateralConsumed;
-        totalPositionSize -= sizeReduced;
+            res.lossCoveredByCollateral = netDeficit < posMarginAvailable ? netDeficit : posMarginAvailable;
+            uint256 remainingCollateralAfterLoss = posMarginAvailable - res.lossCoveredByCollateral;
 
-        IAMMPool(ammPool).updateSkew(
-            position.marketId,
-            position.isLong,
-            -int256(sizeReduced)
-        );
-        _totalOpenInterest[position.marketId] -= sizeReduced;
+            res.protocolFee = nominalProtocolFee < remainingCollateralAfterLoss ? nominalProtocolFee : remainingCollateralAfterLoss;
 
-        // 7. INTERACTIONS (With LiquidityVault)
-        ILiquidityVault(liquidityVault).unlockLiquidity(_toVaultUnits(res.unlockedNotional));
+            res.traderPayout = 0;
+            res.totalTraderCollateralConsumed = res.lossCoveredByCollateral + res.protocolFee;
+            res.residualBadDebt = netDeficit > res.lossCoveredByCollateral ? netDeficit - res.lossCoveredByCollateral : 0;
 
-        if (res.residualBadDebt == 0) {
-            // Position collateral fully covered fees and loss
+            res.remainingPositionMargin = position.margin > res.totalTraderCollateralConsumed
+                ? position.margin - res.totalTraderCollateralConsumed
+                : 0;
+            res.remainingPositionSize = position.size - sizeReduced;
+
+            if (sizeReduced < position.size) {
+                require(res.remainingPositionMargin > 0, "PerpEngine: remaining margin zero");
+                uint256 remainingNotional = res.remainingPositionSize.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
+                uint256 minMarginRequired = remainingNotional.mulDiv(market.minMarginRatio, PRECISION);
+                require(res.remainingPositionMargin >= minMarginRequired, "PerpEngine: remaining margin too low");
+            }
+
+            // 6. CHECKS-EFFECTS
+            position.size = res.remainingPositionSize;
+            position.margin = res.remainingPositionMargin;
+            if (position.lockedNotional >= res.unlockedNotional) {
+                position.lockedNotional -= res.unlockedNotional;
+            } else {
+                position.lockedNotional = 0;
+            }
+            if (position.size == 0) {
+                position.isActive = false;
+            }
+            position.lastUpdated = block.timestamp;
+
+            totalCollateral -= res.totalTraderCollateralConsumed;
+            totalPositionSize -= sizeReduced;
+
+            IAMMPool(ammPool).updateSkew(position.marketId, position.isLong, -int256(sizeReduced));
+            _totalOpenInterest[position.marketId] -= sizeReduced;
+
+            // 7. INTERACTIONS
+            ILiquidityVault(liquidityVault).unlockLiquidity(_toVaultUnits(res.unlockedNotional));
+
             if (res.protocolFee > 0) {
                 _protocolFees[address(quoteToken)] += res.protocolFee;
                 totalFeesAccrued += res.protocolFee;
                 ILiquidityVault(liquidityVault).collectProtocolFees(_toVaultUnits(res.protocolFee));
             }
 
-            if (realizedProfit > 0) {
-                (uint256 profitPaidVaultUnits, ) = ILiquidityVault(liquidityVault).settleTraderProfit(
-                    position.trader,
-                    _toVaultUnits(res.totalTraderCollateralConsumed - res.protocolFee),
-                    _toVaultUnits(realizedProfit)
-                );
-                res.traderPayout = (res.totalTraderCollateralConsumed - res.protocolFee) + _fromVaultUnits(profitPaidVaultUnits);
-            } else {
+            if (res.residualBadDebt == 0) {
                 ILiquidityVault(liquidityVault).settleTraderLoss(
                     position.trader,
                     _toVaultUnits(res.traderPayout),
                     _toVaultUnits(res.lossCoveredByCollateral)
                 );
+            } else {
+                ILiquidityVault(liquidityVault).settleBadDebt(
+                    position.trader,
+                    _toVaultUnits(res.lossCoveredByCollateral),
+                    _toVaultUnits(res.grossTradingDeficit)
+                );
             }
-        } else {
-            // ALL position collateral was exhausted -> enter bad debt waterfall
-            // BLOCKER 1 & 3 FIX: Pass lossCoveredByCollateral and grossTradingDeficit to settleBadDebt
-            if (res.protocolFee > 0) {
-                _protocolFees[address(quoteToken)] += res.protocolFee;
-                totalFeesAccrued += res.protocolFee;
-                ILiquidityVault(liquidityVault).collectProtocolFees(_toVaultUnits(res.protocolFee));
-            }
-
-            ILiquidityVault(liquidityVault).settleBadDebt(
-                position.trader,
-                _toVaultUnits(res.lossCoveredByCollateral),
-                _toVaultUnits(res.grossTradingDeficit)
-            );
         }
     }
 
@@ -596,7 +626,8 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         require(priceValid, "PerpEngine: invalid price");
         
         // Settle funding on pre-increase size Q before adding dQ
-        _settleFunding(position);
+        (, uint256 unpaidFunding) = _settleFunding(position);
+        require(unpaidFunding == 0, "PerpEngine: unpaid funding debt");
 
         // Calculate new values
         uint256 newSize = position.size + sizeAdded;
@@ -946,7 +977,8 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         (uint256 currentPrice, ) = _getMarketPrice(position.marketId);
         
         // Settle funding on position before margin mutation
-        _settleFunding(position);
+        (, uint256 unpaidFunding) = _settleFunding(position);
+        require(unpaidFunding == 0, "PerpEngine: unpaid funding debt");
 
         ILiquidityVault(liquidityVault).depositTraderMargin(msg.sender, _toVaultUnits(amount));
         
@@ -977,7 +1009,8 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         require(priceValid, "PerpEngine: invalid price");
         
         // Settle funding on position before margin mutation
-        _settleFunding(position);
+        (, uint256 unpaidFunding) = _settleFunding(position);
+        require(unpaidFunding == 0, "PerpEngine: unpaid funding debt");
         require(amount <= position.margin, "PerpEngine: insufficient margin");
 
         uint256 newMargin = position.margin - amount;
