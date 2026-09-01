@@ -19,6 +19,7 @@ import {ILiquidityVault} from "../interfaces/ILiquidityVault.sol";
 import {PositionMath} from "../libraries/PositionMath.sol";
 import {SafeDecimalMath} from "../libraries/SafeDecimalMath.sol";
 import {FundingRateCalculator} from "../libraries/FundingRateCalculator.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /**
  * @title PerpEngine
@@ -231,6 +232,19 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         }
     }
 
+    function _toVaultUnitsCeil(uint256 wadAmount) internal view returns (uint256) {
+        if (wadAmount == 0) return 0;
+        uint8 vaultDec = ILiquidityVault(liquidityVault).decimals();
+        if (vaultDec == 18) {
+            return wadAmount;
+        } else if (vaultDec < 18) {
+            uint256 divisor = 10 ** (18 - vaultDec);
+            return (wadAmount + divisor - 1) / divisor;
+        } else {
+            return wadAmount * (10 ** (vaultDec - 18));
+        }
+    }
+
     function _fromVaultUnits(uint256 vaultAmount) internal view returns (uint256) {
         if (vaultAmount == 0) return 0;
         uint8 vaultDec = ILiquidityVault(liquidityVault).decimals();
@@ -343,10 +357,10 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             position.isLong
         );
 
-        // 3. Protocol fee for reduced size portion (in quote WAD)
+        // 3. Protocol fee for reduced size portion (in quote WAD with Ceil rounding)
         Market storage market = _markets[position.marketId];
         uint256 reducedNotional = sizeReduced.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
-        uint256 nominalProtocolFee = reducedNotional.mulDiv(market.protocolFeeRatio, PRECISION);
+        uint256 nominalProtocolFee = Math.mulDiv(reducedNotional, market.protocolFeeRatio, PRECISION, Math.Rounding.Up);
 
         // 4. Proportional LP locked liquidity released based on stored lockedNotional
         res.unlockedNotional = position.size > 0
@@ -360,12 +374,22 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             uint256 netProfit = uint256(netPnl);
             uint256 grossEquity = res.proportionalMarginReleased + netProfit;
 
-            res.protocolFee = nominalProtocolFee < grossEquity ? nominalProtocolFee : grossEquity;
+            uint256 rawFeeCap = nominalProtocolFee < grossEquity ? nominalProtocolFee : grossEquity;
+            uint256 nativeFeeCap = _toVaultUnitsCeil(rawFeeCap);
+            uint256 chargedFeeWad = _fromVaultUnits(nativeFeeCap);
 
-            uint256 feeFromMargin = res.protocolFee < res.proportionalMarginReleased
-                ? res.protocolFee
+            // Re-check capacity in case native conversion slightly adjusted WAD value
+            if (chargedFeeWad > grossEquity) {
+                chargedFeeWad = grossEquity;
+                nativeFeeCap = _toVaultUnits(chargedFeeWad);
+            }
+
+            res.protocolFee = chargedFeeWad;
+
+            uint256 feeFromMargin = chargedFeeWad < res.proportionalMarginReleased
+                ? chargedFeeWad
                 : res.proportionalMarginReleased;
-            uint256 feeFromProfit = res.protocolFee - feeFromMargin;
+            uint256 feeFromProfit = chargedFeeWad - feeFromMargin;
 
             uint256 marginToReturn = res.proportionalMarginReleased - feeFromMargin;
             uint256 profitToPayout = netProfit - feeFromProfit;
@@ -409,13 +433,13 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             // 7. INTERACTIONS
             ILiquidityVault(liquidityVault).unlockLiquidity(_toVaultUnits(res.unlockedNotional));
 
-            if (res.protocolFee > 0) {
-                _protocolFees[address(quoteToken)] += res.protocolFee;
-                totalFeesAccrued += res.protocolFee;
+            if (nativeFeeCap > 0) {
+                _protocolFees[address(quoteToken)] += chargedFeeWad;
+                totalFeesAccrued += chargedFeeWad;
                 if (feeFromProfit > 0) {
                     ILiquidityVault(liquidityVault).creditTraderMarginFromLP(position.trader, _toVaultUnits(feeFromProfit));
                 }
-                ILiquidityVault(liquidityVault).collectProtocolFees(_toVaultUnits(res.protocolFee));
+                ILiquidityVault(liquidityVault).collectProtocolFees(nativeFeeCap);
             }
 
             if (netProfit > 0) {
@@ -436,10 +460,13 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
 
             uint256 posMarginAvailable = position.margin;
 
-            if (res.proportionalMarginReleased >= netDeficit + nominalProtocolFee) {
+            uint256 nativeFeeNominal = _toVaultUnitsCeil(nominalProtocolFee);
+            uint256 chargedFeeNominalWad = _fromVaultUnits(nativeFeeNominal);
+
+            if (res.proportionalMarginReleased >= netDeficit + chargedFeeNominalWad) {
                 // Case 1: Proportional released margin covers deficit + fee fully
-                res.protocolFee = nominalProtocolFee;
-                res.traderPayout = res.proportionalMarginReleased - netDeficit - nominalProtocolFee;
+                res.protocolFee = chargedFeeNominalWad;
+                res.traderPayout = res.proportionalMarginReleased - netDeficit - chargedFeeNominalWad;
                 res.totalTraderCollateralConsumed = res.proportionalMarginReleased;
                 res.lossCoveredByCollateral = netDeficit;
                 res.residualBadDebt = 0;
@@ -452,8 +479,16 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
 
                 uint256 remainingCollateralAfterLoss = posMarginAvailable - res.lossCoveredByCollateral;
 
-                // Priority 2: Collectible Fee from remaining collateral after loss
-                res.protocolFee = nominalProtocolFee < remainingCollateralAfterLoss ? nominalProtocolFee : remainingCollateralAfterLoss;
+                uint256 rawFeeCap = nominalProtocolFee < remainingCollateralAfterLoss ? nominalProtocolFee : remainingCollateralAfterLoss;
+                uint256 nativeFeeCap = _toVaultUnitsCeil(rawFeeCap);
+                uint256 chargedFeeWad = _fromVaultUnits(nativeFeeCap);
+
+                if (chargedFeeWad > remainingCollateralAfterLoss) {
+                    chargedFeeWad = remainingCollateralAfterLoss;
+                    nativeFeeCap = _toVaultUnits(chargedFeeWad);
+                }
+
+                res.protocolFee = chargedFeeWad;
 
                 res.totalTraderCollateralConsumed = res.lossCoveredByCollateral + res.protocolFee;
                 res.residualBadDebt = netDeficit > res.lossCoveredByCollateral ? netDeficit - res.lossCoveredByCollateral : 0;
@@ -1438,15 +1473,21 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         
         uint256 currentPrice = IOracleAggregator(oracleAggregator).getPrice(market.oracleFeedId);
         uint256 notionalValue = size.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
-        protocolFee = notionalValue.mulDiv(market.protocolFeeRatio, PRECISION);
-        
-        if (protocolFee > 0) {
-            _protocolFees[address(quoteToken)] += protocolFee;
-            totalFeesAccrued += protocolFee;
-            require(position.margin >= protocolFee, "PerpEngine: margin too low for fees");
-            position.margin -= protocolFee;
-            totalCollateral -= protocolFee;
-            ILiquidityVault(liquidityVault).collectProtocolFees(_toVaultUnits(protocolFee));
+        uint256 nominalFeeWad = Math.mulDiv(notionalValue, market.protocolFeeRatio, PRECISION, Math.Rounding.Up);
+
+        if (nominalFeeWad > 0) {
+            uint256 feeNative = _toVaultUnitsCeil(nominalFeeWad);
+            uint256 chargedFeeWad = _fromVaultUnits(feeNative);
+
+            require(position.margin >= chargedFeeWad, "PerpEngine: margin too low for fees");
+            position.margin -= chargedFeeWad;
+            totalCollateral -= chargedFeeWad;
+
+            _protocolFees[address(quoteToken)] += chargedFeeWad;
+            totalFeesAccrued += chargedFeeWad;
+
+            ILiquidityVault(liquidityVault).collectProtocolFees(feeNative);
+            protocolFee = chargedFeeWad;
         }
         
         return protocolFee;

@@ -212,6 +212,180 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
     });
   });
 
+  describe("P2 Protocol Fee Ceil Rounding Tests (F-R1 through F-R7)", function () {
+    it("F-R1: WAD multiplication rounds protocol fee upward when remainder exists", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("100000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      // Set minPositionSize to 1 wei for testing exact 1 wei notional
+      await sys.engine.connect(sys.deployer).initializeMarket(
+        2,
+        FEED_ID,
+        ethers.parseUnits("100", 18),
+        ethers.parseUnits("0.01", 18),
+        1n, // min position size = 1 wei
+        ethers.parseUnits("0.025", 18),
+        ethers.parseUnits("0.001", 18)
+      );
+
+      const margin = ethers.parseUnits("100", 18);
+      const size = 1n; // 1 wei
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      const latestTime = await time.latest();
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1", 8));
+
+      const tx = await sys.engine.connect(sys.t1).openPosition({
+        marketId: 2,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: ethers.parseUnits("1.01", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      const receipt = await tx.wait();
+      const parsedLogs = receipt.logs.map(log => {
+        try { return sys.engine.interface.parseLog(log); } catch { return null; }
+      }).filter(Boolean);
+
+      const openEvent = parsedLogs.find(e => e.name === "PositionOpened");
+      expect(openEvent).to.not.be.undefined;
+      // WAD fee ceil MUST be exactly 1 wei (not 0)
+      expect(openEvent.args.fee).to.equal(1n);
+      expect(await sys.vault.protocolFeeBalance()).to.equal(1n);
+    });
+
+    it("F-R2 & F-R3: 6d sub-native positive fee rounds up to 1 native unit and 1.0000001 USDC rounds up once to 1.000001 USDC", async function () {
+      const sys = await deploySystem(6); // 6-decimal quote token
+
+      const lpDeposit = ethers.parseUnits("100000", 6);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      // F-R2: Sub-native WAD fee: Notional WAD = $1.00 (1e18 WAD), Fee ratio = 0.0000001 (0.001 bps)
+      // WAD fee = 1e11 (0.0000001 Quote). In 6d native units, 1e11 / 1e12 = 0.1 native micro-units -> Ceil rounds up to 1 native unit = 0.000001 USDC (1e12 WAD)
+      await sys.engine.connect(sys.deployer).updateProtocolFee(ethers.parseUnits("0.0000001", 18));
+
+      const margin = ethers.parseUnits("100", 18);
+      const marginNative = ethers.parseUnits("100", 6);
+      const size = ethers.parseUnits("1", 18); // 1 ETH at $1.00
+
+      await sys.quote.mint(sys.t1.address, marginNative);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, marginNative);
+
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1", 8));
+      let latestTime = await time.latest();
+
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: ethers.parseUnits("1.01", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Protocol fee balance in Vault MUST equal 1 native unit (0.000001 USDC)
+      expect(await sys.vault.protocolFeeBalance()).to.equal(1n);
+      // Engine protocol fee tracking MUST equal 1e12 WAD (normalized 1 native unit)
+      expect(await sys.engine.getProtocolFees(await sys.quote.getAddress())).to.equal(ethers.parseUnits("0.000001", 18));
+
+      // F-R3: Non-integral native fee: Notional = $1,000.001 -> Mathematical fee = 1.0000001 USDC -> Ceil rounds to 1.000001 USDC (1000001 native units)
+      await sys.engine.connect(sys.deployer).updateProtocolFee(ethers.parseUnits("0.001", 18)); // 10 bps
+      const margin2 = ethers.parseUnits("100", 18);
+      const margin2Native = ethers.parseUnits("100", 6);
+      // Notional = 1.000001 ETH * $1,000 = $1,000.001. Fee = $1.000001
+      const size2 = ethers.parseUnits("1.000001", 18);
+
+      await sys.quote.mint(sys.t2.address, margin2Native);
+      await sys.quote.connect(sys.t2).approve(sys.vault.target, margin2Native);
+
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1000", 8));
+      latestTime = await time.latest();
+
+      const feeBalBefore = await sys.vault.protocolFeeBalance();
+      await sys.engine.connect(sys.t2).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size2,
+        margin: margin2,
+        acceptablePrice: ethers.parseUnits("1010", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      const feeBalAfter = await sys.vault.protocolFeeBalance();
+      // Native fee collected MUST be 1000001 units (1.000001 USDC)
+      expect(feeBalAfter - feeBalBefore).to.equal(1000001n);
+    });
+
+    it("F-R4 & F-R5 & F-R6 & F-R7: 18d control, open/increase, decrease/close, and engine/vault collateral equality", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("100000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      // Open position (F-R5)
+      const margin = ethers.parseUnits("1000", 18);
+      const size = ethers.parseUnits("10", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // F-R7: Engine totalCollateral == Vault traderMarginTotal exactly
+      expect(await sys.engine.totalCollateral()).to.equal(await sys.vault.traderMarginTotal());
+
+      // Increase position (F-R5)
+      const addMargin = ethers.parseUnits("500", 18);
+      const addSize = ethers.parseUnits("5", 18);
+
+      await sys.quote.mint(sys.t1.address, addMargin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, addMargin);
+
+      await sys.engine.connect(sys.t1).increasePosition(1, addSize, addMargin);
+      expect(await sys.engine.totalCollateral()).to.equal(await sys.vault.traderMarginTotal());
+
+      // Partial decrease (F-R6)
+      await sys.engine.connect(sys.t1).decreasePosition(1, ethers.parseUnits("3", 18), 0n);
+      expect(await sys.engine.totalCollateral()).to.equal(await sys.vault.traderMarginTotal());
+
+      // Full close (F-R6)
+      await sys.engine.connect(sys.t1).closePosition(1);
+      expect(await sys.engine.totalCollateral()).to.equal(await sys.vault.traderMarginTotal());
+
+      // F-R7 Physical Vault Conservation
+      const physicalBal = await sys.quote.balanceOf(sys.vault.target);
+      const liabilities = (await sys.vault.totalLpAssets()) +
+                          (await sys.vault.traderMarginTotal()) +
+                          (await sys.vault.insuranceFundBalance()) +
+                          (await sys.vault.protocolFeeBalance());
+      expect(physicalBal).to.equal(liabilities);
+    });
+  });
+
   describe("P1 Partial Decrease Settlement Tests (P-L1, P-L2, P-L3, P-L4 & Independent Identity)", function () {
     let sys;
 
