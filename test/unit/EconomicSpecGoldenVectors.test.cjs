@@ -1950,4 +1950,232 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
       await verifyInvariants("CP11: Genuine Insolvency T2 Full Close");
     });
   });
+
+  describe("Minimum & Maintenance Margin Rounding Up Suite (MM-R1 through MM-R6)", function () {
+    async function setupSysWithLP() {
+      const sys = await deploySystem(18);
+      await sys.engine.connect(sys.deployer).updateProtocolFee(0n);
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+      return sys;
+    }
+
+    it("MM-R1 — openPosition required-margin ceil boundary", async function () {
+      const sys = await setupSysWithLP();
+
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1", 8));
+
+      // Size = 101 WAD + 1 wei. Price = $1. minMarginRatio = 1% (1e16).
+      // Notional = 101e18 + 1.
+      // Floor required margin = 1010000000000000000 (1.01 WAD).
+      // Ceil required margin = 1010000000000000001 (1.01 WAD + 1 wei).
+      const size = 101000000000000000001n;
+      const floorMargin = 1010000000000000000n;
+      const ceilMargin = 1010000000000000001n;
+
+      await sys.quote.mint(sys.t1.address, ceilMargin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, ceilMargin);
+
+      const latestTime = await time.latest();
+
+      // Attempt open with floor margin -> MUST REVERT
+      await expect(
+        sys.engine.connect(sys.t1).openPosition({
+          marketId: MARKET_ID,
+          isLong: true,
+          size: size,
+          margin: floorMargin,
+          acceptablePrice: ethers.parseUnits("2", 8),
+          deadline: latestTime + 3600,
+          referralCode: ethers.ZeroHash
+        })
+      ).to.be.revertedWith("PerpEngine: margin too low");
+
+      // Open with ceil margin -> MUST PASS
+      await expect(
+        sys.engine.connect(sys.t1).openPosition({
+          marketId: MARKET_ID,
+          isLong: true,
+          size: size,
+          margin: ceilMargin,
+          acceptablePrice: ethers.parseUnits("2", 8),
+          deadline: latestTime + 3600,
+          referralCode: ethers.ZeroHash
+        })
+      ).to.emit(sys.engine, "PositionOpened");
+    });
+
+    it("MM-R2 — increasePosition required-margin ceil boundary with zero state mutation on revert", async function () {
+      const sys = await setupSysWithLP();
+
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1", 8));
+
+      // Initial position: size = 100 WAD, margin = 1 WAD (1%)
+      const initSize = ethers.parseUnits("100", 18);
+      const initMargin = ethers.parseUnits("1", 18);
+
+      await sys.quote.mint(sys.t1.address, initMargin + ethers.parseUnits("10", 18));
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, initMargin + ethers.parseUnits("10", 18));
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: initSize,
+        margin: initMargin,
+        acceptablePrice: ethers.parseUnits("2", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Increase by 1 WAD + 1 wei size.
+      // Total size = 101 WAD + 1 wei. Ceil total margin required = 1.01 WAD + 1 wei.
+      // Add margin = 0.01 WAD (so total margin = 1.01 WAD, exactly 1 wei below ceil).
+      const addSize = 1000000000000000001n; // 1 WAD + 1 wei
+      const addMargin = 10000000000000000n; // 0.01 WAD
+
+      const posBefore = await sys.engine.getPosition(1);
+      const collatBefore = await sys.engine.totalCollateral();
+
+      await expect(
+        sys.engine.connect(sys.t1).increasePosition(1, addSize, addMargin)
+      ).to.be.revertedWith("PerpEngine: margin too low");
+
+      // Verify zero state mutation
+      const posAfter = await sys.engine.getPosition(1);
+      expect(posAfter.size).to.equal(posBefore.size);
+      expect(posAfter.margin).to.equal(posBefore.margin);
+      expect(await sys.engine.totalCollateral()).to.equal(collatBefore);
+    });
+
+    it("MM-R3 — profitable partial decrease required-margin ceil boundary", async function () {
+      const sys = await setupSysWithLP();
+
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1", 8));
+
+      // Open position: size = 202 WAD + 2 wei, margin = 2.020000000000000002 WAD
+      const initSize = 202000000000000000002n;
+      const initMargin = 2020000000000000002n;
+
+      await sys.quote.mint(sys.t1.address, initMargin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, initMargin);
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: initSize,
+        margin: initMargin,
+        acceptablePrice: ethers.parseUnits("2", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Price rises slightly to $1.00000001 (profit)
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, 100000001n);
+
+      // Reduce by half: sizeReduced = 101 WAD + 1 wei.
+      // Remaining size = 101 WAD + 1 wei.
+      // Remaining margin after release = 1.010000000000000001 WAD.
+      // Remaining notional at $1.00000001 = (101e18 + 1) * 1.00000001 = 101000001010000001.01...
+      // Ceil min margin required > 1.010000000000000001 WAD.
+      await expect(
+        sys.engine.connect(sys.t1).decreasePosition(1, 101000000000000000001n, 0n)
+      ).to.be.revertedWith("PerpEngine: remaining margin too low");
+    });
+
+    it("MM-R4 — losing partial decrease required-margin ceil boundary", async function () {
+      const sys = await setupSysWithLP();
+
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1", 8));
+
+      // Init short position: size = 202 WAD + 2 wei.
+      // At price $1.00, open req ceil = 2.02 WAD + 1 wei.
+      // Set initMargin = 2 * req_floor = 2,020,000,020,200,000,000 wei (~2.02 WAD).
+      const initSize = 202000000000000000002n;
+      const initMargin = 2020000020200000000n;
+
+      await sys.quote.mint(sys.t1.address, initMargin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, initMargin);
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: false,
+        size: initSize,
+        margin: initMargin,
+        acceptablePrice: ethers.parseUnits("0.5", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Price rises minutely to $1.00000001 (100000001n).
+      // Remaining size = 101 WAD + 1 wei.
+      // Remaining margin after loss = 1010000010100000000 wei.
+      // req_floor = 1010000010100000000 wei -> passes floor check!
+      // req_ceil = 1010000010100000001 wei -> fails ceil check!
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, 100000001n);
+
+      await expect(
+        sys.engine.connect(sys.t1).decreasePosition(1, 101000000000000000001n, 0n)
+      ).to.be.revertedWith("PerpEngine: remaining margin too low");
+    });
+
+    it("MM-R5 — maintenance margin / available margin ceil calculation", async function () {
+      const sys = await setupSysWithLP();
+
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1", 8));
+
+      const size = 101000000000000000001n;
+      const margin = ethers.parseUnits("10", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: ethers.parseUnits("2", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      const avail = await sys.engine.getAvailableMargin(1);
+      // Equity = 10 WAD. Maintenance margin = 1.01 WAD + 1 wei (1010000000000000001 wei).
+      // Available margin = 10 WAD - (1.01 WAD + 1 wei) = 8989999999999999999 (8.99 WAD - 1 wei).
+      expect(avail).to.equal(10n * 10n**18n - 1010000000000000001n);
+    });
+
+    it("MM-R6 — exact-division control proves identical value when no remainder exists", async function () {
+      const sys = await setupSysWithLP();
+
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1", 8));
+
+      const size = ethers.parseUnits("100", 18);
+      const margin = ethers.parseUnits("10", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: ethers.parseUnits("2", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      const avail = await sys.engine.getAvailableMargin(1);
+      // Maintenance margin = 1 WAD exactly. Available = 9 WAD.
+      expect(avail).to.equal(9n * 10n**18n);
+    });
+  });
 });

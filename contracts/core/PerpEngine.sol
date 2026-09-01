@@ -419,7 +419,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             if (sizeReduced < position.size) {
                 require(res.remainingPositionMargin > 0, "PerpEngine: remaining margin zero");
                 uint256 remainingNotional = res.remainingPositionSize.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
-                uint256 minMarginRequired = remainingNotional.mulDiv(market.minMarginRatio, PRECISION);
+                uint256 minMarginRequired = Math.mulDiv(remainingNotional, market.minMarginRatio, PRECISION, Math.Rounding.Up);
                 require(res.remainingPositionMargin >= minMarginRequired, "PerpEngine: remaining margin too low");
             }
 
@@ -539,7 +539,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             if (sizeReduced < position.size) {
                 require(res.remainingPositionMargin > 0, "PerpEngine: remaining margin zero");
                 uint256 remainingNotional = res.remainingPositionSize.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
-                uint256 minMarginRequired = remainingNotional.mulDiv(market.minMarginRatio, PRECISION);
+                uint256 minMarginRequired = Math.mulDiv(remainingNotional, market.minMarginRatio, PRECISION, Math.Rounding.Up);
                 require(res.remainingPositionMargin >= minMarginRequired, "PerpEngine: remaining margin too low");
             }
 
@@ -1517,7 +1517,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         require(leverage <= market.maxLeverage, "PerpEngine: leverage exceeds market max");
 
         uint256 notionalValue = size.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
-        uint256 minMarginRequired = notionalValue.mulDiv(market.minMarginRatio, PRECISION);
+        uint256 minMarginRequired = Math.mulDiv(notionalValue, market.minMarginRatio, PRECISION, Math.Rounding.Up);
         require(margin >= minMarginRequired, "PerpEngine: margin too low");
         
         (bool riskOk, string memory reason) = IRiskManager(riskManager).validatePosition(
@@ -1680,8 +1680,8 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         
         if (equity <= 0) return 0;
 
-        uint256 maintenanceMargin = position.size.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION)
-            .mulDiv(_markets[position.marketId].minMarginRatio, PRECISION);
+        uint256 maintenanceNotional = position.size.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
+        uint256 maintenanceMargin = Math.mulDiv(maintenanceNotional, _markets[position.marketId].minMarginRatio, PRECISION, Math.Rounding.Up);
             
         if (uint256(equity) <= maintenanceMargin) return 0;
         
