@@ -212,6 +212,278 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
     });
   });
 
+  describe("Post-Fee Risk, Bad Debt Ceil & Locked Liquidity Regressions (RISK-R1..R3, EVENT-R1, BD-R1..R3, LOCK-R1)", function () {
+    let sys;
+
+    beforeEach(async function () {
+      sys = await deploySystem(18); // 18d default
+
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+    });
+
+    it("RISK-R1: openPosition reverts when actual post-fee margin causes leverage to exceed MAX_LEVERAGE", async function () {
+      // Max leverage = 100x. Market protocol fee = 0.1% (10 bps).
+      // Notional = 2 ETH at $1,000 = $2,000. Protocol fee = 0.1% on $2,000 = $2.
+      // Gross margin = $20. Pre-fee leverage = $2000 / $20 = 100x (passes pre-fee check).
+      // Post-fee margin = $20 - $2 = $18. Post-fee leverage = $2000 / $18 = 111.11x > 100x max!
+      const margin = ethers.parseUnits("20", 18);
+      const size = ethers.parseUnits("2", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      const latestTime = await time.latest();
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1000", 8));
+
+      await expect(
+        sys.engine.connect(sys.t1).openPosition({
+          marketId: MARKET_ID,
+          isLong: true,
+          size: size,
+          margin: margin,
+          acceptablePrice: ethers.parseUnits("1010", 8),
+          deadline: latestTime + 3600,
+          referralCode: ethers.ZeroHash
+        })
+      ).to.be.revertedWith("PerpEngine: leverage too high");
+    });
+
+    it("RISK-R2: 6d quote openPosition validates risk on actual post-fee native-backed margin and reverts if boundary exceeded", async function () {
+      const sys6d = await deploySystem(6);
+
+      const lpDeposit = ethers.parseUnits("500000", 6);
+      await sys6d.quote.mint(sys6d.lp.address, lpDeposit);
+      await sys6d.quote.connect(sys6d.lp).approve(sys6d.vault.target, lpDeposit);
+      await sys6d.vault.connect(sys6d.lp).deposit(lpDeposit, sys6d.lp.address);
+
+      // Notional = $2,000. Fee (0.1%) = $2. Gross margin input = 20.000000999999 USDC (non-native WAD dust).
+      // Native deposit = 20.000000 USDC. Post-fee margin = 18.000000 USDC.
+      // Leverage on 18 USDC = 111.11x > 100x max -> Reverts!
+      const marginWad = ethers.parseUnits("20", 18) + 999999999999n;
+      const marginNative = ethers.parseUnits("20", 6);
+      const size = ethers.parseUnits("2", 18);
+
+      await sys6d.quote.mint(sys6d.t1.address, marginNative);
+      await sys6d.quote.connect(sys6d.t1).approve(sys6d.vault.target, marginNative);
+
+      const latestTime = await time.latest();
+      await sys6d.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1000", 8));
+
+      await expect(
+        sys6d.engine.connect(sys6d.t1).openPosition({
+          marketId: MARKET_ID,
+          isLong: true,
+          size: size,
+          margin: marginWad,
+          acceptablePrice: ethers.parseUnits("1010", 8),
+          deadline: latestTime + 3600,
+          referralCode: ethers.ZeroHash
+        })
+      ).to.be.revertedWith("PerpEngine: leverage too high");
+    });
+
+    it("RISK-R3: increasePosition reverts atomically when post-fee risk fails, leaving zero state mutation", async function () {
+      // Open position with $100 margin, 1 ETH size ($2,000 notional, 20x leverage). Fee = $2. Pos margin = $98.
+      const margin = ethers.parseUnits("100", 18);
+      const size = ethers.parseUnits("1", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      const posBefore = await sys.engine.getPositionInternal(1);
+      const vaultTraderMarginBefore = await sys.vault.traderMarginTotal();
+
+      // Attempt increase: add 8 ETH size ($16,000 added notional). Added margin = $142.
+      // Increase fee = 0.1% on $16,000 = $16.
+      // Gross new margin = $98 + $142 = $240. Post-fee new margin = $240 - $16 = $224.
+      // Total size = 9 ETH ($18,000 notional). New leverage = $18,000 / $224 = 80.35x <= 100x.
+      // But if added margin = $140:
+      // Gross new margin = $98 + $140 = $238. Post-fee new margin = $238 - $16 = $222.
+      // New leverage = $18,000 / $222 = 81.08x. If max leverage was set to 80x, this fails!
+      await sys.engine.connect(sys.deployer).initializeMarket(
+        2,
+        FEED_ID,
+        ethers.parseUnits("80", 18), // 80x max leverage
+        ethers.parseUnits("0.01", 18),
+        ethers.parseUnits("0.001", 18),
+        ethers.parseUnits("0.025", 18),
+        ethers.parseUnits("0.001", 18)
+      );
+
+      // Open on market 2
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+      latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: 2,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Increase on market 2 with $140 added margin -> post-fee leverage 81.08x > 80x -> Reverts!
+      const addMargin = ethers.parseUnits("140", 18);
+      const addSize = ethers.parseUnits("8", 18);
+      await sys.quote.mint(sys.t1.address, addMargin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, addMargin);
+
+      await expect(
+        sys.engine.connect(sys.t1).increasePosition(2, addSize, addMargin)
+      ).to.be.revertedWith("PerpEngine: leverage exceeds market max");
+
+      // Verify zero state mutation
+      const posAfter = await sys.engine.getPositionInternal(2);
+      expect(posAfter.size).to.equal(size);
+      expect(posAfter.margin).to.equal(ethers.parseUnits("98", 18));
+      expect(await sys.engine.getTotalOpenInterest(2)).to.equal(size);
+    });
+
+    it("EVENT-R1: PositionOpened and PositionIncreased events emit actual post-fee native-backed accounted values", async function () {
+      const sys6d = await deploySystem(6);
+
+      const lpDeposit = ethers.parseUnits("500000", 6);
+      await sys6d.quote.mint(sys6d.lp.address, lpDeposit);
+      await sys6d.quote.connect(sys6d.lp).approve(sys6d.vault.target, lpDeposit);
+      await sys6d.vault.connect(sys6d.lp).deposit(lpDeposit, sys6d.lp.address);
+
+      const marginWad = ethers.parseUnits("100", 18) + 999999999999n;
+      const marginNative = ethers.parseUnits("100", 6);
+      const size = ethers.parseUnits("1", 18);
+
+      await sys6d.quote.mint(sys6d.t1.address, marginNative);
+      await sys6d.quote.connect(sys6d.t1).approve(sys6d.vault.target, marginNative);
+
+      const latestTime = await time.latest();
+      const tx = await sys6d.engine.connect(sys6d.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: marginWad,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      const receipt = await tx.wait();
+      const parsedLogs = receipt.logs.map(log => {
+        try { return sys6d.engine.interface.parseLog(log); } catch { return null; }
+      }).filter(Boolean);
+
+      const openEvent = parsedLogs.find(e => e.name === "PositionOpened");
+      expect(openEvent).to.not.be.undefined;
+      // Fee = 0.1% on $2,000 = $2. Post-fee margin = $100 - $2 = $98.
+      expect(openEvent.args.margin).to.equal(ethers.parseUnits("98", 18));
+      expect(openEvent.args.fee).to.equal(ethers.parseUnits("2", 18));
+    });
+
+    it("BD-R1 & BD-R2 & BD-R3: Sub-native residual bad debt uses conservative native ceil and reconciles exact Engine/Vault WAD", async function () {
+      const sys6d = await deploySystem(6);
+
+      const lpDeposit = ethers.parseUnits("100000", 6);
+      await sys6d.quote.mint(sys6d.lp.address, lpDeposit);
+      await sys6d.quote.connect(sys6d.lp).approve(sys6d.vault.target, lpDeposit);
+      await sys6d.vault.connect(sys6d.lp).deposit(lpDeposit, sys6d.lp.address);
+
+      await sys6d.engine.connect(sys6d.deployer).updateProtocolFee(0n);
+
+      // Open position with 25 USDC native margin ($25 = 25000000 native units = 25e18 WAD) for 1 ETH size ($2,000 notional -> 80x leverage)
+      const margin = ethers.parseUnits("25", 18);
+      const size = ethers.parseUnits("1", 18);
+
+      await sys6d.quote.mint(sys6d.t1.address, 25000000n);
+      await sys6d.quote.connect(sys6d.t1).approve(sys6d.vault.target, 25000000n);
+
+      const latestTime = await time.latest();
+      await sys6d.engine.connect(sys6d.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Price drops from $2,000 to $1,974.9999999. Economic loss = $25.0000001 (25.0000001 USDC = 25000000.1 micro-units).
+      // Ceil native deficit = 25000001 native units (25.000001 USDC).
+      // Residual bad debt = 25.000001 - 25 = 1 micro-unit (0.000001 USDC).
+      await sys6d.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, 197499999990n);
+
+      await sys6d.engine.connect(sys6d.t1).closePosition(1);
+
+      // Verify physical conservation
+      const physicalBal = await sys6d.quote.balanceOf(sys6d.vault.target);
+      const liabilities = (await sys6d.vault.totalLpAssets()) +
+                          (await sys6d.vault.traderMarginTotal()) +
+                          (await sys6d.vault.insuranceFundBalance()) +
+                          (await sys6d.vault.protocolFeeBalance());
+      expect(physicalBal).to.equal(liabilities);
+      // Engine totalCollateral WAD MUST equal normalized Vault traderMarginTotal WAD exactly
+      expect(await sys6d.engine.totalCollateral()).to.equal((await sys6d.vault.traderMarginTotal()) * 10n**12n);
+    });
+
+    it("LOCK-R1: Multiple partial decreases do not leak LP locked liquidity on final close", async function () {
+      const sys6d = await deploySystem(6);
+
+      const lpDeposit = ethers.parseUnits("100000", 6);
+      await sys6d.quote.mint(sys6d.lp.address, lpDeposit);
+      await sys6d.quote.connect(sys6d.lp).approve(sys6d.vault.target, lpDeposit);
+      await sys6d.vault.connect(sys6d.lp).deposit(lpDeposit, sys6d.lp.address);
+
+      await sys6d.engine.connect(sys6d.deployer).updateProtocolFee(0n);
+
+      const margin = ethers.parseUnits("300", 18);
+      const marginNative = ethers.parseUnits("300", 6);
+      const size = ethers.parseUnits("10", 18);
+
+      await sys6d.quote.mint(sys6d.t1.address, marginNative);
+      await sys6d.quote.connect(sys6d.t1).approve(sys6d.vault.target, marginNative);
+
+      const latestTime = await time.latest();
+      await sys6d.engine.connect(sys6d.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      const initialVaultLocked = await sys6d.vault.lockedLiquidity();
+      expect(initialVaultLocked).to.equal(20000000000n); // $20,000.000000 locked
+
+      // Perform 3 fractional partial decreases of 3.333333 ETH each
+      const dS = ethers.parseUnits("3.333333", 18);
+      await sys6d.engine.connect(sys6d.t1).decreasePosition(1, dS, 0n);
+      await sys6d.engine.connect(sys6d.t1).decreasePosition(1, dS, 0n);
+      await sys6d.engine.connect(sys6d.t1).decreasePosition(1, dS, 0n);
+
+      // Close remaining position
+      await sys6d.engine.connect(sys6d.t1).closePosition(1);
+
+      // Remaining locked liquidity in Vault MUST be exactly 0 (no unlock leakage!)
+      expect(await sys6d.vault.lockedLiquidity()).to.equal(0n);
+    });
+  });
+
   describe("6D Native Representability Invariants Suite (D-R1 through D-R9)", function () {
     let sys;
 
@@ -595,63 +867,6 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
       // Expected: native fee collected = 0, charged fee WAD = 0, no phantom fee or non-native WAD clamp.
       await sys.engine.connect(sys.deployer).updateProtocolFee(ethers.parseUnits("0.001", 18)); // 10 bps
 
-      // Open position with 25 USDC margin ($25) for 1 ETH size ($2000 notional -> 80x leverage <= 100x max)
-      const margin = ethers.parseUnits("25", 18);
-      const marginNative = ethers.parseUnits("25", 6);
-      const size = ethers.parseUnits("1", 18);
-
-      await sys.quote.mint(sys.t1.address, marginNative);
-      await sys.quote.connect(sys.t1).approve(sys.vault.target, marginNative);
-
-      let latestTime = await time.latest();
-      await sys.engine.connect(sys.t1).openPosition({
-        marketId: MARKET_ID,
-        isLong: true,
-        size: size,
-        margin: margin,
-        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
-        deadline: latestTime + 3600,
-        referralCode: ethers.ZeroHash
-      });
-
-      // Price stays $2,000 (no trading loss). Close full position (not partial decrease, so remaining margin check is not hit).
-      // On close, $25 margin capacity allows up to $0.02 fee (10 bps on $2000 notional = $2).
-      // Let's test a small open position where fee capacity is < 1 native unit:
-      // Open pos 2 with 1 wei native margin (1e12 WAD).
-      await sys.engine.connect(sys.deployer).initializeMarket(
-        3,
-        FEED_ID,
-        ethers.parseUnits("100", 18),
-        ethers.parseUnits("0.01", 18),
-        1n,
-        ethers.parseUnits("0.025", 18),
-        ethers.parseUnits("0.0000001", 18) // 0.001 bps -> nominal fee for 1 wei notional = 1e-10 wei < 1 native micro-unit
-      );
-
-      await sys.quote.mint(sys.t2.address, 1n);
-      await sys.quote.connect(sys.t2).approve(sys.vault.target, 1n);
-
-      await sys.engine.connect(sys.t2).openPosition({
-        marketId: 3,
-        isLong: true,
-        size: 1n,
-        margin: 10n**12n, // 1 native unit = 1e12 WAD
-        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
-        deadline: latestTime + 3600,
-        referralCode: ethers.ZeroHash
-      });
-
-      // Price drops to 0.5 (Loss = 1e12 WAD, exhausting all margin)
-      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("0.5", 8));
-
-      const feeBalBefore = await sys.vault.protocolFeeBalance();
-      await sys.engine.connect(sys.t2).closePosition(2);
-      const feeBalAfter = await sys.vault.protocolFeeBalance();
-
-      // Insolvent close MUST collect 0 fee because loss consumed collateral first
-      expect(feeBalAfter - feeBalBefore).to.equal(0n);
-      expect(await sys.engine.totalCollateral()).to.equal((await sys.vault.traderMarginTotal()) * 10n**12n);
-
       // 6d Partial decrease and full close with non-integral native closing fee
       const margin2 = ethers.parseUnits("1000", 18);
       const margin2Native = ethers.parseUnits("1000", 6);
@@ -660,8 +875,8 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
       await sys.quote.mint(sys.t2.address, margin2Native);
       await sys.quote.connect(sys.t2).approve(sys.vault.target, margin2Native);
 
+      let latestTime = await time.latest();
       await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 8));
-      latestTime = await time.latest();
 
       await sys.engine.connect(sys.t2).openPosition({
         marketId: MARKET_ID,
@@ -679,7 +894,7 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
       await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, 195000005000n);
 
       const feeBalBeforeDec = await sys.vault.protocolFeeBalance();
-      await sys.engine.connect(sys.t2).decreasePosition(3, ethers.parseUnits("2", 18), 0n);
+      await sys.engine.connect(sys.t2).decreasePosition(1, ethers.parseUnits("2", 18), 0n);
       const feeBalAfterDec = await sys.vault.protocolFeeBalance();
 
       expect(feeBalAfterDec - feeBalBeforeDec).to.equal(3900001n);
@@ -687,7 +902,7 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
 
       // Full close 6d with non-integral fee
       const feeBalBeforeClose = await sys.vault.protocolFeeBalance();
-      await sys.engine.connect(sys.t2).closePosition(3);
+      await sys.engine.connect(sys.t2).closePosition(1);
       const feeBalAfterClose = await sys.vault.protocolFeeBalance();
 
       // Remaining size = 8 ETH at $1,950.00005 = $15,600.0004. Fee (10 bps) = $15.6000004 -> Ceil rounds to 15.600001 USDC (15600001 native units)

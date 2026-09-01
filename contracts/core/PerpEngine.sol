@@ -374,10 +374,14 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         uint256 reducedNotional = sizeReduced.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
         uint256 nominalProtocolFee = Math.mulDiv(reducedNotional, market.protocolFeeRatio, PRECISION, Math.Rounding.Up);
 
-        // 4. Proportional LP locked liquidity released based on stored lockedNotional
-        res.unlockedNotional = position.size > 0
-            ? position.lockedNotional.mulDiv(sizeReduced, position.size)
+        // 4. Proportional LP locked liquidity released based on stored lockedNotional (Native-backed)
+        uint256 rawUnlock = position.size > 0
+            ? (position.lockedNotional * sizeReduced) / position.size
             : position.lockedNotional;
+        uint256 nativeUnlock = sizeReduced == position.size
+            ? _toVaultUnits(position.lockedNotional)
+            : _toVaultUnits(rawUnlock);
+        res.unlockedNotional = _fromVaultUnits(nativeUnlock);
 
         // 5. Canonical Signed Netting & Priority Order
         int256 netPnl = res.realizedPnl - int256(res.unpaidFundingDebt);
@@ -439,7 +443,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             _totalOpenInterest[position.marketId] -= sizeReduced;
 
             // 7. INTERACTIONS
-            ILiquidityVault(liquidityVault).unlockLiquidity(_toVaultUnits(res.unlockedNotional));
+            ILiquidityVault(liquidityVault).unlockLiquidity(nativeUnlock);
 
             if (nativeFee > 0) {
                 _protocolFees[address(quoteToken)] += chargedFeeWad;
@@ -606,24 +610,47 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         } else {
             require(currentPrice >= params.acceptablePrice, "PerpEngine: price too low");
         }
-        
-        // Calculate leverage: (size * price) / margin
+
+        // 1. Derive native-backed gross margin deposit
+        uint256 nativeMarginDeposit = _toVaultUnits(params.margin);
+        uint256 effectiveGrossMarginWad = _fromVaultUnits(nativeMarginDeposit);
+
+        // 2. Derive opening protocol fee using canonical ceil pipeline
+        Market storage market = _markets[params.marketId];
         uint256 currentPriceNormalized = currentPrice * PRICE_NORMALIZATION;
         uint256 notionalValue = params.size.mulDiv(currentPriceNormalized, PRECISION);
-        uint256 leverage = notionalValue.mulDiv(PRECISION, params.margin);
-        require(leverage <= MAX_LEVERAGE, "PerpEngine: leverage too high");
+        uint256 nominalFeeWad = Math.mulDiv(notionalValue, market.protocolFeeRatio, PRECISION, Math.Rounding.Up);
         
-        // Check risk parameters using normalized quote notional value
-        _validatePositionRisk(params.marketId, params.size, params.margin, leverage, currentPrice);
-        
-        uint256 nativeMarginDeposit = _toVaultUnits(params.margin);
-        uint256 effectiveMarginWad = _fromVaultUnits(nativeMarginDeposit);
+        uint256 feeNative = 0;
+        uint256 chargedFeeWad = 0;
+        if (nominalFeeWad > 0) {
+            feeNative = _toVaultUnitsCeil(nominalFeeWad);
+            chargedFeeWad = _fromVaultUnits(feeNative);
+        }
 
-        // Lock LP liquidity backstop and deposit trader margin into vault
-        ILiquidityVault(liquidityVault).lockLiquidity(_toVaultUnits(notionalValue));
+        require(effectiveGrossMarginWad >= chargedFeeWad, "PerpEngine: margin too low for fees");
+        uint256 finalMarginWad = effectiveGrossMarginWad - chargedFeeWad;
+
+        // 3. Calculate leverage and validate risk on actual final post-fee native-backed margin
+        uint256 leverage = notionalValue.mulDiv(PRECISION, finalMarginWad);
+        require(leverage <= MAX_LEVERAGE, "PerpEngine: leverage too high");
+        _validatePositionRisk(params.marketId, params.size, finalMarginWad, leverage, currentPrice);
+
+        // 4. Derive native-backed LP locked liquidity
+        uint256 nativeLocked = _toVaultUnits(notionalValue);
+        uint256 effectiveLockedWad = _fromVaultUnits(nativeLocked);
+
+        // 5. External transfers and fee collection
+        ILiquidityVault(liquidityVault).lockLiquidity(nativeLocked);
         ILiquidityVault(liquidityVault).depositTraderMargin(msg.sender, nativeMarginDeposit);
-        
-        // Accrue funding before opening
+
+        if (feeNative > 0) {
+            _protocolFees[address(quoteToken)] += chargedFeeWad;
+            totalFeesAccrued += chargedFeeWad;
+            ILiquidityVault(liquidityVault).collectProtocolFees(feeNative);
+        }
+
+        // 6. Accrue funding before opening
         _accrueFunding(params.marketId);
         
         // Update AMM pool skew
@@ -642,14 +669,14 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             marketId: params.marketId,
             isLong: params.isLong,
             size: params.size,
-            margin: effectiveMarginWad,
+            margin: finalMarginWad,
             entryPrice: currentPrice,
             leverage: leverage,
             lastFundingIndex: marketCumIndex,
             openTime: block.timestamp,
             lastUpdated: block.timestamp,
             isActive: true,
-            lockedNotional: notionalValue
+            lockedNotional: effectiveLockedWad
         });
         
         // Update trader positions, market positions & open interest
@@ -658,12 +685,9 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         _totalOpenInterest[params.marketId] += params.size;
         
         // Update global metrics
-        totalCollateral += effectiveMarginWad;
+        totalCollateral += finalMarginWad;
         totalPositionSize += params.size;
 
-        // Calculate and collect fees
-        uint256 protocolFee = _collectFees(positionId, params.size, params.margin);
-        
         // Mint position NFT
         IPositionManager(positionManager).mint(msg.sender, positionId);
         
@@ -673,10 +697,10 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             params.marketId,
             params.isLong,
             params.size,
-            params.margin - protocolFee,
+            finalMarginWad,
             currentPrice,
             leverage,
-            protocolFee
+            chargedFeeWad
         );
     }
 
@@ -708,29 +732,50 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         (, uint256 unpaidFunding) = _settleFunding(position);
         require(unpaidFunding == 0, "PerpEngine: unpaid funding debt");
 
-        // Calculate new values
-        uint256 newSize = position.size + sizeAdded;
-        uint256 newMargin = position.margin + marginAdded;
-        
-        // Calculate leverage: (size * price) / margin
-        uint256 newNotionalValue = newSize.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
-        uint256 newLeverage = newNotionalValue.mulDiv(PRECISION, newMargin);
-        
-        require(newLeverage <= MAX_LEVERAGE, "PerpEngine: leverage too high");
-        
-        // Validate risk using normalized quote notional
-        _validatePositionRisk(position.marketId, newSize, newMargin, newLeverage, currentPrice);
-        
+        // 1. Derive native-backed margin added
         uint256 nativeMarginDeposit = _toVaultUnits(marginAdded);
         uint256 effectiveMarginAdded = _fromVaultUnits(nativeMarginDeposit);
 
-        // Lock additional LP liquidity and deposit additional margin
+        // 2. Derive increase protocol fee using canonical ceil pipeline
+        Market storage market = _markets[position.marketId];
         uint256 addedNotional = sizeAdded.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
-        ILiquidityVault(liquidityVault).lockLiquidity(_toVaultUnits(addedNotional));
+        uint256 nominalFeeWad = Math.mulDiv(addedNotional, market.protocolFeeRatio, PRECISION, Math.Rounding.Up);
+
+        uint256 feeNative = 0;
+        uint256 chargedFeeWad = 0;
+        if (nominalFeeWad > 0) {
+            feeNative = _toVaultUnitsCeil(nominalFeeWad);
+            chargedFeeWad = _fromVaultUnits(feeNative);
+        }
+
+        uint256 grossNewMargin = position.margin + effectiveMarginAdded;
+        require(grossNewMargin >= chargedFeeWad, "PerpEngine: margin too low for fees");
+        uint256 finalNewMargin = grossNewMargin - chargedFeeWad;
+
+        // 3. Calculate new leverage and validate risk on actual final post-fee native-backed margin
+        uint256 newSize = position.size + sizeAdded;
+        uint256 newNotionalValue = newSize.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
+        require(finalNewMargin > 0, "PerpEngine: margin too low");
+        uint256 newLeverage = newNotionalValue.mulDiv(PRECISION, finalNewMargin);
+
+        require(newLeverage <= MAX_LEVERAGE, "PerpEngine: leverage too high");
+        _validatePositionRisk(position.marketId, newSize, finalNewMargin, newLeverage, currentPrice);
+
+        // 4. Derive native-backed LP locked liquidity
+        uint256 nativeAddedLocked = _toVaultUnits(addedNotional);
+        uint256 effectiveAddedLockedWad = _fromVaultUnits(nativeAddedLocked);
+
+        // 5. External transfers and fee collection
+        ILiquidityVault(liquidityVault).lockLiquidity(nativeAddedLocked);
         ILiquidityVault(liquidityVault).depositTraderMargin(msg.sender, nativeMarginDeposit);
-        position.lockedNotional += addedNotional;
-        
-        // Update AMM pool skew
+
+        if (feeNative > 0) {
+            _protocolFees[address(quoteToken)] += chargedFeeWad;
+            totalFeesAccrued += chargedFeeWad;
+            ILiquidityVault(liquidityVault).collectProtocolFees(feeNative);
+        }
+
+        // 6. Update AMM pool skew
         IAMMPool(ammPool).updateSkew(
             position.marketId,
             position.isLong,
@@ -741,12 +786,13 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         uint256 oldSize = position.size;
         
         // Update global metrics
-        totalCollateral += effectiveMarginAdded;
+        totalCollateral = totalCollateral + effectiveMarginAdded - chargedFeeWad;
         totalPositionSize += sizeAdded;
 
         position.size = newSize;
-        position.margin = position.margin + effectiveMarginAdded;
+        position.margin = finalNewMargin;
         position.leverage = newLeverage;
+        position.lockedNotional += effectiveAddedLockedWad;
         position.entryPrice = _calculateNewEntryPrice(
             oldSize,
             position.entryPrice,
@@ -758,15 +804,12 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         // Update total open interest
         _totalOpenInterest[position.marketId] += sizeAdded;
         
-        // Calculate and collect fees
-        uint256 protocolFee = _collectFees(positionId, sizeAdded, marginAdded);
-        
         emit PositionIncreased(
             positionId,
             sizeAdded,
-            marginAdded,
+            effectiveMarginAdded,
             position.entryPrice,
-            protocolFee
+            chargedFeeWad
         );
     }
 
