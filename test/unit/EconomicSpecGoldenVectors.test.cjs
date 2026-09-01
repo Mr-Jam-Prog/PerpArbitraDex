@@ -300,12 +300,12 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
       // Engine protocol fee tracking MUST equal 1e12 WAD (normalized 1 native unit)
       expect(await sys.engine.getProtocolFees(await sys.quote.getAddress())).to.equal(ethers.parseUnits("0.000001", 18));
 
-      // F-R3: Non-integral native fee: Notional = $1,000.001 -> Mathematical fee = 1.0000001 USDC -> Ceil rounds to 1.000001 USDC (1000001 native units)
+      // F-R3: Real native-boundary fee: Notional = $1,000.0001 -> Mathematical fee (10 bps) = $1.0000001 -> Ceil rounds up to 1.000001 USDC (1000001 native units)
       await sys.engine.connect(sys.deployer).updateProtocolFee(ethers.parseUnits("0.001", 18)); // 10 bps
       const margin2 = ethers.parseUnits("100", 18);
       const margin2Native = ethers.parseUnits("100", 6);
-      // Notional = 1.000001 ETH * $1,000 = $1,000.001. Fee = $1.000001
-      const size2 = ethers.parseUnits("1.000001", 18);
+      // Size = 1.0000001 ETH at $1,000 price -> Notional = $1000.0001 -> Fee WAD = 1.0000001e18 -> 1.0000001 USDC
+      const size2 = ethers.parseUnits("1.0000001", 18);
 
       await sys.quote.mint(sys.t2.address, margin2Native);
       await sys.quote.connect(sys.t2).approve(sys.vault.target, margin2Native);
@@ -325,8 +325,132 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
       });
 
       const feeBalAfter = await sys.vault.protocolFeeBalance();
-      // Native fee collected MUST be 1000001 units (1.000001 USDC)
+      // Native fee collected MUST be exactly 1000001 units (1.000001 USDC)
       expect(feeBalAfter - feeBalBefore).to.equal(1000001n);
+      // Charged fee WAD MUST equal normalized 1.000001e18 WAD
+      expect(await sys.engine.getProtocolFees(await sys.quote.getAddress())).to.equal(1000001n * 10n**12n + 1n * 10n**12n);
+    });
+
+    it("F-R8 & F-R9: 6d sub-native capped fee and non-integral native fee partial decrease/full close", async function () {
+      const sys = await deploySystem(6);
+
+      const lpDeposit = ethers.parseUnits("100000", 6);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      // Sub-native capped fee test:
+      // Open position with M = 0.0000005 USDC (5e11 WAD, capacity < 1 native unit). Fee ratio = 10 bps.
+      // After open fee (0), pos margin = 5e11 WAD (< 1 native micro-unit).
+      // On close with $1 loss, remaining collateral capacity < 1 native unit.
+      // Expected: native fee collected = 0, charged fee WAD = 0, no phantom fee or non-native WAD clamp.
+      await sys.engine.connect(sys.deployer).updateProtocolFee(ethers.parseUnits("0.001", 18)); // 10 bps
+
+      // Open position with 25 USDC margin ($25) for 1 ETH size ($2000 notional -> 80x leverage <= 100x max)
+      const margin = ethers.parseUnits("25", 18);
+      const marginNative = ethers.parseUnits("25", 6);
+      const size = ethers.parseUnits("1", 18);
+
+      await sys.quote.mint(sys.t1.address, marginNative);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, marginNative);
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Price stays $2,000 (no trading loss). Close full position (not partial decrease, so remaining margin check is not hit).
+      // On close, $25 margin capacity allows up to $0.02 fee (10 bps on $2000 notional = $2).
+      // Let's test a small open position where fee capacity is < 1 native unit:
+      // Open pos 2 with 1 wei native margin (1e12 WAD).
+      await sys.engine.connect(sys.deployer).initializeMarket(
+        3,
+        FEED_ID,
+        ethers.parseUnits("100", 18),
+        ethers.parseUnits("0.01", 18),
+        1n,
+        ethers.parseUnits("0.025", 18),
+        ethers.parseUnits("0.0000001", 18) // 0.001 bps -> nominal fee for 1 wei notional = 1e-10 wei < 1 native micro-unit
+      );
+
+      await sys.quote.mint(sys.t2.address, 1n);
+      await sys.quote.connect(sys.t2).approve(sys.vault.target, 1n);
+
+      await sys.engine.connect(sys.t2).openPosition({
+        marketId: 3,
+        isLong: true,
+        size: 1n,
+        margin: 10n**12n, // 1 native unit = 1e12 WAD
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Price drops to 0.5 (Loss = 1e12 WAD, exhausting all margin)
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("0.5", 8));
+
+      const feeBalBefore = await sys.vault.protocolFeeBalance();
+      await sys.engine.connect(sys.t2).closePosition(2);
+      const feeBalAfter = await sys.vault.protocolFeeBalance();
+
+      // Insolvent close MUST collect 0 fee because loss consumed collateral first
+      expect(feeBalAfter - feeBalBefore).to.equal(0n);
+      expect(await sys.engine.totalCollateral()).to.equal((await sys.vault.traderMarginTotal()) * 10n**12n);
+
+      // 6d Partial decrease and full close with non-integral native closing fee
+      const margin2 = ethers.parseUnits("1000", 18);
+      const margin2Native = ethers.parseUnits("1000", 6);
+      const size2 = ethers.parseUnits("10", 18);
+
+      await sys.quote.mint(sys.t2.address, margin2Native);
+      await sys.quote.connect(sys.t2).approve(sys.vault.target, margin2Native);
+
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 8));
+      latestTime = await time.latest();
+
+      await sys.engine.connect(sys.t2).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size2,
+        margin: margin2,
+        acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n,
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Price drops to $1,950.00005 ($1,950.00005000 in 8 decimals = 195000005000n). Reduced size = 2 ETH.
+      // Reduced notional = 2 ETH * $1,950.00005 = $3,900.0001. Fee (10 bps) = $3.9000001.
+      // Ceil rounds up to 3.900001 USDC (3900001 native units = 3.900001e18 WAD)
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, 195000005000n);
+
+      const feeBalBeforeDec = await sys.vault.protocolFeeBalance();
+      await sys.engine.connect(sys.t2).decreasePosition(3, ethers.parseUnits("2", 18), 0n);
+      const feeBalAfterDec = await sys.vault.protocolFeeBalance();
+
+      expect(feeBalAfterDec - feeBalBeforeDec).to.equal(3900001n);
+      expect(await sys.engine.totalCollateral()).to.equal((await sys.vault.traderMarginTotal()) * 10n**12n);
+
+      // Full close 6d with non-integral fee
+      const feeBalBeforeClose = await sys.vault.protocolFeeBalance();
+      await sys.engine.connect(sys.t2).closePosition(3);
+      const feeBalAfterClose = await sys.vault.protocolFeeBalance();
+
+      // Remaining size = 8 ETH at $1,950.00005 = $15,600.0004. Fee (10 bps) = $15.6000004 -> Ceil rounds to 15.600001 USDC (15600001 native units)
+      expect(feeBalAfterClose - feeBalBeforeClose).to.equal(15600001n);
+      expect(await sys.engine.totalCollateral()).to.equal((await sys.vault.traderMarginTotal()) * 10n**12n);
+
+      const physicalBal = await sys.quote.balanceOf(sys.vault.target);
+      const liabilities = (await sys.vault.totalLpAssets()) +
+                          (await sys.vault.traderMarginTotal()) +
+                          (await sys.vault.insuranceFundBalance()) +
+                          (await sys.vault.protocolFeeBalance());
+      expect(physicalBal).to.equal(liabilities);
     });
 
     it("F-R4 & F-R5 & F-R6 & F-R7: 18d control, open/increase, decrease/close, and engine/vault collateral equality", async function () {

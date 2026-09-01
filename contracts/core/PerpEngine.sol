@@ -239,7 +239,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             return wadAmount;
         } else if (vaultDec < 18) {
             uint256 divisor = 10 ** (18 - vaultDec);
-            return (wadAmount + divisor - 1) / divisor;
+            return Math.ceilDiv(wadAmount, divisor);
         } else {
             return wadAmount * (10 ** (vaultDec - 18));
         }
@@ -374,16 +374,11 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             uint256 netProfit = uint256(netPnl);
             uint256 grossEquity = res.proportionalMarginReleased + netProfit;
 
-            uint256 rawFeeCap = nominalProtocolFee < grossEquity ? nominalProtocolFee : grossEquity;
-            uint256 nativeFeeCap = _toVaultUnitsCeil(rawFeeCap);
-            uint256 chargedFeeWad = _fromVaultUnits(nativeFeeCap);
+            uint256 nominalNative = _toVaultUnitsCeil(nominalProtocolFee);
+            uint256 capacityNative = _toVaultUnits(grossEquity);
+            uint256 nativeFee = nominalNative < capacityNative ? nominalNative : capacityNative;
 
-            // Re-check capacity in case native conversion slightly adjusted WAD value
-            if (chargedFeeWad > grossEquity) {
-                chargedFeeWad = grossEquity;
-                nativeFeeCap = _toVaultUnits(chargedFeeWad);
-            }
-
+            uint256 chargedFeeWad = _fromVaultUnits(nativeFee);
             res.protocolFee = chargedFeeWad;
 
             uint256 feeFromMargin = chargedFeeWad < res.proportionalMarginReleased
@@ -433,13 +428,13 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             // 7. INTERACTIONS
             ILiquidityVault(liquidityVault).unlockLiquidity(_toVaultUnits(res.unlockedNotional));
 
-            if (nativeFeeCap > 0) {
+            if (nativeFee > 0) {
                 _protocolFees[address(quoteToken)] += chargedFeeWad;
                 totalFeesAccrued += chargedFeeWad;
                 if (feeFromProfit > 0) {
                     ILiquidityVault(liquidityVault).creditTraderMarginFromLP(position.trader, _toVaultUnits(feeFromProfit));
                 }
-                ILiquidityVault(liquidityVault).collectProtocolFees(nativeFeeCap);
+                ILiquidityVault(liquidityVault).collectProtocolFees(nativeFee);
             }
 
             if (netProfit > 0) {
@@ -460,8 +455,8 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
 
             uint256 posMarginAvailable = position.margin;
 
-            uint256 nativeFeeNominal = _toVaultUnitsCeil(nominalProtocolFee);
-            uint256 chargedFeeNominalWad = _fromVaultUnits(nativeFeeNominal);
+            uint256 nominalNative = _toVaultUnitsCeil(nominalProtocolFee);
+            uint256 chargedFeeNominalWad = _fromVaultUnits(nominalNative);
 
             if (res.proportionalMarginReleased >= netDeficit + chargedFeeNominalWad) {
                 // Case 1: Proportional released margin covers deficit + fee fully
@@ -470,6 +465,12 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
                 res.totalTraderCollateralConsumed = res.proportionalMarginReleased;
                 res.lossCoveredByCollateral = netDeficit;
                 res.residualBadDebt = 0;
+
+                if (nominalNative > 0) {
+                    _protocolFees[address(quoteToken)] += chargedFeeNominalWad;
+                    totalFeesAccrued += chargedFeeNominalWad;
+                    ILiquidityVault(liquidityVault).collectProtocolFees(nominalNative);
+                }
             } else {
                 // Shortfall exceeds proportional released margin -> trader payout is 0, consume extra from retained collateral
                 res.traderPayout = 0;
@@ -479,19 +480,20 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
 
                 uint256 remainingCollateralAfterLoss = posMarginAvailable - res.lossCoveredByCollateral;
 
-                uint256 rawFeeCap = nominalProtocolFee < remainingCollateralAfterLoss ? nominalProtocolFee : remainingCollateralAfterLoss;
-                uint256 nativeFeeCap = _toVaultUnitsCeil(rawFeeCap);
-                uint256 chargedFeeWad = _fromVaultUnits(nativeFeeCap);
-
-                if (chargedFeeWad > remainingCollateralAfterLoss) {
-                    chargedFeeWad = remainingCollateralAfterLoss;
-                    nativeFeeCap = _toVaultUnits(chargedFeeWad);
-                }
+                uint256 capacityNative = _toVaultUnits(remainingCollateralAfterLoss);
+                uint256 nativeFee = nominalNative < capacityNative ? nominalNative : capacityNative;
+                uint256 chargedFeeWad = _fromVaultUnits(nativeFee);
 
                 res.protocolFee = chargedFeeWad;
 
                 res.totalTraderCollateralConsumed = res.lossCoveredByCollateral + res.protocolFee;
                 res.residualBadDebt = netDeficit > res.lossCoveredByCollateral ? netDeficit - res.lossCoveredByCollateral : 0;
+
+                if (nativeFee > 0) {
+                    _protocolFees[address(quoteToken)] += chargedFeeWad;
+                    totalFeesAccrued += chargedFeeWad;
+                    ILiquidityVault(liquidityVault).collectProtocolFees(nativeFee);
+                }
             }
 
             res.remainingPositionMargin = position.margin > res.totalTraderCollateralConsumed
@@ -527,12 +529,6 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
 
             // 7. INTERACTIONS
             ILiquidityVault(liquidityVault).unlockLiquidity(_toVaultUnits(res.unlockedNotional));
-
-            if (res.protocolFee > 0) {
-                _protocolFees[address(quoteToken)] += res.protocolFee;
-                totalFeesAccrued += res.protocolFee;
-                ILiquidityVault(liquidityVault).collectProtocolFees(_toVaultUnits(res.protocolFee));
-            }
 
             if (res.residualBadDebt == 0) {
                 ILiquidityVault(liquidityVault).settleTraderLoss(
