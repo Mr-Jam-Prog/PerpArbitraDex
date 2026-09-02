@@ -1,7 +1,7 @@
 "use strict";
 /**
  * Main SDK client for PerpArbitraDEX
- * Version: 1.1.0 (MVP Testnet - Checked 2026-08-31)
+ * Version: 1.2.0 (MVP Testnet - Checked 2026-09-02)
  */
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
