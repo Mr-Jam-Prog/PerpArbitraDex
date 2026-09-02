@@ -2542,4 +2542,209 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
     });
   });
 
+
+  describe("Pending Funding getMaxAdditionalSize Preview Suite (MAXQ-F1 through MAXQ-F5)", function () {
+    it("MAXQ-F1 — positive pending funding debit executable quote", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 8));
+
+      // Open long position with $1,000 margin for 1 ETH size ($2,000 notional -> 20x leverage)
+      const initSize = ethers.parseUnits("1", 18);
+      const initMargin = ethers.parseUnits("100", 18);
+      await sys.quote.mint(sys.t1.address, initMargin + ethers.parseUnits("10000", 18));
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, initMargin + ethers.parseUnits("10000", 18));
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: initSize,
+        margin: initMargin,
+        acceptablePrice: ethers.parseUnits("2020", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Accrue positive funding owed by trader (e.g. $10 debt)
+      await time.increase(1800);
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 8));
+      await sys.amm.getFunction("setCumulativeFundingIndex")(MARKET_ID, ethers.parseUnits("10", 18));
+
+      const additionalMargin = ethers.parseUnits("100", 18);
+      // Do NOT call accrueFunding manually before preview
+      const q = await sys.engine.getMaxAdditionalSize(1, additionalMargin);
+      expect(q).to.be.gt(0n);
+
+      // Verify q executes successfully via increasePosition (which settles funding first)
+      await expect(
+        sys.engine.connect(sys.t1).increasePosition(1, q, additionalMargin)
+      ).to.emit(sys.engine, "PositionIncreased");
+    });
+
+    it("MAXQ-F2 — pending funding reduces quoted max size", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 8));
+
+      const initSize = ethers.parseUnits("1", 18);
+      const initMargin = ethers.parseUnits("100", 18);
+      await sys.quote.mint(sys.t1.address, initMargin + ethers.parseUnits("10000", 18));
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, initMargin + ethers.parseUnits("10000", 18));
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: initSize,
+        margin: initMargin,
+        acceptablePrice: ethers.parseUnits("2020", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      const additionalMargin = ethers.parseUnits("100", 18);
+      const q_before = await sys.engine.getMaxAdditionalSize(1, additionalMargin);
+
+      // Advance time and introduce pending funding debt owed by trader
+      await time.increase(1800);
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 8));
+      await sys.amm.getFunction("setCumulativeFundingIndex")(MARKET_ID, ethers.parseUnits("10", 18));
+
+      const q_after = await sys.engine.getMaxAdditionalSize(1, additionalMargin);
+
+      // q_after MUST be strictly less than q_before due to pending funding debit
+      expect(q_after).to.be.lt(q_before);
+    });
+
+    it("MAXQ-F3 — unpaid funding debt returns zero max size", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 8));
+
+      const initSize = ethers.parseUnits("10", 18); // $20k notional
+      const initMargin = ethers.parseUnits("500", 18);
+      await sys.quote.mint(sys.t1.address, initMargin + ethers.parseUnits("10000", 18));
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, initMargin + ethers.parseUnits("10000", 18));
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: initSize,
+        margin: initMargin,
+        acceptablePrice: ethers.parseUnits("2020", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Massive funding payment owed by trader ($1,000 > $480 post-open margin)
+      await time.increase(1800);
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 8));
+      await sys.amm.getFunction("setCumulativeFundingIndex")(MARKET_ID, ethers.parseUnits("100", 18));
+
+      const additionalMargin = ethers.parseUnits("100", 18);
+      const q = await sys.engine.getMaxAdditionalSize(1, additionalMargin);
+
+      // Expect q == 0 because position has unpaid funding debt
+      expect(q).to.equal(0n);
+
+      // Attempting increasePosition directly reverts with unpaid funding debt
+      await expect(
+        sys.engine.connect(sys.t1).increasePosition(1, 100n, additionalMargin)
+      ).to.be.revertedWith("PerpEngine: unpaid funding debt");
+    });
+
+    it("MAXQ-F4 — negative funding credit preview", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 8));
+
+      const initSize = ethers.parseUnits("1", 18);
+      const initMargin = ethers.parseUnits("100", 18);
+      await sys.quote.mint(sys.t1.address, initMargin + ethers.parseUnits("10000", 18));
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, initMargin + ethers.parseUnits("10000", 18));
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: initSize,
+        margin: initMargin,
+        acceptablePrice: ethers.parseUnits("2020", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Negative cumulative funding index -> trader receives funding credit
+      await time.increase(1800);
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 8));
+      await sys.amm.getFunction("setCumulativeFundingIndex")(MARKET_ID, ethers.parseUnits("-10", 18));
+
+      const additionalMargin = ethers.parseUnits("100", 18);
+      const q = await sys.engine.getMaxAdditionalSize(1, additionalMargin);
+      expect(q).to.be.gt(0n);
+
+      // Verify q executes successfully after actual funding settlement
+      await expect(
+        sys.engine.connect(sys.t1).increasePosition(1, q, additionalMargin)
+      ).to.emit(sys.engine, "PositionIncreased");
+    });
+
+    it("MAXQ-F5 — no pending funding control matches MAXQ behavior", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 8));
+
+      const initSize = ethers.parseUnits("1", 18);
+      const initMargin = ethers.parseUnits("100", 18);
+      await sys.quote.mint(sys.t1.address, initMargin + ethers.parseUnits("1000", 18));
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, initMargin + ethers.parseUnits("1000", 18));
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: initSize,
+        margin: initMargin,
+        acceptablePrice: ethers.parseUnits("2020", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // No time elapsed, no funding index change
+      const additionalMargin = ethers.parseUnits("100", 18);
+      const q = await sys.engine.getMaxAdditionalSize(1, additionalMargin);
+      expect(q).to.be.gt(0n);
+
+      await expect(
+        sys.engine.connect(sys.t1).increasePosition(1, q, additionalMargin)
+      ).to.emit(sys.engine, "PositionIncreased");
+    });
+  });
 });

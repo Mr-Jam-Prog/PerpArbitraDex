@@ -1689,13 +1689,60 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     }
 
     /**
+     * @dev Previews post-funding position margin and unpaid funding debt without state mutation
+     */
+    function _previewPostFundingMargin(
+        IPerpEngine.Position storage position
+    ) internal view returns (uint256 postFundingMargin, uint256 unpaidFundingDebt) {
+        postFundingMargin = position.margin;
+        if (position.size == 0) return (postFundingMargin, 0);
+
+        (int256 previewCumIndex, ) = IAMMPool(ammPool).previewCumulativeFundingIndex(position.marketId);
+        if (position.lastFundingIndex == previewCumIndex) return (postFundingMargin, 0);
+
+        int256 fundingPayment = IAMMPool(ammPool).calculateFundingPayment(
+            position.marketId,
+            position.size,
+            position.isLong,
+            position.lastFundingIndex
+        );
+
+        if (fundingPayment == 0) return (postFundingMargin, 0);
+
+        if (fundingPayment > 0) {
+            uint256 debtWad = uint256(fundingPayment);
+            uint256 nativeDebt = _toVaultUnitsCeil(debtWad);
+            uint256 chargedDebtWad = _fromVaultUnits(nativeDebt);
+
+            if (postFundingMargin >= chargedDebtWad) {
+                postFundingMargin -= chargedDebtWad;
+                unpaidFundingDebt = 0;
+            } else {
+                uint256 nativeMarginAvailable = _toVaultUnits(postFundingMargin);
+                uint256 marginForfeitedWad = _fromVaultUnits(nativeMarginAvailable);
+
+                unpaidFundingDebt = debtWad > marginForfeitedWad ? debtWad - marginForfeitedWad : 0;
+                postFundingMargin -= marginForfeitedWad;
+            }
+        } else {
+            uint256 creditWad = uint256(-fundingPayment);
+            uint256 nativeCredit = _toVaultUnits(creditWad);
+            uint256 creditedWad = _fromVaultUnits(nativeCredit);
+
+            postFundingMargin += creditedWad;
+            unpaidFundingDebt = 0;
+        }
+    }
+
+    /**
      * @dev Internal helper to test if increasePosition(positionId, candidateSize, additionalMargin) is executable
      */
     function _canIncreasePosition(
         IPerpEngine.Position storage position,
         uint256 candidateSize,
         uint256 additionalMargin,
-        uint256 currentPrice
+        uint256 currentPrice,
+        uint256 previewPostFundingMargin
     ) internal view returns (bool) {
         if (candidateSize == 0) return true;
 
@@ -1714,7 +1761,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             chargedFeeWad = _fromVaultUnits(_toVaultUnitsCeil(nominalFeeWad));
         }
 
-        uint256 grossNewMargin = position.margin + effectiveMarginAdded;
+        uint256 grossNewMargin = previewPostFundingMargin + effectiveMarginAdded;
         if (grossNewMargin < chargedFeeWad) return false;
         uint256 finalNewMargin = grossNewMargin - chargedFeeWad;
         if (finalNewMargin == 0) return false;
@@ -1747,6 +1794,10 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         (uint256 currentPrice, bool priceValid) = _getMarketPrice(position.marketId);
         if (!priceValid) return 0;
 
+        // Derive preview post-funding margin
+        (uint256 previewMargin, uint256 unpaidFundingDebt) = _previewPostFundingMargin(position);
+        if (unpaidFundingDebt > 0) return 0;
+
         // Effective max leverage cap
         Market storage market = _markets[position.marketId];
         uint256 effectiveMaxLeverage = market.maxLeverage < MAX_LEVERAGE ? market.maxLeverage : MAX_LEVERAGE;
@@ -1754,7 +1805,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         uint256 nativeMarginDeposit = _toVaultUnits(additionalMargin);
         uint256 effectiveMarginAdded = _fromVaultUnits(nativeMarginDeposit);
 
-        uint256 grossNewMargin = position.margin + effectiveMarginAdded;
+        uint256 grossNewMargin = previewMargin + effectiveMarginAdded;
         uint256 theoreticalMaxNotional = grossNewMargin.mulDiv(effectiveMaxLeverage, PRECISION);
         uint256 currentNotional = position.size.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
 
@@ -1772,7 +1823,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
 
         while (low <= high) {
             uint256 mid = low + (high - low) / 2;
-            if (_canIncreasePosition(position, mid, additionalMargin, currentPrice)) {
+            if (_canIncreasePosition(position, mid, additionalMargin, currentPrice, previewMargin)) {
                 best = mid;
                 low = mid + 1;
             } else {

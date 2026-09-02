@@ -70,6 +70,10 @@ contract MockAMMPool is IAMMPool {
     function getCumulativeFundingIndex(uint256 marketId) external view override returns (int256) {
         return _cumulativeFundingIndices[marketId];
     }
+
+    function previewCumulativeFundingIndex(uint256 marketId) external view override returns (int256, int256) {
+        return (_cumulativeFundingIndices[marketId], _fundingRates[marketId]);
+    }
     function getTWAFundingRate(uint256, uint256) external view override returns (int256) { return 0; }
     function updateSkewScale(uint256, uint256) external override {}
     function updateMaxFundingRate(uint256, uint256) external override {}
