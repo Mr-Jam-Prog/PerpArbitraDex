@@ -68,6 +68,11 @@ interface IPerpEngine is IPositionViewer {
         uint256 fee
     );
 
+    /**
+     * @notice Emitted when a position is partially decreased.
+     * @param marginReduced Actual position collateral debit (marginBefore - marginAfter),
+     *        including proportional release plus any retained collateral consumed by realized loss / collectible fee.
+     */
     event PositionDecreased(
         uint256 indexed positionId,
         uint256 sizeReduced,

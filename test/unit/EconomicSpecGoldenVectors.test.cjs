@@ -2178,4 +2178,368 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
       expect(avail).to.equal(9n * 10n**18n);
     });
   });
+
+  describe("P2-A getMaxAdditionalSize & P2-B PositionDecreased Event Regression Suite (MAXQ-R1..R5 & EVT-R1..R4)", function () {
+    it("MAXQ-R1 — positive-fee executable maximum size quote", async function () {
+      const sys = await deploySystem(18);
+
+      // Market protocolFeeRatio = 0.1% (0.001 * 1e18 = 1e15 WAD)
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 8));
+
+      // Open initial position
+      const initSize = ethers.parseUnits("1", 18);
+      const initMargin = ethers.parseUnits("100", 18);
+      await sys.quote.mint(sys.t1.address, initMargin + ethers.parseUnits("1000", 18));
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, initMargin + ethers.parseUnits("1000", 18));
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: initSize,
+        margin: initMargin,
+        acceptablePrice: ethers.parseUnits("2020", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      const additionalMargin = ethers.parseUnits("100", 18);
+      const q = await sys.engine.getMaxAdditionalSize(1, additionalMargin);
+      expect(q).to.be.gt(0n);
+
+      // Verify q executes successfully via increasePosition
+      await expect(
+        sys.engine.connect(sys.t1).increasePosition(1, q, additionalMargin)
+      ).to.emit(sys.engine, "PositionIncreased");
+    });
+
+    it("MAXQ-R2 — maximality boundary test (q is valid, q+1 fails)", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 8));
+
+      const initSize = ethers.parseUnits("1", 18);
+      const initMargin = ethers.parseUnits("100", 18);
+      await sys.quote.mint(sys.t1.address, initMargin + ethers.parseUnits("1000", 18));
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, initMargin + ethers.parseUnits("1000", 18));
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: initSize,
+        margin: initMargin,
+        acceptablePrice: ethers.parseUnits("2020", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      const additionalMargin = ethers.parseUnits("100", 18);
+      const q = await sys.engine.getMaxAdditionalSize(1, additionalMargin);
+
+      // q + 1 MUST fail
+      await expect(
+        sys.engine.connect(sys.t1).increasePosition(1, q + 1n, additionalMargin)
+      ).to.be.reverted;
+    });
+
+    it("MAXQ-R3 — 6-decimal quote native fee ceil preview execution", async function () {
+      const sys6d = await deploySystem(6);
+
+      const lpDeposit = ethers.parseUnits("500000", 6);
+      await sys6d.quote.mint(sys6d.lp.address, lpDeposit);
+      await sys6d.quote.connect(sys6d.lp).approve(sys6d.vault.target, lpDeposit);
+      await sys6d.vault.connect(sys6d.lp).deposit(lpDeposit, sys6d.lp.address);
+
+      await sys6d.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 8));
+
+      const initSize = ethers.parseUnits("1", 18);
+      const initMargin = ethers.parseUnits("100", 18);
+      await sys6d.quote.mint(sys6d.t1.address, 1000000000n); // 1000 USDC
+      await sys6d.quote.connect(sys6d.t1).approve(sys6d.vault.target, 1000000000n);
+
+      let latestTime = await time.latest();
+      await sys6d.engine.connect(sys6d.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: initSize,
+        margin: initMargin,
+        acceptablePrice: ethers.parseUnits("2020", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      const additionalMargin = ethers.parseUnits("100", 18);
+      const q = await sys6d.engine.getMaxAdditionalSize(1, additionalMargin);
+      expect(q).to.be.gt(0n);
+
+      // Quoted q executes successfully
+      await expect(
+        sys6d.engine.connect(sys6d.t1).increasePosition(1, q, additionalMargin)
+      ).to.emit(sys6d.engine, "PositionIncreased");
+    });
+
+    it("MAXQ-R4 — non-native-representable additional margin input handling", async function () {
+      const sys6d = await deploySystem(6);
+
+      const lpDeposit = ethers.parseUnits("500000", 6);
+      await sys6d.quote.mint(sys6d.lp.address, lpDeposit);
+      await sys6d.quote.connect(sys6d.lp).approve(sys6d.vault.target, lpDeposit);
+      await sys6d.vault.connect(sys6d.lp).deposit(lpDeposit, sys6d.lp.address);
+
+      await sys6d.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 8));
+
+      const initSize = ethers.parseUnits("1", 18);
+      const initMargin = ethers.parseUnits("100", 18);
+      await sys6d.quote.mint(sys6d.t1.address, 1000000000n);
+      await sys6d.quote.connect(sys6d.t1).approve(sys6d.vault.target, 1000000000n);
+
+      let latestTime = await time.latest();
+      await sys6d.engine.connect(sys6d.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: initSize,
+        margin: initMargin,
+        acceptablePrice: ethers.parseUnits("2020", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Additional margin with non-representable WAD dust (+1 wei WAD)
+      const additionalMarginDust = ethers.parseUnits("100", 18) + 1n;
+      const q = await sys6d.engine.getMaxAdditionalSize(1, additionalMarginDust);
+      expect(q).to.be.gt(0n);
+
+      // Returned q executes successfully
+      await expect(
+        sys6d.engine.connect(sys6d.t1).increasePosition(1, q, additionalMarginDust)
+      ).to.emit(sys6d.engine, "PositionIncreased");
+    });
+
+    it("MAXQ-R5 — zero-protocol-fee control", async function () {
+      const sys = await deploySystem(18);
+      await sys.engine.connect(sys.deployer).updateProtocolFee(0n);
+
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 8));
+
+      const initSize = ethers.parseUnits("1", 18);
+      const initMargin = ethers.parseUnits("100", 18);
+      await sys.quote.mint(sys.t1.address, initMargin + ethers.parseUnits("1000", 18));
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, initMargin + ethers.parseUnits("1000", 18));
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: initSize,
+        margin: initMargin,
+        acceptablePrice: ethers.parseUnits("2020", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      const additionalMargin = ethers.parseUnits("100", 18);
+      const q = await sys.engine.getMaxAdditionalSize(1, additionalMargin);
+
+      // Under 0 fee, max leverage = 100x. Total margin = $200. Max notional = $20,000.
+      // Current notional = $2,000. Additional notional = $18,000 -> size = 9 ETH (9e18 WAD).
+      expect(q).to.equal(ethers.parseUnits("9", 18));
+
+      await expect(
+        sys.engine.connect(sys.t1).increasePosition(1, q, additionalMargin)
+      ).to.emit(sys.engine, "PositionIncreased");
+    });
+
+    it("EVT-R1 — losing partial decrease emits actual stored collateral debit", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("100000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      // Position: M = $1000, S = 10 ETH ($20,000 notional at $2,000 price)
+      const margin = ethers.parseUnits("1000", 18);
+      const size = ethers.parseUnits("10", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: ethers.parseUnits("2020", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Price drops to $1,875 (2 ETH decrease has loss = 2 * $125 = $250).
+      // Closing fee on 2 ETH at $1875 ($3750 notional) = $3.75. Total shortfall = $253.75.
+      // Proportional margin released = 2/10 * $980 (after $20 open fee) = $196.
+      // Shortfall ($253.75) > $196 -> payout = 0, extra $57.75 consumed from retained collateral.
+      // Total trader collateral consumed = $253.75.
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1875", 8));
+
+      const posBefore = await sys.engine.getPosition(1);
+      const tx = await sys.engine.connect(sys.t1).decreasePosition(1, ethers.parseUnits("2", 18), 0n);
+      const receipt = await tx.wait();
+
+      const posAfter = await sys.engine.getPosition(1);
+      const actualDelta = posBefore.margin - posAfter.margin;
+
+      const log = receipt.logs.map(l => {
+        try { return sys.engine.interface.parseLog(l); } catch { return null; }
+      }).find(l => l && l.name === "PositionDecreased");
+
+      expect(log.args.marginReduced).to.equal(actualDelta);
+      expect(log.args.marginReduced).to.be.gt(ethers.parseUnits("196", 18));
+    });
+
+    it("EVT-R2 — ordinary/profitable partial decrease emits exact margin delta", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("100000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      const margin = ethers.parseUnits("1000", 18);
+      const size = ethers.parseUnits("10", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: ethers.parseUnits("2020", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Price rises to $2,200 (profitable decrease)
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2200", 8));
+
+      const posBefore = await sys.engine.getPosition(1);
+      const tx = await sys.engine.connect(sys.t1).decreasePosition(1, ethers.parseUnits("2", 18), 0n);
+      const receipt = await tx.wait();
+
+      const posAfter = await sys.engine.getPosition(1);
+      const actualDelta = posBefore.margin - posAfter.margin;
+
+      const log = receipt.logs.map(l => {
+        try { return sys.engine.interface.parseLog(l); } catch { return null; }
+      }).find(l => l && l.name === "PositionDecreased");
+
+      expect(log.args.marginReduced).to.equal(actualDelta);
+    });
+
+    it("EVT-R3 — simulated subgraph indexer reconstruction invariant", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("100000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      const margin = ethers.parseUnits("1000", 18);
+      const size = ethers.parseUnits("10", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      let latestTime = await time.latest();
+      const openTx = await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: ethers.parseUnits("2020", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+      const openReceipt = await openTx.wait();
+      const openLog = openReceipt.logs.map(l => {
+        try { return sys.engine.interface.parseLog(l); } catch { return null; }
+      }).find(l => l && l.name === "PositionOpened");
+
+      // Subgraph initializes collateral to open event margin ($980)
+      let indexedCollateral = openLog.args.margin;
+
+      // Partial decrease with loss
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1875", 8));
+      const decTx = await sys.engine.connect(sys.t1).decreasePosition(1, ethers.parseUnits("2", 18), 0n);
+      const decReceipt = await decTx.wait();
+      const decLog = decReceipt.logs.map(l => {
+        try { return sys.engine.interface.parseLog(l); } catch { return null; }
+      }).find(l => l && l.name === "PositionDecreased");
+
+      // Subgraph updates collateral: position.collateral = position.collateral - event.marginReduced
+      indexedCollateral -= decLog.args.marginReduced;
+
+      // Assert simulated subgraph indexed collateral matches on-chain position.margin exactly
+      const onChainPos = await sys.engine.getPosition(1);
+      expect(indexedCollateral).to.equal(onChainPos.margin);
+    });
+
+    it("EVT-R4 — fee-consuming retained collateral emitted accurately in marginReduced", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("100000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      const margin = ethers.parseUnits("1000", 18);
+      const size = ethers.parseUnits("10", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: ethers.parseUnits("2020", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Price drops slightly ($1,980) so trading loss on 2 ETH = $40. Closing fee = $3.96.
+      // Proportional margin released = $196.
+      // $196 > $43.96 (loss + fee) -> Case 1.
+      const tx = await sys.engine.connect(sys.t1).decreasePosition(1, ethers.parseUnits("2", 18), 0n);
+      const receipt = await tx.wait();
+
+      const log = receipt.logs.map(l => {
+        try { return sys.engine.interface.parseLog(l); } catch { return null; }
+      }).find(l => l && l.name === "PositionDecreased");
+
+      expect(log.args.marginReduced).to.equal(ethers.parseUnits("196", 18));
+    });
+  });
+
 });

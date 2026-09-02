@@ -843,7 +843,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         emit PositionDecreased(
             positionId,
             sizeReduced,
-            res.proportionalMarginReleased,
+            res.totalTraderCollateralConsumed,
             uint256(res.realizedPnl >= 0 ? res.realizedPnl : -res.realizedPnl),
             res.protocolFee
         );
@@ -1688,20 +1688,100 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         return uint256(equity) - maintenanceMargin;
     }
 
+    /**
+     * @dev Internal helper to test if increasePosition(positionId, candidateSize, additionalMargin) is executable
+     */
+    function _canIncreasePosition(
+        IPerpEngine.Position storage position,
+        uint256 candidateSize,
+        uint256 additionalMargin,
+        uint256 currentPrice
+    ) internal view returns (bool) {
+        if (candidateSize == 0) return true;
+
+        Market storage market = _markets[position.marketId];
+
+        // 1. Derive effective native-backed additional margin
+        uint256 nativeMarginDeposit = _toVaultUnits(additionalMargin);
+        uint256 effectiveMarginAdded = _fromVaultUnits(nativeMarginDeposit);
+
+        // 2. Derive increase protocol fee
+        uint256 addedNotional = candidateSize.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
+        uint256 nominalFeeWad = Math.mulDiv(addedNotional, market.protocolFeeRatio, PRECISION, Math.Rounding.Up);
+
+        uint256 chargedFeeWad = 0;
+        if (nominalFeeWad > 0) {
+            chargedFeeWad = _fromVaultUnits(_toVaultUnitsCeil(nominalFeeWad));
+        }
+
+        uint256 grossNewMargin = position.margin + effectiveMarginAdded;
+        if (grossNewMargin < chargedFeeWad) return false;
+        uint256 finalNewMargin = grossNewMargin - chargedFeeWad;
+        if (finalNewMargin == 0) return false;
+
+        // 3. Leverage and minimum margin checks
+        uint256 newSize = position.size + candidateSize;
+        uint256 newNotionalValue = newSize.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
+        uint256 newLeverage = newNotionalValue.mulDiv(PRECISION, finalNewMargin);
+
+        uint256 effectiveMaxLeverage = market.maxLeverage < MAX_LEVERAGE ? market.maxLeverage : MAX_LEVERAGE;
+        if (newLeverage > effectiveMaxLeverage) return false;
+
+        uint256 minMarginRequired = Math.mulDiv(newNotionalValue, market.minMarginRatio, PRECISION, Math.Rounding.Up);
+        if (finalNewMargin < minMarginRequired) return false;
+
+        // 4. External RiskManager check
+        (bool riskOk, ) = IRiskManager(riskManager).validatePosition(
+            position.marketId,
+            newSize,
+            finalNewMargin,
+            newLeverage
+        );
+        return riskOk;
+    }
+
     function getMaxAdditionalSize(uint256 positionId, uint256 additionalMargin) external view override returns (uint256 maxAdditionalSize) {
         IPerpEngine.Position storage position = _positions[positionId];
         if (!position.isActive) return 0;
 
-        (uint256 currentPrice, ) = _getMarketPrice(position.marketId);
-        uint256 totalMargin = position.margin + additionalMargin;
-        
+        (uint256 currentPrice, bool priceValid) = _getMarketPrice(position.marketId);
+        if (!priceValid) return 0;
+
+        // Effective max leverage cap
+        Market storage market = _markets[position.marketId];
+        uint256 effectiveMaxLeverage = market.maxLeverage < MAX_LEVERAGE ? market.maxLeverage : MAX_LEVERAGE;
+
+        uint256 nativeMarginDeposit = _toVaultUnits(additionalMargin);
+        uint256 effectiveMarginAdded = _fromVaultUnits(nativeMarginDeposit);
+
+        uint256 grossNewMargin = position.margin + effectiveMarginAdded;
+        uint256 theoreticalMaxNotional = grossNewMargin.mulDiv(effectiveMaxLeverage, PRECISION);
         uint256 currentNotional = position.size.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
-        uint256 maxNotional = totalMargin.mulDiv(_markets[position.marketId].maxLeverage, PRECISION);
-        
-        if (maxNotional <= currentNotional) return 0;
-        
-        uint256 additionalNotional = maxNotional - currentNotional;
-        return additionalNotional.mulDiv(PRECISION, currentPrice * PRICE_NORMALIZATION);
+
+        if (theoreticalMaxNotional <= currentNotional) return 0;
+
+        uint256 maxAdditionalNotional = theoreticalMaxNotional - currentNotional;
+        uint256 upperBoundSize = maxAdditionalNotional.mulDiv(PRECISION, currentPrice * PRICE_NORMALIZATION);
+
+        if (upperBoundSize == 0) return 0;
+
+        // Deterministic binary search over size range [0, upperBoundSize] to find max size that passes _canIncreasePosition
+        uint256 low = 0;
+        uint256 high = upperBoundSize;
+        uint256 best = 0;
+
+        while (low <= high) {
+            uint256 mid = low + (high - low) / 2;
+            if (_canIncreasePosition(position, mid, additionalMargin, currentPrice)) {
+                best = mid;
+                low = mid + 1;
+            } else {
+                if (mid == 0) break;
+                high = mid - 1;
+            }
+        }
+
+        return best;
     }
 
     function batchGetPositions(uint256[] calldata positionIds) external view override returns (PositionView[] memory views) {
