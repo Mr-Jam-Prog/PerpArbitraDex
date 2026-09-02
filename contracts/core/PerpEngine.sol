@@ -1700,11 +1700,11 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         (int256 previewCumIndex, ) = IAMMPool(ammPool).previewCumulativeFundingIndex(position.marketId);
         if (position.lastFundingIndex == previewCumIndex) return (postFundingMargin, 0);
 
-        int256 fundingPayment = IAMMPool(ammPool).calculateFundingPayment(
-            position.marketId,
+        int256 fundingPayment = FundingRateCalculator.calculateFundingPayment(
             position.size,
-            position.isLong,
-            position.lastFundingIndex
+            position.lastFundingIndex,
+            previewCumIndex,
+            position.isLong
         );
 
         if (fundingPayment == 0) return (postFundingMargin, 0);

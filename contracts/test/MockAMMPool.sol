@@ -7,8 +7,20 @@ contract MockAMMPool is IAMMPool {
     mapping(uint256 => int256) private _cumulativeFundingIndices;
     mapping(uint256 => int256) private _fundingRates;
 
+    mapping(uint256 => int256) private _previewFundingIndices;
+    mapping(uint256 => bool) private _hasPreviewFundingIndex;
+
     function setCumulativeFundingIndex(uint256 marketId, int256 index) external {
         _cumulativeFundingIndices[marketId] = index;
+    }
+
+    function setPreviewCumulativeFundingIndex(uint256 marketId, int256 index) external {
+        _previewFundingIndices[marketId] = index;
+        _hasPreviewFundingIndex[marketId] = true;
+    }
+
+    function clearPreviewCumulativeFundingIndex(uint256 marketId) external {
+        _hasPreviewFundingIndex[marketId] = false;
     }
 
     function setFundingRate(uint256 marketId, int256 rate) external {
@@ -72,7 +84,10 @@ contract MockAMMPool is IAMMPool {
     }
 
     function previewCumulativeFundingIndex(uint256 marketId) external view override returns (int256, int256) {
-        return (_cumulativeFundingIndices[marketId], _fundingRates[marketId]);
+        int256 previewIdx = _hasPreviewFundingIndex[marketId]
+            ? _previewFundingIndices[marketId]
+            : _cumulativeFundingIndices[marketId];
+        return (previewIdx, _fundingRates[marketId]);
     }
     function getTWAFundingRate(uint256, uint256) external view override returns (int256) { return 0; }
     function updateSkewScale(uint256, uint256) external override {}

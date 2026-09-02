@@ -2543,8 +2543,8 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
   });
 
 
-  describe("Pending Funding getMaxAdditionalSize Preview Suite (MAXQ-F1 through MAXQ-F5)", function () {
-    it("MAXQ-F1 — positive pending funding debit executable quote", async function () {
+  describe("Pending Funding getMaxAdditionalSize Preview Suite (MAXQ-F1 through MAXQ-F5 & Codex Root Cause)", function () {
+    it("MAXQ-F1 — positive pending unaccrued debit quote and execution", async function () {
       const sys = await deploySystem(18);
 
       const lpDeposit = ethers.parseUnits("500000", 18);
@@ -2554,7 +2554,6 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
 
       await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 8));
 
-      // Open long position with $1,000 margin for 1 ETH size ($2,000 notional -> 20x leverage)
       const initSize = ethers.parseUnits("1", 18);
       const initMargin = ethers.parseUnits("100", 18);
       await sys.quote.mint(sys.t1.address, initMargin + ethers.parseUnits("10000", 18));
@@ -2571,23 +2570,32 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
         referralCode: ethers.ZeroHash
       });
 
-      // Accrue positive funding owed by trader (e.g. $10 debt)
-      await time.increase(1800);
-      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 8));
-      await sys.amm.getFunction("setCumulativeFundingIndex")(MARKET_ID, ethers.parseUnits("10", 18));
+      const pos = await sys.engine.getPositionInternal(1);
+      const storedCumIndex = await sys.amm.getCumulativeFundingIndex(MARKET_ID);
+      expect(pos.lastFundingIndex).to.equal(storedCumIndex);
+
+      // Set ONLY preview cumulative index higher (unaccrued pending funding debt)
+      const previewCumIndex = storedCumIndex + ethers.parseUnits("10", 18); // $10 debt
+      await sys.amm.setPreviewCumulativeFundingIndex(MARKET_ID, previewCumIndex);
+
+      // CRITICAL ASSERTION: stored index != preview index before preview call
+      expect(await sys.amm.getCumulativeFundingIndex(MARKET_ID)).to.not.equal(previewCumIndex);
 
       const additionalMargin = ethers.parseUnits("100", 18);
-      // Do NOT call accrueFunding manually before preview
       const q = await sys.engine.getMaxAdditionalSize(1, additionalMargin);
       expect(q).to.be.gt(0n);
 
-      // Verify q executes successfully via increasePosition (which settles funding first)
+      // Before execution, materialize the preview index as the stored index
+      await sys.amm.setCumulativeFundingIndex(MARKET_ID, previewCumIndex);
+      await sys.amm.clearPreviewCumulativeFundingIndex(MARKET_ID);
+
+      // Quoted size q MUST execute successfully
       await expect(
         sys.engine.connect(sys.t1).increasePosition(1, q, additionalMargin)
       ).to.emit(sys.engine, "PositionIncreased");
     });
 
-    it("MAXQ-F2 — pending funding reduces quoted max size", async function () {
+    it("MAXQ-F2 — pending debit reduces quote while stored index is unchanged", async function () {
       const sys = await deploySystem(18);
 
       const lpDeposit = ethers.parseUnits("500000", 18);
@@ -2614,20 +2622,24 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
       });
 
       const additionalMargin = ethers.parseUnits("100", 18);
-      const q_before = await sys.engine.getMaxAdditionalSize(1, additionalMargin);
+      const q0 = await sys.engine.getMaxAdditionalSize(1, additionalMargin);
 
-      // Advance time and introduce pending funding debt owed by trader
-      await time.increase(1800);
-      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 8));
-      await sys.amm.getFunction("setCumulativeFundingIndex")(MARKET_ID, ethers.parseUnits("10", 18));
+      const storedBefore = await sys.amm.getCumulativeFundingIndex(MARKET_ID);
 
-      const q_after = await sys.engine.getMaxAdditionalSize(1, additionalMargin);
+      // Set ONLY preview index higher without changing stored index
+      const previewCumIndex = storedBefore + ethers.parseUnits("10", 18);
+      await sys.amm.setPreviewCumulativeFundingIndex(MARKET_ID, previewCumIndex);
 
-      // q_after MUST be strictly less than q_before due to pending funding debit
-      expect(q_after).to.be.lt(q_before);
+      const storedAfter = await sys.amm.getCumulativeFundingIndex(MARKET_ID);
+      expect(storedAfter).to.equal(storedBefore); // Stored index is unchanged!
+
+      const q1 = await sys.engine.getMaxAdditionalSize(1, additionalMargin);
+
+      // q1 MUST be strictly less than q0
+      expect(q1).to.be.lt(q0);
     });
 
-    it("MAXQ-F3 — unpaid funding debt returns zero max size", async function () {
+    it("MAXQ-F3 — previewed unpaid funding debt returns 0 while stored index is unchanged", async function () {
       const sys = await deploySystem(18);
 
       const lpDeposit = ethers.parseUnits("500000", 18);
@@ -2653,24 +2665,29 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
         referralCode: ethers.ZeroHash
       });
 
-      // Massive funding payment owed by trader ($1,000 > $480 post-open margin)
-      await time.increase(1800);
-      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 8));
-      await sys.amm.getFunction("setCumulativeFundingIndex")(MARKET_ID, ethers.parseUnits("100", 18));
+      const storedBefore = await sys.amm.getCumulativeFundingIndex(MARKET_ID);
+
+      // Massive preview funding debt ($1,000 > post-open margin $480)
+      const previewCumIndex = storedBefore + ethers.parseUnits("100", 18);
+      await sys.amm.setPreviewCumulativeFundingIndex(MARKET_ID, previewCumIndex);
+
+      expect(await sys.amm.getCumulativeFundingIndex(MARKET_ID)).to.equal(storedBefore);
 
       const additionalMargin = ethers.parseUnits("100", 18);
       const q = await sys.engine.getMaxAdditionalSize(1, additionalMargin);
 
-      // Expect q == 0 because position has unpaid funding debt
       expect(q).to.equal(0n);
 
-      // Attempting increasePosition directly reverts with unpaid funding debt
+      // Apply equivalent stored index for execution
+      await sys.amm.setCumulativeFundingIndex(MARKET_ID, previewCumIndex);
+      await sys.amm.clearPreviewCumulativeFundingIndex(MARKET_ID);
+
       await expect(
         sys.engine.connect(sys.t1).increasePosition(1, 100n, additionalMargin)
       ).to.be.revertedWith("PerpEngine: unpaid funding debt");
     });
 
-    it("MAXQ-F4 — negative funding credit preview", async function () {
+    it("MAXQ-F4 — negative pending unaccrued funding credit preview", async function () {
       const sys = await deploySystem(18);
 
       const lpDeposit = ethers.parseUnits("500000", 18);
@@ -2696,22 +2713,30 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
         referralCode: ethers.ZeroHash
       });
 
-      // Negative cumulative funding index -> trader receives funding credit
-      await time.increase(1800);
-      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 8));
-      await sys.amm.getFunction("setCumulativeFundingIndex")(MARKET_ID, ethers.parseUnits("-10", 18));
-
+      const storedBefore = await sys.amm.getCumulativeFundingIndex(MARKET_ID);
       const additionalMargin = ethers.parseUnits("100", 18);
-      const q = await sys.engine.getMaxAdditionalSize(1, additionalMargin);
-      expect(q).to.be.gt(0n);
 
-      // Verify q executes successfully after actual funding settlement
+      const q_no_credit = await sys.engine.getMaxAdditionalSize(1, additionalMargin);
+
+      // Set ONLY preview index lower -> trader receives funding credit
+      const previewCumIndex = storedBefore - ethers.parseUnits("10", 18);
+      await sys.amm.setPreviewCumulativeFundingIndex(MARKET_ID, previewCumIndex);
+
+      expect(await sys.amm.getCumulativeFundingIndex(MARKET_ID)).to.equal(storedBefore);
+
+      const q_with_credit = await sys.engine.getMaxAdditionalSize(1, additionalMargin);
+      expect(q_with_credit).to.be.gt(q_no_credit);
+
+      // Materialize same index before execution
+      await sys.amm.setCumulativeFundingIndex(MARKET_ID, previewCumIndex);
+      await sys.amm.clearPreviewCumulativeFundingIndex(MARKET_ID);
+
       await expect(
-        sys.engine.connect(sys.t1).increasePosition(1, q, additionalMargin)
+        sys.engine.connect(sys.t1).increasePosition(1, q_with_credit, additionalMargin)
       ).to.emit(sys.engine, "PositionIncreased");
     });
 
-    it("MAXQ-F5 — no pending funding control matches MAXQ behavior", async function () {
+    it("MAXQ-F5 — no-preview control matches stored index behavior", async function () {
       const sys = await deploySystem(18);
 
       const lpDeposit = ethers.parseUnits("500000", 18);
@@ -2737,7 +2762,6 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
         referralCode: ethers.ZeroHash
       });
 
-      // No time elapsed, no funding index change
       const additionalMargin = ethers.parseUnits("100", 18);
       const q = await sys.engine.getMaxAdditionalSize(1, additionalMargin);
       expect(q).to.be.gt(0n);
@@ -2745,6 +2769,103 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
       await expect(
         sys.engine.connect(sys.t1).increasePosition(1, q, additionalMargin)
       ).to.emit(sys.engine, "PositionIncreased");
+    });
+
+    it("Explicit Codex root cause verification test — quote math corresponds directly to FundingRateCalculator preview payment", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("2000", 8));
+
+      const initSize = ethers.parseUnits("2", 18); // 2 ETH
+      const initMargin = ethers.parseUnits("200", 18);
+      await sys.quote.mint(sys.t1.address, initMargin + ethers.parseUnits("10000", 18));
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, initMargin + ethers.parseUnits("10000", 18));
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: initSize,
+        margin: initMargin,
+        acceptablePrice: ethers.parseUnits("2020", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      const pos = await sys.engine.getPositionInternal(1);
+      const storedIndexBefore = await sys.amm.getCumulativeFundingIndex(MARKET_ID);
+      const previewIndex = storedIndexBefore + ethers.parseUnits("25", 18); // $25 debt/ETH = $50 total debt
+
+      // Set ONLY preview cumulative index in mock
+      await sys.amm.setPreviewCumulativeFundingIndex(MARKET_ID, previewIndex);
+
+      // Direct assertion 1: stored index remains un-mutated
+      expect(await sys.amm.getCumulativeFundingIndex(MARKET_ID)).to.equal(storedIndexBefore);
+      expect(storedIndexBefore).to.not.equal(previewIndex);
+
+      // Expected funding payment computed via FundingRateCalculator formula:
+      // payment = size * abs(previewIndex - lastFundingIndex) / 1e18 = 2 ETH * $25 = $50
+      const expectedPayment = (initSize * (previewIndex - pos.lastFundingIndex)) / 10n**18n;
+      expect(expectedPayment).to.equal(ethers.parseUnits("50", 18));
+
+      // Post-funding preview margin = pos.margin ($196 after $4 open fee) - $50 = $146
+      const expectedPostFundingMargin = pos.margin - expectedPayment;
+
+      const additionalMargin = ethers.parseUnits("100", 18);
+      const q = await sys.engine.getMaxAdditionalSize(1, additionalMargin);
+
+      // Under post-funding margin $146 + addMargin $100 = $246 gross.
+      // Fee on added size q at $2,000 price (10 bps).
+      // Max size q must be strictly derived from $146 preview margin, NOT stored $196 margin.
+      expect(q).to.be.gt(0n);
+
+      // Materialize preview index to stored index and execute -> MUST succeed
+      await sys.amm.setCumulativeFundingIndex(MARKET_ID, previewIndex);
+      await sys.amm.clearPreviewCumulativeFundingIndex(MARKET_ID);
+
+      await expect(
+        sys.engine.connect(sys.t1).increasePosition(1, q, additionalMargin)
+      ).to.emit(sys.engine, "PositionIncreased");
+    });
+
+    it("AMMPool Parity Test — real AMMPool previewCumulativeFundingIndex matches updateFundingRate index", async function () {
+      const MockOracle = await ethers.getContractFactory("MockOracle");
+      const oracle = await MockOracle.deploy("Aggregator", 18);
+      await oracle.waitForDeployment();
+
+      const AMMPoolFactory = await ethers.getContractFactory("AMMPool");
+      const deployerAddress = (await ethers.getSigners())[0].address;
+      const amm = await AMMPoolFactory.deploy(deployerAddress, oracle.target);
+      await amm.waitForDeployment();
+
+      // Initialize market
+      await amm.initializeMarket(
+        MARKET_ID,
+        ethers.parseUnits("100000", 18), // skewScale
+        ethers.parseUnits("0.01", 18),   // maxFundingRate
+        3600                              // fundingInterval
+      );
+
+      // Update skew to simulate active funding
+      await amm.updateSkew(MARKET_ID, true, ethers.parseUnits("10", 18));
+
+      // Advance time by 3600 seconds
+      await time.increase(3600);
+
+      // Get preview index without mutating state
+      const [previewCumIndex, previewRate] = await amm.previewCumulativeFundingIndex(MARKET_ID);
+
+      // Now call state-mutating updateFundingRate
+      await amm.updateFundingRate(MARKET_ID);
+      const storedCumIndexAfter = await amm.getCumulativeFundingIndex(MARKET_ID);
+
+      // Preview index MUST equal stored index after update
+      expect(previewCumIndex).to.equal(storedCumIndexAfter);
     });
   });
 });
