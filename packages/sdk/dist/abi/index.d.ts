@@ -1,85 +1,751 @@
 export declare const ABIs: {
     PerpEngine: {
         abi: ({
+            type: string;
             inputs: {
-                internalType: string;
                 name: string;
                 type: string;
+                internalType: string;
             }[];
             stateMutability: string;
-            type: string;
             name?: undefined;
+            outputs?: undefined;
             anonymous?: undefined;
-            outputs?: undefined;
         } | {
-            inputs: {
-                internalType: string;
-                name: string;
-                type: string;
-            }[];
-            name: string;
             type: string;
-            stateMutability?: undefined;
-            anonymous?: undefined;
-            outputs?: undefined;
-        } | {
-            anonymous: boolean;
+            name: string;
             inputs: {
-                indexed: boolean;
-                internalType: string;
                 name: string;
                 type: string;
-            }[];
-            name: string;
-            type: string;
-            stateMutability?: undefined;
-            outputs?: undefined;
-        } | {
-            inputs: {
                 internalType: string;
-                name: string;
-                type: string;
             }[];
-            name: string;
             outputs: ({
+                name: string;
+                type: string;
+                internalType: string;
                 components: {
-                    internalType: string;
                     name: string;
                     type: string;
+                    internalType: string;
                 }[];
-                internalType: string;
-                name: string;
-                type: string;
             } | {
-                internalType: string;
                 name: string;
                 type: string;
+                internalType: string;
                 components?: undefined;
             })[];
             stateMutability: string;
-            type: string;
             anonymous?: undefined;
         } | {
+            type: string;
+            name: string;
             inputs: {
+                name: string;
+                type: string;
+                internalType: string;
                 components: {
-                    internalType: string;
                     name: string;
                     type: string;
+                    internalType: string;
                 }[];
-                internalType: string;
-                name: string;
-                type: string;
             }[];
-            name: string;
             outputs: {
-                internalType: string;
                 name: string;
                 type: string;
+                internalType: string;
             }[];
             stateMutability: string;
+            anonymous?: undefined;
+        } | {
             type: string;
+            name: string;
+            inputs: {
+                name: string;
+                type: string;
+                indexed: boolean;
+                internalType: string;
+            }[];
+            anonymous: boolean;
+            stateMutability?: undefined;
+            outputs?: undefined;
+        } | {
+            type: string;
+            name: string;
+            inputs: {
+                name: string;
+                type: string;
+                internalType: string;
+            }[];
+            stateMutability?: undefined;
+            outputs?: undefined;
             anonymous?: undefined;
         })[];
+        bytecode: {
+            object: string;
+            sourceMap: string;
+            linkReferences: {};
+        };
+        deployedBytecode: {
+            object: string;
+            sourceMap: string;
+            linkReferences: {};
+            immutableReferences: {
+                "2383": {
+                    start: number;
+                    length: number;
+                }[];
+                "2385": {
+                    start: number;
+                    length: number;
+                }[];
+                "2387": {
+                    start: number;
+                    length: number;
+                }[];
+                "2389": {
+                    start: number;
+                    length: number;
+                }[];
+                "2391": {
+                    start: number;
+                    length: number;
+                }[];
+                "2393": {
+                    start: number;
+                    length: number;
+                }[];
+                "2395": {
+                    start: number;
+                    length: number;
+                }[];
+                "2398": {
+                    start: number;
+                    length: number;
+                }[];
+                "2401": {
+                    start: number;
+                    length: number;
+                }[];
+            };
+        };
+        methodIdentifiers: {
+            "accrueFunding(uint256)": string;
+            "addMargin(uint256,uint256)": string;
+            "ammPool()": string;
+            "baseToken()": string;
+            "batchAccrueFunding(uint256[])": string;
+            "batchGetHealthFactors(uint256[])": string;
+            "batchGetPositions(uint256[])": string;
+            "batchIsLiquidatable(uint256[],uint256[])": string;
+            "closePosition(uint256)": string;
+            "configRegistry()": string;
+            "decreasePosition(uint256,uint256,uint256)": string;
+            "getAvailableMargin(uint256)": string;
+            "getFundingState(uint256)": string;
+            "getHealthFactor(uint256)": string;
+            "getLiquidationPrice(uint256)": string;
+            "getMarket(uint256)": string;
+            "getMarketStats(uint256)": string;
+            "getMaxAdditionalSize(uint256,uint256)": string;
+            "getPosition(uint256)": string;
+            "getPositionInternal(uint256)": string;
+            "getPositionStats()": string;
+            "getPositionsByMarket(uint256,uint256,uint256)": string;
+            "getPositionsByTrader(address,uint256,uint256)": string;
+            "getProtocolFees(address)": string;
+            "getTotalOpenInterest(uint256)": string;
+            "getTraderPositions(address)": string;
+            "getUnrealizedPnl(uint256,uint256)": string;
+            "governance()": string;
+            "increasePosition(uint256,uint256,uint256)": string;
+            "initializeMarket(uint256,bytes32,uint256,uint256,uint256,uint256,uint256)": string;
+            "insuranceFund()": string;
+            "isPositionLiquidatable(uint256,uint256)": string;
+            "liquidatePosition((uint256,address,uint256,uint256,uint256))": string;
+            "liquidationEngine()": string;
+            "openPosition((uint256,bool,uint256,uint256,uint256,uint256,bytes32))": string;
+            "oracleAggregator()": string;
+            "paused()": string;
+            "positionManager()": string;
+            "previewLiquidation(uint256,uint256)": string;
+            "quoteToken()": string;
+            "removeMargin(uint256,uint256)": string;
+            "riskManager()": string;
+            "setGovernance(address)": string;
+            "totalCollateral()": string;
+            "totalFeesAccrued()": string;
+            "totalFundingPaid()": string;
+            "totalFundingReceived()": string;
+            "totalPositionValue()": string;
+            "updateFundingParams(uint256,uint256)": string;
+            "updateLiquidationPenalty(uint256)": string;
+            "updateProtocolFee(uint256)": string;
+        };
+        rawMetadata: string;
+        metadata: {
+            compiler: {
+                version: string;
+            };
+            language: string;
+            output: {
+                abi: ({
+                    inputs: {
+                        internalType: string;
+                        name: string;
+                        type: string;
+                    }[];
+                    stateMutability: string;
+                    type: string;
+                    name?: undefined;
+                    anonymous?: undefined;
+                    outputs?: undefined;
+                } | {
+                    inputs: {
+                        internalType: string;
+                        name: string;
+                        type: string;
+                    }[];
+                    type: string;
+                    name: string;
+                    stateMutability?: undefined;
+                    anonymous?: undefined;
+                    outputs?: undefined;
+                } | {
+                    inputs: {
+                        internalType: string;
+                        name: string;
+                        type: string;
+                        indexed: boolean;
+                    }[];
+                    type: string;
+                    name: string;
+                    anonymous: boolean;
+                    stateMutability?: undefined;
+                    outputs?: undefined;
+                } | {
+                    inputs: {
+                        internalType: string;
+                        name: string;
+                        type: string;
+                    }[];
+                    stateMutability: string;
+                    type: string;
+                    name: string;
+                    anonymous?: undefined;
+                    outputs?: undefined;
+                } | {
+                    inputs: {
+                        internalType: string;
+                        name: string;
+                        type: string;
+                    }[];
+                    stateMutability: string;
+                    type: string;
+                    name: string;
+                    outputs: ({
+                        internalType: string;
+                        name: string;
+                        type: string;
+                        components: {
+                            internalType: string;
+                            name: string;
+                            type: string;
+                        }[];
+                    } | {
+                        internalType: string;
+                        name: string;
+                        type: string;
+                        components?: undefined;
+                    })[];
+                    anonymous?: undefined;
+                } | {
+                    inputs: {
+                        internalType: string;
+                        name: string;
+                        type: string;
+                        components: {
+                            internalType: string;
+                            name: string;
+                            type: string;
+                        }[];
+                    }[];
+                    stateMutability: string;
+                    type: string;
+                    name: string;
+                    outputs: {
+                        internalType: string;
+                        name: string;
+                        type: string;
+                    }[];
+                    anonymous?: undefined;
+                })[];
+                devdoc: {
+                    kind: string;
+                    methods: {
+                        "accrueFunding(uint256)": {
+                            params: {
+                                marketId: string;
+                            };
+                        };
+                        "addMargin(uint256,uint256)": {
+                            params: {
+                                amount: string;
+                                positionId: string;
+                            };
+                        };
+                        "batchAccrueFunding(uint256[])": {
+                            params: {
+                                marketIds: string;
+                            };
+                        };
+                        "batchGetHealthFactors(uint256[])": {
+                            params: {
+                                positionIds: string;
+                            };
+                            returns: {
+                                healthFactors: string;
+                            };
+                        };
+                        "batchGetPositions(uint256[])": {
+                            params: {
+                                positionIds: string;
+                            };
+                            returns: {
+                                views: string;
+                            };
+                        };
+                        "batchIsLiquidatable(uint256[],uint256[])": {
+                            params: {
+                                currentPrices: string;
+                                positionIds: string;
+                            };
+                            returns: {
+                                liquidatable: string;
+                            };
+                        };
+                        "closePosition(uint256)": {
+                            params: {
+                                positionId: string;
+                            };
+                        };
+                        "decreasePosition(uint256,uint256,uint256)": {
+                            params: {
+                                marginReduced: string;
+                                positionId: string;
+                                sizeReduced: string;
+                            };
+                        };
+                        "getAvailableMargin(uint256)": {
+                            params: {
+                                positionId: string;
+                            };
+                            returns: {
+                                availableMargin: string;
+                            };
+                        };
+                        "getHealthFactor(uint256)": {
+                            params: {
+                                positionId: string;
+                            };
+                            returns: {
+                                healthFactor: string;
+                            };
+                        };
+                        "getLiquidationPrice(uint256)": {
+                            params: {
+                                positionId: string;
+                            };
+                            returns: {
+                                liquidationPrice: string;
+                            };
+                        };
+                        "getMarketStats(uint256)": {
+                            params: {
+                                marketId: string;
+                            };
+                            returns: {
+                                stats: string;
+                            };
+                        };
+                        "getMaxAdditionalSize(uint256,uint256)": {
+                            params: {
+                                additionalMargin: string;
+                                positionId: string;
+                            };
+                            returns: {
+                                maxAdditionalSize: string;
+                            };
+                        };
+                        "getPosition(uint256)": {
+                            params: {
+                                positionId: string;
+                            };
+                            returns: {
+                                viewData: string;
+                            };
+                        };
+                        "getPositionInternal(uint256)": {
+                            params: {
+                                positionId: string;
+                            };
+                            returns: {
+                                _0: string;
+                            };
+                        };
+                        "getPositionStats()": {
+                            returns: {
+                                stats: string;
+                            };
+                        };
+                        "getPositionsByMarket(uint256,uint256,uint256)": {
+                            params: {
+                                cursor: string;
+                                limit: string;
+                                marketId: string;
+                            };
+                            returns: {
+                                newCursor: string;
+                                positions: string;
+                            };
+                        };
+                        "getPositionsByTrader(address,uint256,uint256)": {
+                            params: {
+                                cursor: string;
+                                limit: string;
+                                trader: string;
+                            };
+                            returns: {
+                                newCursor: string;
+                                positions: string;
+                            };
+                        };
+                        "getUnrealizedPnl(uint256,uint256)": {
+                            params: {
+                                currentPrice: string;
+                                positionId: string;
+                            };
+                            returns: {
+                                pnl: string;
+                            };
+                        };
+                        "increasePosition(uint256,uint256,uint256)": {
+                            params: {
+                                marginAdded: string;
+                                positionId: string;
+                                sizeAdded: string;
+                            };
+                        };
+                        "initializeMarket(uint256,bytes32,uint256,uint256,uint256,uint256,uint256)": {
+                            params: {
+                                liquidationFeeRatio: string;
+                                marketId: string;
+                                maxLeverage: string;
+                                minMarginRatio: string;
+                                oracleFeedId: string;
+                                protocolFeeRatio: string;
+                            };
+                        };
+                        "isPositionLiquidatable(uint256,uint256)": {
+                            params: {
+                                currentPrice: string;
+                                positionId: string;
+                            };
+                            returns: {
+                                liquidatable: string;
+                            };
+                        };
+                        "liquidatePosition((uint256,address,uint256,uint256,uint256))": {
+                            params: {
+                                params: string;
+                            };
+                            returns: {
+                                liquidationReward: string;
+                            };
+                        };
+                        "openPosition((uint256,bool,uint256,uint256,uint256,uint256,bytes32))": {
+                            params: {
+                                params: string;
+                            };
+                            returns: {
+                                positionId: string;
+                            };
+                        };
+                        "paused()": {
+                            details: string;
+                        };
+                        "previewLiquidation(uint256,uint256)": {
+                            params: {
+                                currentPrice: string;
+                                positionId: string;
+                            };
+                            returns: {
+                                newHealthFactor: string;
+                                penalty: string;
+                                reward: string;
+                            };
+                        };
+                        "removeMargin(uint256,uint256)": {
+                            params: {
+                                amount: string;
+                                positionId: string;
+                            };
+                        };
+                        "setGovernance(address)": {
+                            params: {
+                                newGovernance: string;
+                            };
+                        };
+                        "updateFundingParams(uint256,uint256)": {
+                            params: {
+                                newFundingInterval: string;
+                                newMaxFundingRate: string;
+                            };
+                        };
+                        "updateLiquidationPenalty(uint256)": {
+                            params: {
+                                newLiquidationPenalty: string;
+                            };
+                        };
+                        "updateProtocolFee(uint256)": {
+                            params: {
+                                newProtocolFee: string;
+                            };
+                        };
+                    };
+                    version: number;
+                };
+                userdoc: {
+                    kind: string;
+                    methods: {
+                        "accrueFunding(uint256)": {
+                            notice: string;
+                        };
+                        "addMargin(uint256,uint256)": {
+                            notice: string;
+                        };
+                        "batchAccrueFunding(uint256[])": {
+                            notice: string;
+                        };
+                        "batchGetHealthFactors(uint256[])": {
+                            notice: string;
+                        };
+                        "batchGetPositions(uint256[])": {
+                            notice: string;
+                        };
+                        "batchIsLiquidatable(uint256[],uint256[])": {
+                            notice: string;
+                        };
+                        "closePosition(uint256)": {
+                            notice: string;
+                        };
+                        "decreasePosition(uint256,uint256,uint256)": {
+                            notice: string;
+                        };
+                        "getAvailableMargin(uint256)": {
+                            notice: string;
+                        };
+                        "getFundingState(uint256)": {
+                            notice: string;
+                        };
+                        "getHealthFactor(uint256)": {
+                            notice: string;
+                        };
+                        "getLiquidationPrice(uint256)": {
+                            notice: string;
+                        };
+                        "getMarket(uint256)": {
+                            notice: string;
+                        };
+                        "getMarketStats(uint256)": {
+                            notice: string;
+                        };
+                        "getMaxAdditionalSize(uint256,uint256)": {
+                            notice: string;
+                        };
+                        "getPosition(uint256)": {
+                            notice: string;
+                        };
+                        "getPositionInternal(uint256)": {
+                            notice: string;
+                        };
+                        "getPositionStats()": {
+                            notice: string;
+                        };
+                        "getPositionsByMarket(uint256,uint256,uint256)": {
+                            notice: string;
+                        };
+                        "getPositionsByTrader(address,uint256,uint256)": {
+                            notice: string;
+                        };
+                        "getProtocolFees(address)": {
+                            notice: string;
+                        };
+                        "getTotalOpenInterest(uint256)": {
+                            notice: string;
+                        };
+                        "getTraderPositions(address)": {
+                            notice: string;
+                        };
+                        "getUnrealizedPnl(uint256,uint256)": {
+                            notice: string;
+                        };
+                        "increasePosition(uint256,uint256,uint256)": {
+                            notice: string;
+                        };
+                        "initializeMarket(uint256,bytes32,uint256,uint256,uint256,uint256,uint256)": {
+                            notice: string;
+                        };
+                        "isPositionLiquidatable(uint256,uint256)": {
+                            notice: string;
+                        };
+                        "liquidatePosition((uint256,address,uint256,uint256,uint256))": {
+                            notice: string;
+                        };
+                        "openPosition((uint256,bool,uint256,uint256,uint256,uint256,bytes32))": {
+                            notice: string;
+                        };
+                        "previewLiquidation(uint256,uint256)": {
+                            notice: string;
+                        };
+                        "removeMargin(uint256,uint256)": {
+                            notice: string;
+                        };
+                        "setGovernance(address)": {
+                            notice: string;
+                        };
+                        "updateFundingParams(uint256,uint256)": {
+                            notice: string;
+                        };
+                        "updateLiquidationPenalty(uint256)": {
+                            notice: string;
+                        };
+                        "updateProtocolFee(uint256)": {
+                            notice: string;
+                        };
+                    };
+                    version: number;
+                };
+            };
+            settings: {
+                remappings: string[];
+                optimizer: {
+                    enabled: boolean;
+                    runs: number;
+                };
+                metadata: {
+                    bytecodeHash: string;
+                };
+                compilationTarget: {
+                    "contracts/core/PerpEngine.sol": string;
+                };
+                evmVersion: string;
+                libraries: {};
+            };
+            sources: {
+                "contracts/core/PerpEngine.sol": {
+                    keccak256: string;
+                    urls: string[];
+                    license: string;
+                };
+                "contracts/interfaces/IAMMPool.sol": {
+                    keccak256: string;
+                    urls: string[];
+                    license: string;
+                };
+                "contracts/interfaces/IConfigRegistry.sol": {
+                    keccak256: string;
+                    urls: string[];
+                    license: string;
+                };
+                "contracts/interfaces/ILiquidationEngine.sol": {
+                    keccak256: string;
+                    urls: string[];
+                    license: string;
+                };
+                "contracts/interfaces/IOracleAggregator.sol": {
+                    keccak256: string;
+                    urls: string[];
+                    license: string;
+                };
+                "contracts/interfaces/IPerpEngine.sol": {
+                    keccak256: string;
+                    urls: string[];
+                    license: string;
+                };
+                "contracts/interfaces/IPositionManager.sol": {
+                    keccak256: string;
+                    urls: string[];
+                    license: string;
+                };
+                "contracts/interfaces/IPositionViewer.sol": {
+                    keccak256: string;
+                    urls: string[];
+                    license: string;
+                };
+                "contracts/interfaces/IRiskManager.sol": {
+                    keccak256: string;
+                    urls: string[];
+                    license: string;
+                };
+                "contracts/libraries/FundingRateCalculator.sol": {
+                    keccak256: string;
+                    urls: string[];
+                    license: string;
+                };
+                "contracts/libraries/PositionMath.sol": {
+                    keccak256: string;
+                    urls: string[];
+                    license: string;
+                };
+                "contracts/libraries/SafeDecimalMath.sol": {
+                    keccak256: string;
+                    urls: string[];
+                    license: string;
+                };
+                "node_modules/@openzeppelin/contracts/security/Pausable.sol": {
+                    keccak256: string;
+                    urls: string[];
+                    license: string;
+                };
+                "node_modules/@openzeppelin/contracts/security/ReentrancyGuard.sol": {
+                    keccak256: string;
+                    urls: string[];
+                    license: string;
+                };
+                "node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol": {
+                    keccak256: string;
+                    urls: string[];
+                    license: string;
+                };
+                "node_modules/@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol": {
+                    keccak256: string;
+                    urls: string[];
+                    license: string;
+                };
+                "node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol": {
+                    keccak256: string;
+                    urls: string[];
+                    license: string;
+                };
+                "node_modules/@openzeppelin/contracts/utils/Address.sol": {
+                    keccak256: string;
+                    urls: string[];
+                    license: string;
+                };
+                "node_modules/@openzeppelin/contracts/utils/Context.sol": {
+                    keccak256: string;
+                    urls: string[];
+                    license: string;
+                };
+                "node_modules/@openzeppelin/contracts/utils/math/Math.sol": {
+                    keccak256: string;
+                    urls: string[];
+                    license: string;
+                };
+            };
+            version: number;
+        };
+        id: number;
     };
     AMMPool: {
         abi: ({
