@@ -118,6 +118,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         uint256 traderPayout;
         uint256 extraMarginDebit;
         uint256 totalTraderCollateralConsumed;
+        int256 collateralDelta;
         uint256 grossTradingDeficit;
         uint256 lossCoveredByCollateral;
         uint256 residualBadDebt;
@@ -257,6 +258,21 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         }
     }
 
+    function _signedMarginDelta(
+        uint256 beforeMargin,
+        uint256 afterMargin
+    ) internal pure returns (int256) {
+        if (afterMargin >= beforeMargin) {
+            uint256 increase = afterMargin - beforeMargin;
+            require(increase <= uint256(type(int256).max), "PerpEngine: margin delta overflow");
+            return int256(increase);
+        }
+
+        uint256 decrease = beforeMargin - afterMargin;
+        require(decrease <= uint256(type(int256).max), "PerpEngine: margin delta overflow");
+        return -int256(decrease);
+    }
+
     // ============ CANONICAL FUNDING SETTLEMENT HELPER ============
 
     /**
@@ -331,6 +347,8 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         uint256 currentPrice
     ) internal returns (SettlementResult memory res) {
         IPerpEngine.Position storage position = _positions[positionId];
+
+        uint256 preTransactionMargin = position.margin;
 
         // 1. Settle pending funding on pre-decrease position size
         (int256 fundingPayment, uint256 unpaidFunding) = _settleFunding(position);
@@ -837,13 +855,18 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         (uint256 currentPrice, bool priceValid) = _getMarketPrice(position.marketId);
         require(priceValid, "PerpEngine: invalid price");
         
+        uint256 preTransactionMargin = position.margin;
+
         // Perform atomic settlement via internal settlement helper
         SettlementResult memory res = _settlePositionChange(positionId, sizeReduced, marginReduced, currentPrice);
         
+        res.collateralDelta = _signedMarginDelta(preTransactionMargin, position.margin);
+
         emit PositionDecreased(
             positionId,
             sizeReduced,
             res.totalTraderCollateralConsumed,
+            res.collateralDelta,
             uint256(res.realizedPnl >= 0 ? res.realizedPnl : -res.realizedPnl),
             res.protocolFee
         );

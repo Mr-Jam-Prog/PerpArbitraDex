@@ -70,13 +70,15 @@ interface IPerpEngine is IPositionViewer {
 
     /**
      * @notice Emitted when a position is partially decreased.
-     * @param marginReduced Actual position collateral debit (marginBefore - marginAfter),
-     *        including proportional release plus any retained collateral consumed by realized loss / collectible fee.
+     * @param marginReduced Post-funding collateral consumed by decrease settlement.
+     * @param collateralDelta Signed change in stored position margin over the entire decrease transaction:
+     *        `marginAfter - marginBefore` including funding settlement. Negative = decrease, Positive = increase.
      */
     event PositionDecreased(
         uint256 indexed positionId,
         uint256 sizeReduced,
         uint256 marginReduced,
+        int256 collateralDelta,
         uint256 pnl,
         uint256 fee
     );

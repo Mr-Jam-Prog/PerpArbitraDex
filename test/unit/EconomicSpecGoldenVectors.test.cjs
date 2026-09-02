@@ -2543,6 +2543,239 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
   });
 
 
+  describe("EVT-FUND-1 through EVT-FUND-5 — PositionDecreased Signed Collateral Delta Tests", function () {
+    it("EVT-FUND-1 — funding debit + partial decrease", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("100000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      const margin = ethers.parseUnits("1000", 18);
+      const size = ethers.parseUnits("10", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: ethers.parseUnits("2020", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Introduce $10 funding debt
+      await sys.amm.setCumulativeFundingIndex(MARKET_ID, ethers.parseUnits("10", 18));
+
+      const marginBefore = (await sys.engine.getPosition(1)).margin;
+
+      // Partial decrease 2 ETH
+      const tx = await sys.engine.connect(sys.t1).decreasePosition(1, ethers.parseUnits("2", 18), 0n);
+      const receipt = await tx.wait();
+
+      const marginAfter = (await sys.engine.getPosition(1)).margin;
+
+      const log = receipt.logs.map(l => {
+        try { return sys.engine.interface.parseLog(l); } catch { return null; }
+      }).find(l => l && l.name === "PositionDecreased");
+
+      expect(log.args.collateralDelta).to.equal(BigInt(marginAfter) - BigInt(marginBefore));
+      expect(-log.args.collateralDelta).to.be.gt(log.args.marginReduced);
+
+      // Simulated indexer reconstruction
+      const indexedAfter = BigInt(marginBefore) + log.args.collateralDelta;
+      expect(indexedAfter).to.equal(marginAfter);
+    });
+
+    it("EVT-FUND-2 — funding credit + partial decrease", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("100000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      const margin = ethers.parseUnits("1000", 18);
+      const size = ethers.parseUnits("10", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: ethers.parseUnits("2020", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Introduce $50 funding credit for long position (negative cumulative index)
+      await sys.amm.setCumulativeFundingIndex(MARKET_ID, ethers.parseUnits("-50", 18));
+
+      const marginBefore = (await sys.engine.getPosition(1)).margin;
+
+      // Partial decrease 1 ETH (M_rel = 1/10 * 980 = $98)
+      const tx = await sys.engine.connect(sys.t1).decreasePosition(1, ethers.parseUnits("1", 18), 0n);
+      const receipt = await tx.wait();
+
+      const marginAfter = (await sys.engine.getPosition(1)).margin;
+
+      const log = receipt.logs.map(l => {
+        try { return sys.engine.interface.parseLog(l); } catch { return null; }
+      }).find(l => l && l.name === "PositionDecreased");
+
+      expect(log.args.collateralDelta).to.equal(BigInt(marginAfter) - BigInt(marginBefore));
+      // Funding credit reduces the magnitude of net collateral decrease
+      expect(-log.args.collateralDelta).to.be.lt(log.args.marginReduced);
+
+      const indexedAfter = BigInt(marginBefore) + log.args.collateralDelta;
+      expect(indexedAfter).to.equal(marginAfter);
+    });
+
+    it("EVT-FUND-3 — funding credit causes net collateral increase (collateralDelta > 0)", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("100000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      const margin = ethers.parseUnits("1000", 18);
+      const size = ethers.parseUnits("10", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: ethers.parseUnits("2020", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Introduce massive funding credit ($300 credit on 10 ETH size = -$30/ETH index)
+      await sys.amm.setCumulativeFundingIndex(MARKET_ID, ethers.parseUnits("-30", 18));
+
+      const marginBefore = (await sys.engine.getPosition(1)).margin;
+
+      // Small partial decrease (0.1 ETH, M_rel = 0.1/10 * 980 = $9.80 release)
+      // Funding credit ($300) > M_rel ($9.80) -> net stored position margin increases!
+      const tx = await sys.engine.connect(sys.t1).decreasePosition(1, ethers.parseUnits("0.1", 18), 0n);
+      const receipt = await tx.wait();
+
+      const marginAfter = (await sys.engine.getPosition(1)).margin;
+      expect(marginAfter).to.be.gt(marginBefore);
+
+      const log = receipt.logs.map(l => {
+        try { return sys.engine.interface.parseLog(l); } catch { return null; }
+      }).find(l => l && l.name === "PositionDecreased");
+
+      expect(log.args.collateralDelta).to.be.gt(0n);
+      expect(log.args.collateralDelta).to.equal(BigInt(marginAfter) - BigInt(marginBefore));
+
+      const indexedAfter = BigInt(marginBefore) + log.args.collateralDelta;
+      expect(indexedAfter).to.equal(marginAfter);
+    });
+
+    it("EVT-FUND-4 — funding debit + retained loss consumption", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("100000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      const margin = ethers.parseUnits("1000", 18);
+      const size = ethers.parseUnits("10", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: ethers.parseUnits("2020", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Funding debit = $10/ETH ($100 total)
+      await sys.amm.setCumulativeFundingIndex(MARKET_ID, ethers.parseUnits("10", 18));
+      // Price drop to $1,875 (loss on 2 ETH = $250)
+      await sys.oracle.getFunction("setPriceForSymbol")(ETH_USD_MARKET, ethers.parseUnits("1875", 8));
+
+      const marginBefore = (await sys.engine.getPosition(1)).margin;
+
+      const tx = await sys.engine.connect(sys.t1).decreasePosition(1, ethers.parseUnits("2", 18), 0n);
+      const receipt = await tx.wait();
+
+      const marginAfter = (await sys.engine.getPosition(1)).margin;
+
+      const log = receipt.logs.map(l => {
+        try { return sys.engine.interface.parseLog(l); } catch { return null; }
+      }).find(l => l && l.name === "PositionDecreased");
+
+      expect(log.args.collateralDelta).to.equal(BigInt(marginAfter) - BigInt(marginBefore));
+      expect(-log.args.collateralDelta).to.not.equal(log.args.marginReduced);
+    });
+
+    it("EVT-FUND-5 — zero funding control", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("100000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      const margin = ethers.parseUnits("1000", 18);
+      const size = ethers.parseUnits("10", 18);
+
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: ethers.parseUnits("2020", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      const marginBefore = (await sys.engine.getPosition(1)).margin;
+
+      const tx = await sys.engine.connect(sys.t1).decreasePosition(1, ethers.parseUnits("2", 18), 0n);
+      const receipt = await tx.wait();
+
+      const marginAfter = (await sys.engine.getPosition(1)).margin;
+
+      const log = receipt.logs.map(l => {
+        try { return sys.engine.interface.parseLog(l); } catch { return null; }
+      }).find(l => l && l.name === "PositionDecreased");
+
+      // Under 0 funding and profitable/ordinary decrease, collateralDelta == -marginReduced
+      expect(log.args.collateralDelta).to.equal(-BigInt(log.args.marginReduced));
+      expect(log.args.collateralDelta).to.equal(BigInt(marginAfter) - BigInt(marginBefore));
+    });
+  });
+
   describe("Pending Funding getMaxAdditionalSize Preview Suite (MAXQ-F1 through MAXQ-F5 & Codex Root Cause)", function () {
     it("MAXQ-F1 — positive pending unaccrued debit quote and execution", async function () {
       const sys = await deploySystem(18);
