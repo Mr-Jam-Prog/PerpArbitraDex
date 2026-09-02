@@ -2817,6 +2817,200 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
     });
   });
 
+  describe("Market Position Query Suite without Auxiliary Storage (MARKET-R1 through MARKET-R5)", function () {
+    it("MARKET-R1 — mixed markets filtering returns only target market in creation order", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      // Initialize Market 2
+      await sys.engine.connect(sys.deployer).initializeMarket(
+        2,
+        FEED_ID,
+        ethers.parseUnits("100", 18),
+        ethers.parseUnits("0.01", 18),
+        ethers.parseUnits("0.001", 18),
+        ethers.parseUnits("0.025", 18),
+        ethers.parseUnits("0.001", 18)
+      );
+
+      const margin = ethers.parseUnits("100", 18);
+      const size = ethers.parseUnits("1", 18);
+
+      await sys.quote.mint(sys.t1.address, ethers.parseUnits("1000", 18));
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, ethers.parseUnits("1000", 18));
+
+      let latestTime = await time.latest();
+
+      // Open sequence: Market 1, Market 2, Market 1, Market 2, Market 1
+      await sys.engine.connect(sys.t1).openPosition({ marketId: 1, isLong: true, size, margin, acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n, deadline: latestTime + 3600, referralCode: ethers.ZeroHash }); // ID 1
+      await sys.engine.connect(sys.t1).openPosition({ marketId: 2, isLong: true, size, margin, acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n, deadline: latestTime + 3600, referralCode: ethers.ZeroHash }); // ID 2
+      await sys.engine.connect(sys.t1).openPosition({ marketId: 1, isLong: true, size, margin, acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n, deadline: latestTime + 3600, referralCode: ethers.ZeroHash }); // ID 3
+      await sys.engine.connect(sys.t1).openPosition({ marketId: 2, isLong: true, size, margin, acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n, deadline: latestTime + 3600, referralCode: ethers.ZeroHash }); // ID 4
+      await sys.engine.connect(sys.t1).openPosition({ marketId: 1, isLong: true, size, margin, acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n, deadline: latestTime + 3600, referralCode: ethers.ZeroHash }); // ID 5
+
+      const [m1Positions, newCursor] = await sys.engine.getPositionsByMarket(1, 0, 10);
+      expect(m1Positions.length).to.equal(3);
+      expect(newCursor).to.equal(3);
+
+      expect(m1Positions[0].positionId).to.equal(1n);
+      expect(m1Positions[1].positionId).to.equal(3n);
+      expect(m1Positions[2].positionId).to.equal(5n);
+
+      for (const pos of m1Positions) {
+        expect(pos.marketId).to.equal(1n);
+      }
+    });
+
+    it("MARKET-R2 — multi-page pagination without duplicates or omissions", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      const margin = ethers.parseUnits("100", 18);
+      const size = ethers.parseUnits("1", 18);
+
+      await sys.quote.mint(sys.t1.address, ethers.parseUnits("1000", 18));
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, ethers.parseUnits("1000", 18));
+
+      let latestTime = await time.latest();
+
+      // Open 5 positions on Market 1
+      for (let i = 0; i < 5; i++) {
+        await sys.engine.connect(sys.t1).openPosition({ marketId: 1, isLong: true, size, margin, acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n, deadline: latestTime + 3600, referralCode: ethers.ZeroHash });
+      }
+
+      // Page 1: limit 2
+      const [page1, cursor1] = await sys.engine.getPositionsByMarket(1, 0, 2);
+      expect(page1.length).to.equal(2);
+      expect(cursor1).to.equal(2n);
+      expect(page1[0].positionId).to.equal(1n);
+      expect(page1[1].positionId).to.equal(2n);
+
+      // Page 2: limit 2
+      const [page2, cursor2] = await sys.engine.getPositionsByMarket(1, cursor1, 2);
+      expect(page2.length).to.equal(2);
+      expect(cursor2).to.equal(4n);
+      expect(page2[0].positionId).to.equal(3n);
+      expect(page2[1].positionId).to.equal(4n);
+
+      // Page 3: limit 2
+      const [page3, cursor3] = await sys.engine.getPositionsByMarket(1, cursor2, 2);
+      expect(page3.length).to.equal(1);
+      expect(cursor3).to.equal(5n);
+      expect(page3[0].positionId).to.equal(5n);
+
+      const allFetched = [...page1, ...page2, ...page3];
+      const fetchedIds = allFetched.map(p => p.positionId);
+      expect(fetchedIds).to.deep.equal([1n, 2n, 3n, 4n, 5n]);
+    });
+
+    it("MARKET-R3 — sparse market IDs preserve logical cursor offsets", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      // Initialize Market 2 and Market 3
+      for (let m = 2; m <= 3; m++) {
+        await sys.engine.connect(sys.deployer).initializeMarket(
+          m, FEED_ID, ethers.parseUnits("100", 18), ethers.parseUnits("0.01", 18),
+          ethers.parseUnits("0.001", 18), ethers.parseUnits("0.025", 18), ethers.parseUnits("0.001", 18)
+        );
+      }
+
+      const margin = ethers.parseUnits("100", 18);
+      const size = ethers.parseUnits("1", 18);
+
+      await sys.quote.mint(sys.t1.address, ethers.parseUnits("2000", 18));
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, ethers.parseUnits("2000", 18));
+
+      let latestTime = await time.latest();
+
+      // Interleaved: 1, 2, 2, 1, 3, 2, 1
+      const sequence = [1, 2, 2, 1, 3, 2, 1];
+      for (const m of sequence) {
+        await sys.engine.connect(sys.t1).openPosition({ marketId: m, isLong: true, size, margin, acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n, deadline: latestTime + 3600, referralCode: ethers.ZeroHash });
+      }
+
+      // Fetch Market 1 positions with limit 2
+      const [m1Page1, c1] = await sys.engine.getPositionsByMarket(1, 0, 2);
+      expect(m1Page1.length).to.equal(2);
+      expect(c1).to.equal(2n);
+      expect(m1Page1[0].positionId).to.equal(1n);
+      expect(m1Page1[1].positionId).to.equal(4n);
+
+      const [m1Page2, c2] = await sys.engine.getPositionsByMarket(1, c1, 2);
+      expect(m1Page2.length).to.equal(1);
+      expect(c2).to.equal(3n);
+      expect(m1Page2[0].positionId).to.equal(7n);
+    });
+
+    it("MARKET-R4 — existing canonical positions require zero backfill or migration", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      const margin = ethers.parseUnits("100", 18);
+      const size = ethers.parseUnits("1", 18);
+
+      await sys.quote.mint(sys.t1.address, ethers.parseUnits("1000", 18));
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, ethers.parseUnits("1000", 18));
+
+      let latestTime = await time.latest();
+
+      // Open positions before any call to getPositionsByMarket
+      await sys.engine.connect(sys.t1).openPosition({ marketId: 1, isLong: true, size, margin, acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n, deadline: latestTime + 3600, referralCode: ethers.ZeroHash });
+      await sys.engine.connect(sys.t1).openPosition({ marketId: 1, isLong: true, size, margin, acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n, deadline: latestTime + 3600, referralCode: ethers.ZeroHash });
+
+      // Call getPositionsByMarket without running any migration or backfill
+      const [positions, count] = await sys.engine.getPositionsByMarket(1, 0, 10);
+      expect(positions.length).to.equal(2);
+      expect(count).to.equal(2n);
+      expect(positions[0].positionId).to.equal(1n);
+      expect(positions[1].positionId).to.equal(2n);
+    });
+
+    it("MARKET-R5 — limit = 0 and cursor >= totalMatching edge case behavior", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      const margin = ethers.parseUnits("100", 18);
+      const size = ethers.parseUnits("1", 18);
+
+      await sys.quote.mint(sys.t1.address, ethers.parseUnits("1000", 18));
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, ethers.parseUnits("1000", 18));
+
+      let latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({ marketId: 1, isLong: true, size, margin, acceptablePrice: INITIAL_PRICE_8DEC * 101n / 100n, deadline: latestTime + 3600, referralCode: ethers.ZeroHash });
+
+      // limit = 0 returns 0 results and matching count
+      const [resLimit0, cursorLimit0] = await sys.engine.getPositionsByMarket(1, 0, 0);
+      expect(resLimit0.length).to.equal(0);
+      expect(cursorLimit0).to.equal(1n);
+
+      // cursor >= totalMatching returns 0 results and matching count
+      const [resOut, cursorOut] = await sys.engine.getPositionsByMarket(1, 5, 10);
+      expect(resOut.length).to.equal(0);
+      expect(cursorOut).to.equal(1n);
+    });
+  });
+
   describe("Pending Funding getMaxAdditionalSize Preview Suite (MAXQ-F1 through MAXQ-F5 & Codex Root Cause)", function () {
     it("MAXQ-F1 — positive pending unaccrued debit quote and execution", async function () {
       const sys = await deploySystem(18);

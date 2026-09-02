@@ -64,9 +64,6 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     
     // Trader address => array of position IDs
     mapping(address => uint256[]) private _traderPositions;
-
-    // Market ID => array of position IDs
-    mapping(uint256 => uint256[]) private _marketPositions;
     
     // Funding state per market
     mapping(uint256 => FundingState) private _fundingStates;
@@ -697,9 +694,8 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             lockedNotional: effectiveLockedWad
         });
         
-        // Update trader positions, market positions & open interest
+        // Update trader positions & open interest
         _traderPositions[msg.sender].push(positionId);
-        _marketPositions[params.marketId].push(positionId);
         _totalOpenInterest[params.marketId] += params.size;
         
         // Update global metrics
@@ -1657,18 +1653,42 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     }
 
     function getPositionsByMarket(uint256 marketId, uint256 cursor, uint256 limit) external view override returns (PositionView[] memory positions, uint256 newCursor) {
-        uint256[] storage ids = _marketPositions[marketId];
-        uint256 total = ids.length;
-        if (cursor >= total) return (positions, total);
+        uint256 totalAllocated = _nextPositionId - 1;
+
+        // First pass: count total positions matching marketId
+        uint256 matchingCount = 0;
+        for (uint256 i = 1; i <= totalAllocated; i++) {
+            if (_positions[i].marketId == marketId) {
+                matchingCount++;
+            }
+        }
+
+        if (cursor >= matchingCount || limit == 0) {
+            return (new PositionView[](0), matchingCount);
+        }
 
         uint256 end = cursor + limit;
-        if (end > total) end = total;
+        if (end > matchingCount) {
+            end = matchingCount;
+        }
         uint256 count = end - cursor;
 
         positions = new PositionView[](count);
-        for (uint256 i = 0; i < count; i++) {
-            positions[i] = getPosition(ids[cursor + i]);
+
+        // Second pass: fill page results for matching index in range [cursor, end)
+        uint256 currentMatchIndex = 0;
+        uint256 resultIndex = 0;
+
+        for (uint256 i = 1; i <= totalAllocated && resultIndex < count; i++) {
+            if (_positions[i].marketId == marketId) {
+                if (currentMatchIndex >= cursor && currentMatchIndex < end) {
+                    positions[resultIndex] = getPosition(i);
+                    resultIndex++;
+                }
+                currentMatchIndex++;
+            }
         }
+
         return (positions, end);
     }
 
