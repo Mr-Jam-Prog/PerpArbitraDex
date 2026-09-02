@@ -64,12 +64,14 @@ interface IPositionViewer {
         returns (PositionView[] memory positions, uint256 newCursor);
 
     /**
-     * @notice Get positions for a market
-     * @param marketId Market ID
-     * @param cursor Pagination cursor
-     * @param limit Maximum positions to return
-     * @return positions Array of position views
-     * @return newCursor New cursor position
+     * @notice Get active positions for a market using bounded global position ID scan.
+     * @param marketId Market ID to filter
+     * @param cursor Global position ID scan cursor (0 = start from ID 1, returned 0 = scan complete)
+     * @param limit Maximum number of global position IDs to inspect per call
+     * @return positions Array of active position views matching marketId within the scanned window
+     * @return newCursor Next cursor to resume scanning from, or 0 if scan reached end of global positions.
+     *                   Note: returned positions count may be less than limit if window contains positions from other markets or closed positions.
+     *                   Clients MUST continue if newCursor != 0 even if current page returned 0 active positions.
      */
     function getPositionsByMarket(
         uint256 marketId,

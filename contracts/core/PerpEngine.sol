@@ -1653,43 +1653,43 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     }
 
     function getPositionsByMarket(uint256 marketId, uint256 cursor, uint256 limit) external view override returns (PositionView[] memory positions, uint256 newCursor) {
+        if (limit == 0) {
+            return (new PositionView[](0), cursor);
+        }
+
         uint256 totalAllocated = _nextPositionId - 1;
+        uint256 startId = cursor == 0 ? 1 : cursor;
 
-        // First pass: count total positions matching marketId
-        uint256 matchingCount = 0;
-        for (uint256 i = 1; i <= totalAllocated; i++) {
-            if (_positions[i].marketId == marketId) {
-                matchingCount++;
+        if (startId > totalAllocated) {
+            return (new PositionView[](0), 0);
+        }
+
+        uint256 endExclusive;
+        unchecked {
+            endExclusive = startId + limit;
+        }
+        if (endExclusive > _nextPositionId || endExclusive < startId) {
+            endExclusive = _nextPositionId;
+        }
+
+        uint256 scannedCount = endExclusive - startId;
+        PositionView[] memory buffer = new PositionView[](scannedCount);
+        uint256 matchCount = 0;
+
+        for (uint256 id = startId; id < endExclusive; id++) {
+            IPerpEngine.Position storage pos = _positions[id];
+            if (pos.isActive && pos.marketId == marketId) {
+                buffer[matchCount] = getPosition(id);
+                matchCount++;
             }
         }
 
-        if (cursor >= matchingCount || limit == 0) {
-            return (new PositionView[](0), matchingCount);
+        positions = new PositionView[](matchCount);
+        for (uint256 i = 0; i < matchCount; i++) {
+            positions[i] = buffer[i];
         }
 
-        uint256 end = cursor + limit;
-        if (end > matchingCount) {
-            end = matchingCount;
-        }
-        uint256 count = end - cursor;
-
-        positions = new PositionView[](count);
-
-        // Second pass: fill page results for matching index in range [cursor, end)
-        uint256 currentMatchIndex = 0;
-        uint256 resultIndex = 0;
-
-        for (uint256 i = 1; i <= totalAllocated && resultIndex < count; i++) {
-            if (_positions[i].marketId == marketId) {
-                if (currentMatchIndex >= cursor && currentMatchIndex < end) {
-                    positions[resultIndex] = getPosition(i);
-                    resultIndex++;
-                }
-                currentMatchIndex++;
-            }
-        }
-
-        return (positions, end);
+        newCursor = endExclusive >= _nextPositionId ? 0 : endExclusive;
     }
 
     function getPositionStats() external view override returns (PositionStats memory stats) {
