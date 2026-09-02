@@ -151,28 +151,21 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
       expect(await sys.vault.totalLpAssets()).to.equal(vaultLpAssetsBefore);
     });
 
-    it("addMargin reverts atomically when unpaid funding debt exists", async function () {
+    it("addMargin allows curing unpaid funding debt", async function () {
       await setupExhaustedPosition();
 
-      const posBefore = await sys.engine.getPositionInternal(1);
-      const marginBefore = posBefore.margin;
-      const lastIndexBefore = posBefore.lastFundingIndex;
-      const vaultTraderMarginBefore = await sys.vault.traderMarginTotal();
-      const vaultLpAssetsBefore = await sys.vault.totalLpAssets();
-
+      // Top up $200
       const addMargin = ethers.parseUnits("200", 18);
       await sys.quote.mint(sys.t1.address, addMargin);
       await sys.quote.connect(sys.t1).approve(sys.vault.target, addMargin);
 
-      await expect(
-        sys.engine.connect(sys.t1).addMargin(1, addMargin)
-      ).to.be.revertedWith("PerpEngine: unpaid funding debt");
+      // In setupExhaustedPosition: old margin was $198, debt was $250.
+      // Unpaid funding debt = $52.
+      // Top-up = $200 cures $52 debt -> residual margin = $148.
+      await sys.engine.connect(sys.t1).addMargin(1, addMargin);
 
       const posAfter = await sys.engine.getPositionInternal(1);
-      expect(posAfter.margin).to.equal(marginBefore);
-      expect(posAfter.lastFundingIndex).to.equal(lastIndexBefore);
-      expect(await sys.vault.traderMarginTotal()).to.equal(vaultTraderMarginBefore);
-      expect(await sys.vault.totalLpAssets()).to.equal(vaultLpAssetsBefore);
+      expect(posAfter.margin).to.equal(ethers.parseUnits("148", 18));
     });
 
     it("removeMargin reverts atomically when unpaid funding debt exists", async function () {
@@ -3391,6 +3384,343 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
 
       // Preview index MUST equal stored index after update
       expect(previewCumIndex).to.equal(storedCumIndexAfter);
+    });
+  });
+
+  describe("Unpaid Funding Rescue Suite (FUND-RESCUE-R1 through FUND-RESCUE-R6 and Mutation Blocks)", function () {
+    it("FUND-RESCUE-R1 — sufficient 18d rescue (unpaid debt > old margin, top-up cures debt & leaves positive margin)", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      // t1 opens position: size=1 ETH, margin=200 USD
+      const size = ethers.parseUnits("1", 18);
+      const margin = ethers.parseUnits("200", 18);
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: ethers.parseUnits("2000", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Position initial margin = $198 (after $2 protocol fee)
+      // Accumulate $250 pending funding debt (which exceeds $198 margin)
+      const debtWad = ethers.parseUnits("250", 18);
+      await sys.amm.setCumulativeFundingIndex(MARKET_ID, debtWad);
+
+      // t1 top-up deposit = $300 (cures $250 debt and leaves $50 residual)
+      const topUp = ethers.parseUnits("300", 18);
+      await sys.quote.mint(sys.t1.address, topUp);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, topUp);
+
+      const lpAssetsBefore = await sys.vault.totalLpAssets();
+
+      await sys.engine.connect(sys.t1).addMargin(1, topUp);
+
+      const pos = await sys.engine.getPositionInternal(1);
+      expect(pos.lastFundingIndex).to.equal(debtWad);
+      // Debt = $250. Old margin = $198 forfeited. Unpaid debt = $52.
+      // Top-up = $300 cures $52 unpaid debt -> residual margin = $300 - $52 = $248.
+      expect(pos.margin).to.equal(ethers.parseUnits("248", 18));
+
+      // Engine totalCollateral matches trader margin
+      expect(await sys.engine.totalCollateral()).to.equal(ethers.parseUnits("248", 18));
+      expect(await sys.vault.traderMarginTotal()).to.equal(ethers.parseUnits("248", 18));
+
+      // Vault LP assets increased by total funding debt settled ($198 + $52 = $250)
+      const lpAssetsAfter = await sys.vault.totalLpAssets();
+      expect(lpAssetsAfter - lpAssetsBefore).to.equal(ethers.parseUnits("250", 18));
+
+      // Physical Vault balance identity holds:
+      // totalLpAssets + traderMarginTotal + insuranceFundBalance + protocolFeeBalance == quote.balanceOf(vault)
+      const vaultBalance = await sys.quote.balanceOf(sys.vault.target);
+      const totalLiabilities = (await sys.vault.totalLpAssets()) +
+        (await sys.vault.traderMarginTotal()) +
+        (await sys.vault.insuranceFundBalance()) +
+        (await sys.vault.protocolFeeBalance());
+      expect(vaultBalance).to.equal(totalLiabilities);
+    });
+
+    it("FUND-RESCUE-R2 — insufficient top-up reverts atomically", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      const size = ethers.parseUnits("1", 18);
+      const margin = ethers.parseUnits("200", 18);
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: ethers.parseUnits("2000", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // $250 funding debt -> $198 margin consumed, $52 unpaid debt
+      const debtWad = ethers.parseUnits("250", 18);
+      await sys.amm.setCumulativeFundingIndex(MARKET_ID, debtWad);
+
+      // Snapshots before failed call
+      const posBefore = await sys.engine.getPositionInternal(1);
+      const totalColBefore = await sys.engine.totalCollateral();
+      const traderMarginBefore = await sys.vault.traderMarginTotal();
+      const lpAssetsBefore = await sys.vault.totalLpAssets();
+      const vaultBalBefore = await sys.quote.balanceOf(sys.vault.target);
+
+      // Top-up = $50 (< $52 unpaid debt) -> must revert "PerpEngine: top-up below funding debt"
+      const insufficientTopUp = ethers.parseUnits("50", 18);
+      await sys.quote.mint(sys.t1.address, insufficientTopUp);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, insufficientTopUp);
+
+      await expect(
+        sys.engine.connect(sys.t1).addMargin(1, insufficientTopUp)
+      ).to.be.revertedWith("PerpEngine: top-up below funding debt");
+
+      // Assert ALL snapshots strictly unchanged (proving full atomic rollback)
+      const posAfter = await sys.engine.getPositionInternal(1);
+      expect(posAfter.margin).to.equal(posBefore.margin);
+      expect(posAfter.lastFundingIndex).to.equal(posBefore.lastFundingIndex);
+      expect(await sys.engine.totalCollateral()).to.equal(totalColBefore);
+      expect(await sys.vault.traderMarginTotal()).to.equal(traderMarginBefore);
+      expect(await sys.vault.totalLpAssets()).to.equal(lpAssetsBefore);
+      expect(await sys.quote.balanceOf(sys.vault.target)).to.equal(vaultBalBefore);
+    });
+
+    it("FUND-RESCUE-R3 — exact debt top-up with zero residual margin explicitly reverts", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      const size = ethers.parseUnits("1", 18);
+      const margin = ethers.parseUnits("200", 18);
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: ethers.parseUnits("2000", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // $250 funding debt -> $198 margin consumed, $52 unpaid debt
+      const debtWad = ethers.parseUnits("250", 18);
+      await sys.amm.setCumulativeFundingIndex(MARKET_ID, debtWad);
+
+      // Top-up = exactly $52 unpaid debt -> leaves zero residual margin
+      const exactTopUp = ethers.parseUnits("52", 18);
+      await sys.quote.mint(sys.t1.address, exactTopUp);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, exactTopUp);
+
+      await expect(
+        sys.engine.connect(sys.t1).addMargin(1, exactTopUp)
+      ).to.be.revertedWith("PerpEngine: top-up leaves zero margin");
+    });
+
+    it("FUND-RESCUE-R4 — 6-decimal native ceil debt conversion", async function () {
+      const sys = await deploySystem(6); // USDC 6 decimals
+
+      const lpDeposit = ethers.parseUnits("500000", 6);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      // Open position: 1 ETH, 200 USDC margin (margin parameter in WAD = 200e18)
+      const size = ethers.parseUnits("1", 18);
+      const marginWad = ethers.parseUnits("200", 18);
+      const marginNative = ethers.parseUnits("200", 6);
+      await sys.quote.mint(sys.t1.address, marginNative);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, marginNative);
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: marginWad,
+        acceptablePrice: ethers.parseUnits("2000", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Initial margin in 18d = $198e18 (2e18 fee). Native = 198,000,000 (198 USDC).
+      // Accumulate funding debt with a sub-native WAD remainder:
+      // $250.0000001 e18 (250,000,000,100,000,000 WAD)
+      // Ceil native conversion requires 250,000,001 native units (250.000001 USDC).
+      const subNativeDebtWad = 250000000100000000000n;
+      await sys.amm.setCumulativeFundingIndex(MARKET_ID, subNativeDebtWad);
+
+      // Native margin forfeited = 198,000,000 USDC.
+      // Remaining native debt to cure = 250,000,001 - 198,000,000 = 52,000,001 native units (52.000001 USDC).
+      // Top-up = 52,000,002 native units (52.000002 USDC) -> leaves 1 native unit (0.000001 USDC = 1e12 WAD)
+      const topUpNative = 52000002n;
+      const topUpWad = ethers.parseUnits("52.000002", 18);
+      await sys.quote.mint(sys.t1.address, topUpNative);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, topUpNative);
+
+      await sys.engine.connect(sys.t1).addMargin(1, topUpWad);
+
+      const pos = await sys.engine.getPositionInternal(1);
+      // Residual margin = exactly 1 native unit in WAD (10^12)
+      expect(pos.margin).to.equal(1000000000000n);
+
+      // Engine totalCollateral normalized to 6d traderMarginTotal
+      expect(await sys.vault.traderMarginTotal()).to.equal(1n);
+      expect(await sys.engine.totalCollateral()).to.equal(1000000000000n);
+    });
+
+    it("FUND-RESCUE-R5 — standard addMargin with zero unpaid debt works unchanged", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      const size = ethers.parseUnits("1", 18);
+      const margin = ethers.parseUnits("200", 18);
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: ethers.parseUnits("2000", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Small funding debt ($10) fully covered by current margin ($198)
+      const debtWad = ethers.parseUnits("10", 18);
+      await sys.amm.setCumulativeFundingIndex(MARKET_ID, debtWad);
+
+      const topUp = ethers.parseUnits("100", 18);
+      await sys.quote.mint(sys.t1.address, topUp);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, topUp);
+
+      await sys.engine.connect(sys.t1).addMargin(1, topUp);
+
+      const pos = await sys.engine.getPositionInternal(1);
+      // Old margin $198 - $10 debt = $188 + $100 top-up = $288
+      expect(pos.margin).to.equal(ethers.parseUnits("288", 18));
+      expect(await sys.engine.totalCollateral()).to.equal(ethers.parseUnits("288", 18));
+      expect(await sys.vault.traderMarginTotal()).to.equal(ethers.parseUnits("288", 18));
+    });
+
+    it("FUND-RESCUE-R6 — debt not charged twice on subsequent addMargin calls", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      const size = ethers.parseUnits("1", 18);
+      const margin = ethers.parseUnits("200", 18);
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: ethers.parseUnits("2000", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // $250 debt -> cures with $300 top-up -> pos.margin = $248
+      const debtWad = ethers.parseUnits("250", 18);
+      await sys.amm.setCumulativeFundingIndex(MARKET_ID, debtWad);
+
+      const topUp1 = ethers.parseUnits("300", 18);
+      await sys.quote.mint(sys.t1.address, topUp1);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, topUp1);
+      await sys.engine.connect(sys.t1).addMargin(1, topUp1);
+
+      // Call addMargin again in the same funding index state
+      const topUp2 = ethers.parseUnits("50", 18);
+      await sys.quote.mint(sys.t1.address, topUp2);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, topUp2);
+      await sys.engine.connect(sys.t1).addMargin(1, topUp2);
+
+      const pos = await sys.engine.getPositionInternal(1);
+      // Entire second top-up ($50) added directly: $248 + $50 = $298
+      expect(pos.margin).to.equal(ethers.parseUnits("298", 18));
+      expect(await sys.engine.totalCollateral()).to.equal(ethers.parseUnits("298", 18));
+    });
+
+    it("Existing Mutation Blocks — increasePosition, removeMargin, and partial decrease STILL block unpaid debt", async function () {
+      const sys = await deploySystem(18);
+
+      const lpDeposit = ethers.parseUnits("500000", 18);
+      await sys.quote.mint(sys.lp.address, lpDeposit);
+      await sys.quote.connect(sys.lp).approve(sys.vault.target, lpDeposit);
+      await sys.vault.connect(sys.lp).deposit(lpDeposit, sys.lp.address);
+
+      const size = ethers.parseUnits("1", 18);
+      const margin = ethers.parseUnits("200", 18);
+      await sys.quote.mint(sys.t1.address, margin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, margin);
+      const latestTime = await time.latest();
+      await sys.engine.connect(sys.t1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: size,
+        margin: margin,
+        acceptablePrice: ethers.parseUnits("2000", 8),
+        deadline: latestTime + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      // Accumulate $250 funding debt -> exceeds $198 margin
+      const debtWad = ethers.parseUnits("250", 18);
+      await sys.amm.setCumulativeFundingIndex(MARKET_ID, debtWad);
+
+      // 1. increasePosition MUST revert
+      const addSize = ethers.parseUnits("0.5", 18);
+      const addMargin = ethers.parseUnits("100", 18);
+      await sys.quote.mint(sys.t1.address, addMargin);
+      await sys.quote.connect(sys.t1).approve(sys.vault.target, addMargin);
+
+      await expect(
+        sys.engine.connect(sys.t1).increasePosition(1, addSize, addMargin)
+      ).to.be.revertedWith("PerpEngine: unpaid funding debt");
+
+      // 2. removeMargin MUST revert
+      await expect(
+        sys.engine.connect(sys.t1).removeMargin(1, ethers.parseUnits("10", 18))
+      ).to.be.revertedWith("PerpEngine: unpaid funding debt");
+
+      // 3. Partial decreasePosition MUST revert
+      await expect(
+        sys.engine.connect(sys.t1).decreasePosition(1, ethers.parseUnits("0.5", 18), 0)
+      ).to.be.revertedWith("PerpEngine: margin exhausted by funding");
     });
   });
 });

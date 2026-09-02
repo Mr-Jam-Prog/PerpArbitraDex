@@ -1105,6 +1105,10 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     // ============ MARGIN MANAGEMENT ============
 
     /**
+     * @notice Adds collateral to an open position, curing any unpaid funding debt first.
+     * @dev Unpaid funding debt blocks non-terminal risk/exposure mutations and withdrawals.
+     * addMargin is the recovery path: newly deposited collateral first cures any unpaid funding debt,
+     * and only the residual increases position margin.
      * @inheritdoc IPerpEngine
      */
     function addMargin(uint256 positionId, uint256 amount)
@@ -1120,18 +1124,42 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         
         (uint256 currentPrice, ) = _getMarketPrice(position.marketId);
         
-        // Settle funding on position before margin mutation
+        // Settle funding on pre-mutation position size Q before processing top-up
         (, uint256 unpaidFunding) = _settleFunding(position);
-        require(unpaidFunding == 0, "PerpEngine: unpaid funding debt");
 
         uint256 nativeDeposit = _toVaultUnits(amount);
-        uint256 effectiveMarginAdded = _fromVaultUnits(nativeDeposit);
+        require(nativeDeposit > 0, "PerpEngine: zero amount");
 
-        ILiquidityVault(liquidityVault).depositTraderMargin(msg.sender, nativeDeposit);
-        
-        position.margin += effectiveMarginAdded;
-        totalCollateral += effectiveMarginAdded;
-        
+        if (unpaidFunding == 0) {
+            uint256 effectiveMarginAdded = _fromVaultUnits(nativeDeposit);
+
+            ILiquidityVault(liquidityVault).depositTraderMargin(msg.sender, nativeDeposit);
+
+            position.margin += effectiveMarginAdded;
+            totalCollateral += effectiveMarginAdded;
+        } else {
+            uint256 nativeFundingDebt = _toVaultUnitsCeil(unpaidFunding);
+
+            require(nativeDeposit >= nativeFundingDebt, "PerpEngine: top-up below funding debt");
+
+            uint256 residualNative = nativeDeposit - nativeFundingDebt;
+            uint256 residualMarginWad = _fromVaultUnits(residualNative);
+
+            // 1. Deposit physical tokens into Vault
+            ILiquidityVault(liquidityVault).depositTraderMargin(msg.sender, nativeDeposit);
+
+            // 2. Reclassify debt portion from traderMarginTotal to totalLpAssets
+            if (nativeFundingDebt > 0) {
+                ILiquidityVault(liquidityVault).settleTraderLoss(msg.sender, 0, nativeFundingDebt);
+            }
+
+            // 3. Only residual becomes new position margin
+            position.margin += residualMarginWad;
+            totalCollateral += residualMarginWad;
+        }
+
+        require(position.margin > 0, "PerpEngine: top-up leaves zero margin");
+
         uint256 notionalValue = position.size.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
         position.leverage = notionalValue.mulDiv(PRECISION, position.margin);
         

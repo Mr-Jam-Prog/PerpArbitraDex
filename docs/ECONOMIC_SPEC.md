@@ -122,7 +122,7 @@ When opening or adding size $\Delta S$ at price $P_{\text{exec}}$ with additiona
    $$\Delta M_{\text{net}} = \Delta M - \text{Fee}$$
 3. **Volume-Weighted Average Entry Price ($E_{\text{new}}$)**:
    $$E_{\text{new}} = \frac{(S_{\text{old}} \times E_{\text{old}}) + (\Delta S \times P_{\text{exec}})}{S_{\text{old}} + \Delta S}$$
-4. **Funding Accrual**: Prior accrued funding is settled or rolled over into updated $F_0$.
+4. **Funding Accrual**: Prior accrued funding is settled or rolled over into updated $F_0$. Unpaid funding debt blocks non-terminal risk/exposure mutations (`increasePosition`) and withdrawals (`removeMargin`, non-terminal `decreasePosition`). `addMargin` is the recovery path: newly deposited collateral first cures any unpaid funding debt, and only the residual increases position margin.
 
 ### 5.2 Partial Decrease & Full Close
 When decreasing position by size $\Delta S \le S$:
