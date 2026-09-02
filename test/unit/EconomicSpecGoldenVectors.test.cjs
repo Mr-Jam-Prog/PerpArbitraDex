@@ -2776,6 +2776,47 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
     });
   });
 
+  describe("SDK ABI Parity & Version Invariants (Source & Dist)", function () {
+    it("Source and Dist PerpEngine ABI files contain collateralDelta in PositionDecreased and liquidityVault_ in constructor", async function () {
+      const fs = require("fs");
+      const path = require("path");
+
+      const srcAbiPath = path.resolve(__dirname, "../../packages/sdk/src/abi/PerpEngine.json");
+      const distAbiPath = path.resolve(__dirname, "../../packages/sdk/dist/abi/PerpEngine.json");
+
+      expect(fs.existsSync(srcAbiPath), "Source ABI missing").to.be.true;
+      expect(fs.existsSync(distAbiPath), "Dist ABI missing").to.be.true;
+
+      const srcAbi = JSON.parse(fs.readFileSync(srcAbiPath, "utf8")).abi;
+      const distAbi = JSON.parse(fs.readFileSync(distAbiPath, "utf8")).abi;
+
+      for (const [label, abi] of [["Source", srcAbi], ["Dist", distAbi]]) {
+        // 1. PositionDecreased Event Assertions
+        const decEvent = abi.find(e => e.type === "event" && e.name === "PositionDecreased");
+        expect(decEvent, `${label} PositionDecreased missing`).to.not.be.undefined;
+        expect(decEvent.inputs.length, `${label} PositionDecreased input length`).to.equal(6);
+
+        expect(decEvent.inputs[0].name).to.equal("positionId");
+        expect(decEvent.inputs[1].name).to.equal("sizeReduced");
+        expect(decEvent.inputs[2].name).to.equal("marginReduced");
+        expect(decEvent.inputs[3].name, `${label} input[3] name`).to.equal("collateralDelta");
+        expect(decEvent.inputs[3].type, `${label} input[3] type`).to.equal("int256");
+        expect(decEvent.inputs[4].name).to.equal("pnl");
+        expect(decEvent.inputs[5].name).to.equal("fee");
+
+        // 2. Constructor Assertions
+        const ctor = abi.find(e => e.type === "constructor");
+        expect(ctor, `${label} constructor missing`).to.not.be.undefined;
+
+        const hasVaultArg = ctor.inputs.some(i => i.name === "liquidityVault_");
+        const hasInsuranceArg = ctor.inputs.some(i => i.name === "insuranceFund_");
+
+        expect(hasVaultArg, `${label} constructor must contain liquidityVault_`).to.be.true;
+        expect(hasInsuranceArg, `${label} constructor must not contain insuranceFund_`).to.be.false;
+      }
+    });
+  });
+
   describe("Pending Funding getMaxAdditionalSize Preview Suite (MAXQ-F1 through MAXQ-F5 & Codex Root Cause)", function () {
     it("MAXQ-F1 — positive pending unaccrued debit quote and execution", async function () {
       const sys = await deploySystem(18);

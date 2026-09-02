@@ -7,7 +7,9 @@
   "scripts": {
     "sync:abi": "node scripts/sync-perp-engine-abi.mjs",
     "check:abi": "node scripts/check-perp-engine-abi.mjs",
-    "build": "pnpm run check:abi && tsc",
+    "check:dist-abi": "node scripts/check-dist-abi.mjs",
+    "build": "pnpm run check:abi && tsc && pnpm run check:dist-abi",
+    "prepack": "tsc && pnpm run check:dist-abi",
     "dev": "tsc --watch"
   },
   "dependencies": {
