@@ -143,7 +143,7 @@ describe("🚀 PerpEngine - Unit Tests", function () {
             deadline: (await time.latest()) + 3600,
             referralCode: ethers.ZeroHash
           })
-        ).to.be.revertedWith("PerpEngine: leverage too high");
+        ).to.be.revertedWithCustomError(perpEngine, "LeverageTooHigh");
     });
   });
 
@@ -211,6 +211,175 @@ describe("🚀 PerpEngine - Unit Tests", function () {
                 minReward: 0
             })
         ).to.emit(perpEngine, "PositionLiquidated");
+    });
+  });
+
+  describe("📏 SIZE-R1 & VIEW-R1..VIEW-R4 — Contract Size & Stateless Viewer Parity Regressions", function () {
+    it("SIZE-R1 — Deployed runtime and initcode size boundaries", async function () {
+      const perpEngineArtifact = await artifacts.readArtifact("PerpEngine");
+      const viewerArtifact = await artifacts.readArtifact("PerpEngineViewer");
+
+      const peRuntime = (perpEngineArtifact.deployedBytecode.slice(2).length) / 2;
+      const peInitcode = (perpEngineArtifact.bytecode.slice(2).length) / 2;
+
+      const viewerRuntime = (viewerArtifact.deployedBytecode.slice(2).length) / 2;
+      const viewerInitcode = (viewerArtifact.bytecode.slice(2).length) / 2;
+
+      expect(peRuntime).to.be.lte(24576, "PerpEngine runtime exceeds EIP-170 limit of 24576 bytes");
+      expect(viewerRuntime).to.be.lte(24576, "PerpEngineViewer runtime exceeds EIP-170 limit of 24576 bytes");
+
+      expect(peInitcode).to.be.lte(49152, "PerpEngine initcode exceeds EIP-3860 limit of 49152 bytes");
+      expect(viewerInitcode).to.be.lte(49152, "PerpEngineViewer initcode exceeds EIP-3860 limit of 49152 bytes");
+    });
+
+    it("VIEW-R1 — Position/Risk View Forwarding Parity", async function () {
+      const depositLp = ethers.parseUnits("100000", 18);
+      await mockUSD.mint(owner.address, depositLp);
+      await mockUSD.connect(owner).approve(liquidityVault.target, depositLp);
+      await liquidityVault.connect(owner).deposit(depositLp, owner.address);
+
+      await mockUSD.mint(user1.address, COLLATERAL_AMOUNT);
+      await mockUSD.connect(user1).approve(liquidityVault.target, COLLATERAL_AMOUNT);
+      await perpEngine.connect(user1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: ethers.parseUnits("2.5", 18),
+        margin: COLLATERAL_AMOUNT,
+        acceptablePrice: INITIAL_PRICE * 101n / 100n,
+        deadline: (await time.latest()) + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      const posDirect = await perpEngine.getPosition(1);
+      const hfDirect = await perpEngine.getHealthFactor(1);
+      const liqPriceDirect = await perpEngine.getLiquidationPrice(1);
+      const pnlDirect = await perpEngine.getUnrealizedPnl(1, INITIAL_PRICE);
+      const isLiqDirect = await perpEngine.isPositionLiquidatable(1, INITIAL_PRICE);
+      const availMarginDirect = await perpEngine.getAvailableMargin(1);
+
+      const PerpEngineViewer = await ethers.getContractFactory("PerpEngineViewer");
+      const viewer = await PerpEngineViewer.deploy();
+      await viewer.waitForDeployment();
+
+      const posViewer = await viewer.getPosition(perpEngine.target, 1);
+      const hfViewer = await viewer.getHealthFactor(perpEngine.target, 1);
+      const liqPriceViewer = await viewer.getLiquidationPrice(perpEngine.target, 1);
+      const pnlViewer = await viewer.getUnrealizedPnl(perpEngine.target, 1, INITIAL_PRICE);
+      const isLiqViewer = await viewer.isPositionLiquidatable(perpEngine.target, 1, INITIAL_PRICE);
+      const availMarginViewer = await viewer.getAvailableMargin(perpEngine.target, 1);
+
+      expect(posDirect.positionId).to.equal(posViewer.positionId);
+      expect(posDirect.trader).to.equal(posViewer.trader);
+      expect(posDirect.marketId).to.equal(posViewer.marketId);
+      expect(posDirect.isLong).to.equal(posViewer.isLong);
+      expect(posDirect.size).to.equal(posViewer.size);
+      expect(posDirect.margin).to.equal(posViewer.margin);
+      expect(posDirect.entryPrice).to.equal(posViewer.entryPrice);
+      expect(posDirect.leverage).to.equal(posViewer.leverage);
+      expect(posDirect.liquidationPrice).to.equal(posViewer.liquidationPrice);
+      expect(posDirect.healthFactor).to.equal(posViewer.healthFactor);
+      expect(posDirect.unrealizedPnl).to.equal(posViewer.unrealizedPnl);
+
+      expect(hfDirect).to.equal(hfViewer);
+      expect(liqPriceDirect).to.equal(liqPriceViewer);
+      expect(pnlDirect).to.equal(pnlViewer);
+      expect(isLiqDirect).to.equal(isLiqViewer);
+      expect(availMarginDirect).to.equal(availMarginViewer);
+    });
+
+    it("VIEW-R2 — Market Position Pagination Parity", async function () {
+      const depositLp = ethers.parseUnits("100000", 18);
+      await mockUSD.mint(owner.address, depositLp);
+      await mockUSD.connect(owner).approve(liquidityVault.target, depositLp);
+      await liquidityVault.connect(owner).deposit(depositLp, owner.address);
+
+      await mockUSD.mint(user1.address, COLLATERAL_AMOUNT * 2n);
+      await mockUSD.connect(user1).approve(liquidityVault.target, COLLATERAL_AMOUNT * 2n);
+
+      await perpEngine.connect(user1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: ethers.parseUnits("1", 18),
+        margin: COLLATERAL_AMOUNT,
+        acceptablePrice: INITIAL_PRICE * 101n / 100n,
+        deadline: (await time.latest()) + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      await perpEngine.connect(user1).openPosition({
+        marketId: MARKET_ID,
+        isLong: false,
+        size: ethers.parseUnits("1", 18),
+        margin: COLLATERAL_AMOUNT,
+        acceptablePrice: INITIAL_PRICE * 99n / 100n,
+        deadline: (await time.latest()) + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      const [page1, cursor1] = await perpEngine.getPositionsByMarket(MARKET_ID, 0, 1);
+      expect(page1.length).to.equal(1);
+      expect(cursor1).to.equal(2);
+
+      const [page2, cursor2] = await perpEngine.getPositionsByMarket(MARKET_ID, cursor1, 1);
+      expect(page2.length).to.equal(1);
+      expect(cursor2).to.equal(0);
+    });
+
+    it("VIEW-R3 — Batch Parity", async function () {
+      const depositLp = ethers.parseUnits("100000", 18);
+      await mockUSD.mint(owner.address, depositLp);
+      await mockUSD.connect(owner).approve(liquidityVault.target, depositLp);
+      await liquidityVault.connect(owner).deposit(depositLp, owner.address);
+
+      await mockUSD.mint(user1.address, COLLATERAL_AMOUNT);
+      await mockUSD.connect(user1).approve(liquidityVault.target, COLLATERAL_AMOUNT);
+
+      await perpEngine.connect(user1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: ethers.parseUnits("1", 18),
+        margin: COLLATERAL_AMOUNT,
+        acceptablePrice: INITIAL_PRICE * 101n / 100n,
+        deadline: (await time.latest()) + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      const batchPositions = await perpEngine.batchGetPositions([1]);
+      const batchHfs = await perpEngine.batchGetHealthFactors([1]);
+      const batchLiqs = await perpEngine.batchIsLiquidatable([1], [INITIAL_PRICE]);
+
+      expect(batchPositions.length).to.equal(1);
+      expect(batchPositions[0].positionId).to.equal(1);
+      expect(batchHfs[0]).to.equal(await perpEngine.getHealthFactor(1));
+      expect(batchLiqs[0]).to.equal(await perpEngine.isPositionLiquidatable(1, INITIAL_PRICE));
+    });
+
+    it("VIEW-R4 — getMaxAdditionalSize Parity", async function () {
+      const depositLp = ethers.parseUnits("10000000", 18);
+      await mockUSD.mint(owner.address, depositLp);
+      await mockUSD.connect(owner).approve(liquidityVault.target, depositLp);
+      await liquidityVault.connect(owner).deposit(depositLp, owner.address);
+
+      await mockUSD.mint(user1.address, COLLATERAL_AMOUNT * 2n);
+      await mockUSD.connect(user1).approve(liquidityVault.target, COLLATERAL_AMOUNT * 2n);
+
+      await perpEngine.connect(user1).openPosition({
+        marketId: MARKET_ID,
+        isLong: true,
+        size: ethers.parseUnits("1", 18),
+        margin: COLLATERAL_AMOUNT,
+        acceptablePrice: INITIAL_PRICE * 101n / 100n,
+        deadline: (await time.latest()) + 3600,
+        referralCode: ethers.ZeroHash
+      });
+
+      const maxAdd = await perpEngine.getMaxAdditionalSize(1, COLLATERAL_AMOUNT);
+      expect(maxAdd).to.be.gt(0);
+
+      // Verify that increasePosition by maxAdd succeeds
+      await expect(
+        perpEngine.connect(user1).increasePosition(1, maxAdd, COLLATERAL_AMOUNT)
+      ).to.emit(perpEngine, "PositionIncreased");
     });
   });
 });

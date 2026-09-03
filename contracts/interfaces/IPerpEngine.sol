@@ -11,6 +11,41 @@ import {IPositionViewer} from "./IPositionViewer.sol";
  *      Must remain backward compatible for upgrades
  */
 interface IPerpEngine is IPositionViewer {
+    // ============ CUSTOM ERRORS ============
+    error ZeroAddress();
+    error OnlyPositionManager();
+    error OnlyLiquidationEngine();
+    error OnlyGovernance();
+    error MarketInactive();
+    error InvalidPosition();
+    error SizeTooSmall();
+    error ZeroSize();
+    error ZeroMargin();
+    error DeadlinePassed();
+    error InvalidPrice();
+    error PriceTooHigh();
+    error PriceTooLow();
+    error MarginTooLowForFees();
+    error LeverageTooHigh();
+    error UnbackedProfit();
+    error NotPositionOwner();
+    error UnpaidFundingDebt();
+    error InvalidSizeReduction();
+    error InvalidMarginReduction();
+    error MarginExhaustedByFunding();
+    error RemainingMarginZero();
+    error RemainingMarginTooLow();
+    error PositionInactive();
+    error TraderMismatch();
+    error MarketMismatch();
+    error NotLiquidatable();
+    error TopUpBelowFundingDebt();
+    error TopUpLeavesZeroMargin();
+    error InsufficientMargin();
+    error BelowLiquidationThreshold();
+    error MarketAlreadyActive();
+    error MarginTooLow();
+
     // ============ STRUCTS ============
     
     struct Position {
@@ -44,6 +79,18 @@ interface IPerpEngine is IPositionViewer {
         uint256 marketId;
         uint256 sizeToLiquidate;
         uint256 minReward;
+    }
+
+    struct Market {
+        bool isActive;
+        uint256 maxLeverage;
+        uint256 minMarginRatio;
+        uint256 minPositionSize;
+        uint256 liquidationFeeRatio;
+        uint256 protocolFeeRatio;
+        bytes32 oracleFeedId;
+        uint256 lastPriceUpdate;
+        uint256 lastFundingUpdate;
     }
 
     // ============ EVENTS ============
@@ -194,6 +241,16 @@ interface IPerpEngine is IPositionViewer {
      * @return position Position struct
      */
     function getPositionInternal(uint256 positionId) external view returns (Position memory position);
+
+    function getMarket(uint256 marketId) external view returns (Market memory market);
+    function getTraderPositions(address trader) external view returns (uint256[] memory);
+    function oracleAggregator() external view returns (address);
+    function ammPool() external view returns (address);
+    function liquidityVault() external view returns (address);
+    function riskManager() external view returns (address);
+    function quoteToken() external view returns (IERC20);
+    function totalCollateral() external view returns (uint256);
+    function totalPositionSize() external view returns (uint256);
 
     // ============ VIEW FUNCTIONS (from IPositionViewer) ============
     

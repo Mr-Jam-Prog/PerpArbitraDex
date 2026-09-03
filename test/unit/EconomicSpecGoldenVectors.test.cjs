@@ -142,7 +142,7 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
 
       await expect(
         sys.engine.connect(sys.t1).increasePosition(1, addSize, addMargin)
-      ).to.be.revertedWith("PerpEngine: unpaid funding debt");
+      ).to.be.revertedWithCustomError(sys.engine, "UnpaidFundingDebt");
 
       const posAfter = await sys.engine.getPositionInternal(1);
       expect(posAfter.margin).to.equal(marginBefore);
@@ -179,7 +179,7 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
 
       await expect(
         sys.engine.connect(sys.t1).removeMargin(1, ethers.parseUnits("10", 18))
-      ).to.be.revertedWith("PerpEngine: unpaid funding debt");
+      ).to.be.revertedWithCustomError(sys.engine, "UnpaidFundingDebt");
 
       const posAfter = await sys.engine.getPositionInternal(1);
       expect(posAfter.margin).to.equal(marginBefore);
@@ -197,7 +197,7 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
 
       await expect(
         sys.engine.connect(sys.t1).decreasePosition(1, ethers.parseUnits("0.5", 18), 0n)
-      ).to.be.revertedWith("PerpEngine: margin exhausted by funding");
+      ).to.be.revertedWithCustomError(sys.engine, "MarginExhaustedByFunding");
 
       const posAfter = await sys.engine.getPositionInternal(1);
       expect(posAfter.margin).to.equal(marginBefore);
@@ -241,7 +241,7 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
           deadline: latestTime + 3600,
           referralCode: ethers.ZeroHash
         })
-      ).to.be.revertedWith("PerpEngine: leverage too high");
+      ).to.be.revertedWithCustomError(sys.engine, "LeverageTooHigh");
     });
 
     it("RISK-R2: 6d quote openPosition validates risk on actual post-fee native-backed margin and reverts if boundary exceeded", async function () {
@@ -275,7 +275,7 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
           deadline: latestTime + 3600,
           referralCode: ethers.ZeroHash
         })
-      ).to.be.revertedWith("PerpEngine: leverage too high");
+      ).to.be.revertedWithCustomError(sys.engine, "LeverageTooHigh");
     });
 
     it("RISK-R3: increasePosition reverts atomically when post-fee risk fails, leaving zero state mutation", async function () {
@@ -339,7 +339,7 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
 
       await expect(
         sys.engine.connect(sys.t1).increasePosition(2, addSize, addMargin)
-      ).to.be.revertedWith("PerpEngine: leverage exceeds market max");
+      ).to.be.revertedWithCustomError(sys.engine, "LeverageTooHigh");
 
       // Verify zero state mutation
       const posAfter = await sys.engine.getPositionInternal(2);
@@ -1554,7 +1554,7 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
       // Attempting closePosition when vault lacks sufficient LP assets MUST REVERT
       await expect(
         sys.engine.connect(sys.t1).closePosition(1)
-      ).to.be.revertedWith("PerpEngine: unbacked profit");
+      ).to.be.revertedWithCustomError(sys.engine, "UnbackedProfit");
 
       // Assert position remains active and trader claim is preserved
       const pos = await sys.engine.getPositionInternal(1);
@@ -1619,7 +1619,7 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
       // Attempting partial decrease that would leave 0 remaining margin MUST REVERT
       await expect(
         sys.engine.connect(sys.t1).decreasePosition(1, dQ, 0n)
-      ).to.be.revertedWith("PerpEngine: remaining margin zero");
+      ).to.be.revertedWithCustomError(sys.engine, "RemainingMarginZero");
 
       // Verify position remains active with 10 ETH size (remaining exposure was NOT erased!)
       const pos = await sys.engine.getPosition(1);
@@ -1984,7 +1984,7 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
           deadline: latestTime + 3600,
           referralCode: ethers.ZeroHash
         })
-      ).to.be.revertedWith("PerpEngine: margin too low");
+      ).to.be.revertedWithCustomError(sys.engine, "MarginTooLow");
 
       // Open with ceil margin -> MUST PASS
       await expect(
@@ -2034,7 +2034,7 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
 
       await expect(
         sys.engine.connect(sys.t1).increasePosition(1, addSize, addMargin)
-      ).to.be.revertedWith("PerpEngine: margin too low");
+      ).to.be.revertedWithCustomError(sys.engine, "MarginTooLow");
 
       // Verify zero state mutation
       const posAfter = await sys.engine.getPosition(1);
@@ -2076,7 +2076,7 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
       // Ceil min margin required > 1.010000000000000001 WAD.
       await expect(
         sys.engine.connect(sys.t1).decreasePosition(1, 101000000000000000001n, 0n)
-      ).to.be.revertedWith("PerpEngine: remaining margin too low");
+      ).to.be.revertedWithCustomError(sys.engine, "RemainingMarginTooLow");
     });
 
     it("MM-R4 — losing partial decrease required-margin ceil boundary", async function () {
@@ -2113,7 +2113,7 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
 
       await expect(
         sys.engine.connect(sys.t1).decreasePosition(1, 101000000000000000001n, 0n)
-      ).to.be.revertedWith("PerpEngine: remaining margin too low");
+      ).to.be.revertedWithCustomError(sys.engine, "RemainingMarginTooLow");
     });
 
     it("MM-R5 — maintenance margin / available margin ceil calculation", async function () {
@@ -3202,7 +3202,7 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
 
       await expect(
         sys.engine.connect(sys.t1).increasePosition(1, 100n, additionalMargin)
-      ).to.be.revertedWith("PerpEngine: unpaid funding debt");
+      ).to.be.revertedWithCustomError(sys.engine, "UnpaidFundingDebt");
     });
 
     it("MAXQ-F4 — negative pending unaccrued funding credit preview", async function () {
@@ -3491,7 +3491,7 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
 
       await expect(
         sys.engine.connect(sys.t1).addMargin(1, insufficientTopUp)
-      ).to.be.revertedWith("PerpEngine: top-up below funding debt");
+      ).to.be.revertedWithCustomError(sys.engine, "TopUpBelowFundingDebt");
 
       // Assert ALL snapshots strictly unchanged (proving full atomic rollback)
       const posAfter = await sys.engine.getPositionInternal(1);
@@ -3537,7 +3537,7 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
 
       await expect(
         sys.engine.connect(sys.t1).addMargin(1, exactTopUp)
-      ).to.be.revertedWith("PerpEngine: top-up leaves zero margin");
+      ).to.be.revertedWithCustomError(sys.engine, "TopUpLeavesZeroMargin");
     });
 
     it("FUND-RESCUE-R4 — 6-decimal native ceil debt conversion", async function () {
@@ -3710,17 +3710,17 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
 
       await expect(
         sys.engine.connect(sys.t1).increasePosition(1, addSize, addMargin)
-      ).to.be.revertedWith("PerpEngine: unpaid funding debt");
+      ).to.be.revertedWithCustomError(sys.engine, "UnpaidFundingDebt");
 
       // 2. removeMargin MUST revert
       await expect(
         sys.engine.connect(sys.t1).removeMargin(1, ethers.parseUnits("10", 18))
-      ).to.be.revertedWith("PerpEngine: unpaid funding debt");
+      ).to.be.revertedWithCustomError(sys.engine, "UnpaidFundingDebt");
 
       // 3. Partial decreasePosition MUST revert
       await expect(
         sys.engine.connect(sys.t1).decreasePosition(1, ethers.parseUnits("0.5", 18), 0)
-      ).to.be.revertedWith("PerpEngine: margin exhausted by funding");
+      ).to.be.revertedWithCustomError(sys.engine, "MarginExhaustedByFunding");
     });
   });
 });

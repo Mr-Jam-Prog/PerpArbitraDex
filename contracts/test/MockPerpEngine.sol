@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IPerpEngine} from "../interfaces/IPerpEngine.sol";
 import {IPositionViewer} from "../interfaces/IPositionViewer.sol";
 
@@ -16,6 +17,20 @@ contract MockPerpEngine is IPerpEngine {
     function setAMMPool(address amm) external {
         _ammPool = amm;
     }
+
+    function getMarket(uint256) external view override returns (Market memory) {
+        return Market(true, 100 * 1e18, 1e16, 1e18, 1e16, 1e16, bytes32(0), block.timestamp, block.timestamp);
+    }
+    function getTraderPositions(address) external view override returns (uint256[] memory) {
+        return new uint256[](0);
+    }
+    function oracleAggregator() external view override returns (address) { return address(0); }
+    function ammPool() external view override returns (address) { return _ammPool; }
+    function liquidityVault() external view override returns (address) { return address(0); }
+    function riskManager() external view override returns (address) { return address(0); }
+    function quoteToken() external view override returns (IERC20) { return IERC20(address(0)); }
+    function totalCollateral() external view override returns (uint256) { return 0; }
+    function totalPositionSize() external view override returns (uint256) { return 0; }
 
     // Standard setPosition for tests that use the struct
     function setPosition(uint256 positionId, Position calldata pos) external {

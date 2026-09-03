@@ -53,7 +53,22 @@
         },
         {
             "inputs": [],
+            "name": "BelowLiquidationThreshold",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "DeadlinePassed",
+            "type": "error"
+        },
+        {
+            "inputs": [],
             "name": "DivisionByZero",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "InsufficientMargin",
             "type": "error"
         },
         {
@@ -65,6 +80,101 @@
                 }
             ],
             "name": "InvalidMaintenanceMargin",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "InvalidMarginReduction",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "InvalidPosition",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "InvalidPrice",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "InvalidSizeReduction",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "LeverageTooHigh",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "MarginExhaustedByFunding",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "MarginTooLow",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "MarginTooLowForFees",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "MarketAlreadyActive",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "MarketInactive",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "MarketMismatch",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "NotLiquidatable",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "NotPositionOwner",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "OnlyGovernance",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "OnlyLiquidationEngine",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "OnlyPositionManager",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "PositionInactive",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "PriceTooHigh",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "PriceTooLow",
             "type": "error"
         },
         {
@@ -80,7 +190,62 @@
         },
         {
             "inputs": [],
+            "name": "RemainingMarginTooLow",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "RemainingMarginZero",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "SizeTooSmall",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "TopUpBelowFundingDebt",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "TopUpLeavesZeroMargin",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "TraderMismatch",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "UnbackedProfit",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "UnpaidFundingDebt",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "ZeroAddress",
+            "type": "error"
+        },
+        {
+            "inputs": [],
             "name": "ZeroEntryPrice",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "ZeroMargin",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "ZeroSize",
             "type": "error"
         },
         {
@@ -744,7 +909,7 @@
                         }
                     ],
                     "internalType": "struct PerpEngine.BalanceSheet",
-                    "name": "bs",
+                    "name": "",
                     "type": "tuple"
                 }
             ],
@@ -883,7 +1048,7 @@
                             "type": "uint256"
                         }
                     ],
-                    "internalType": "struct PerpEngine.Market",
+                    "internalType": "struct IPerpEngine.Market",
                     "name": "",
                     "type": "tuple"
                 }
