@@ -21,8 +21,9 @@
         "compile": "pnpm run compile:hardhat && pnpm run compile:forge",
         "test:unit": "pnpm exec hardhat test --no-compile test/unit/*.test.cjs",
         "test:forge": "forge test --offline --summary",
+        "check:contract-size": "node scripts/check-contract-size.mjs",
         "build:packages": "pnpm --filter @perpdex/math run build && pnpm --filter @perpdex/sdk run build",
-        "check:core": "pnpm run install:frozen && pnpm run compile && pnpm run test:unit && pnpm run test:forge && pnpm run build:packages",
+        "check:core": "pnpm run install:frozen && pnpm run compile:hardhat && pnpm run check:contract-size && pnpm run compile:forge && pnpm run test:unit && pnpm run test:forge && pnpm run build:packages",
         "build": "pnpm --recursive run build",
         "lint": "pnpm --recursive run lint"
     },

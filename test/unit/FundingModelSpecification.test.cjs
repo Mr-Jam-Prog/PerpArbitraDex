@@ -360,7 +360,7 @@ describe("📐 Funding Model Specification & Invariants", function () {
 
       const marginBeforeDecrease = (await perpEngine.getPositionInternal(posId)).margin;
 
-      // Decrease position by dQ = 2 ETH (remaining = 8 ETH)
+      // Decrease position by dQ = 2 ETH (20% reduction, remaining = 8 ETH = 80%)
       const dQ = ethers.parseUnits("2", 18);
       await perpEngine.connect(traderLong).decreasePosition(posId, dQ, 0n);
 
@@ -372,9 +372,11 @@ describe("📐 Funding Model Specification & Invariants", function () {
       // Remaining lastFundingIndex must equal current market cumulative index
       expect(posAfterDecrease.lastFundingIndex).to.equal(cumIndex);
 
-      // Margin after decrease must reflect funding payment calculated on full Q (10 ETH)
-      const expectedMargin = marginBeforeDecrease - expectedFundingOnFullQ;
-      expect(posAfterDecrease.margin).to.equal(expectedMargin);
+      // Post-funding margin on Q was (marginBeforeDecrease - expectedFundingOnFullQ)
+      // 20% is released and paid out to trader, leaving 80% on remaining position
+      const postFundingMargin = marginBeforeDecrease - expectedFundingOnFullQ;
+      const expectedRemainingMargin = (postFundingMargin * 80n) / 100n;
+      expect(posAfterDecrease.margin).to.equal(expectedRemainingMargin);
 
       // Same-block pending funding on remaining size must be 0
       const pendingSameBlock = await ammPool.calculateFundingPayment(

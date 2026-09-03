@@ -252,6 +252,18 @@ contract LiquidityVault is ILiquidityVault, ERC20, Ownable, ReentrancyGuard, Pau
         emit MarginWithdrawn(trader, amount);
     }
 
+    function creditTraderMarginFromLP(address trader, uint256 amount)
+        external
+        override
+        onlyPerpEngine
+    {
+        if (amount == 0) return;
+        require(totalLpAssets >= amount, "Vault: insufficient LP assets for funding credit");
+        totalLpAssets -= amount;
+        traderMarginTotal += amount;
+        emit MarginDeposited(trader, amount);
+    }
+
     function lockLiquidity(uint256 amount) external override onlyPerpEngine {
         require(availableLiquidity() >= amount, "Vault: insufficient liquidity to lock");
         lockedLiquidity += amount;
@@ -324,6 +336,16 @@ contract LiquidityVault is ILiquidityVault, ERC20, Ownable, ReentrancyGuard, Pau
         emit TraderLossSettled(trader, marginToReturn, loss);
     }
 
+    /**
+     * @notice Settles an insolvent position's bad debt according to the protocol waterfall:
+     * 1) Forfeit trader margin -> transferred to totalLpAssets.
+     * 2) Draw down Insurance Fund -> reclassified to totalLpAssets.
+     * 3) Socialize remaining deficit to LPs -> recorded in `coveredByLP`.
+     *
+     * @dev `coveredByLP` is the economic write-off of an uncollected trader receivable (foregone LP PnL).
+     * It does not trigger an additional totalLpAssets debit because the missing trader payment is a foregone receivable,
+     * not a physical token outflow. `residualBadDebt` is 0 under the LP terminal absorber model.
+     */
     function settleBadDebt(
         address trader,
         uint256 marginForfeited,
@@ -335,44 +357,29 @@ contract LiquidityVault is ILiquidityVault, ERC20, Ownable, ReentrancyGuard, Pau
         nonReentrant
         returns (uint256 coveredByIF, uint256 coveredByLP, uint256 residualBadDebt)
     {
+        require(totalDeficit > marginForfeited, "Vault: no bad debt");
         require(traderMarginTotal >= marginForfeited, "Vault: margin underflow");
+
         traderMarginTotal -= marginForfeited;
+        totalLpAssets += marginForfeited;
 
-        if (marginForfeited >= totalDeficit) {
-            uint256 excessMargin = marginForfeited - totalDeficit;
-            totalLpAssets += excessMargin;
-            coveredByIF = 0;
-            coveredByLP = 0;
-            residualBadDebt = 0;
+        uint256 remainingDeficit = totalDeficit - marginForfeited;
+
+        // Reclassify Insurance Fund to LP assets if IF balance exists
+        if (insuranceFundBalance >= remainingDeficit) {
+            coveredByIF = remainingDeficit;
         } else {
-            uint256 remainingDeficit = totalDeficit - marginForfeited;
-
-            // Step 2: Insurance Fund
-            if (insuranceFundBalance >= remainingDeficit) {
-                coveredByIF = remainingDeficit;
-                insuranceFundBalance -= remainingDeficit;
-                remainingDeficit = 0;
-            } else {
-                coveredByIF = insuranceFundBalance;
-                remainingDeficit -= insuranceFundBalance;
-                insuranceFundBalance = 0;
-            }
-
-            // Step 3: LP Capital
-            if (remainingDeficit > 0) {
-                if (totalLpAssets >= remainingDeficit) {
-                    coveredByLP = remainingDeficit;
-                    totalLpAssets -= remainingDeficit;
-                    remainingDeficit = 0;
-                } else {
-                    coveredByLP = totalLpAssets;
-                    remainingDeficit -= totalLpAssets;
-                    totalLpAssets = 0;
-                }
-            }
-
-            residualBadDebt = remainingDeficit;
+            coveredByIF = insuranceFundBalance;
         }
+
+        if (coveredByIF > 0) {
+            insuranceFundBalance -= coveredByIF;
+            totalLpAssets += coveredByIF;
+        }
+
+        uint256 remainingAfterIF = remainingDeficit - coveredByIF;
+        coveredByLP = remainingAfterIF;
+        residualBadDebt = 0;
 
         emit BadDebtSettled(trader, marginForfeited, coveredByIF, coveredByLP, residualBadDebt);
     }

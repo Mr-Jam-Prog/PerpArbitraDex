@@ -288,6 +288,46 @@ contract AMMPool is IAMMPool, Ownable {
 
     /**
      * @inheritdoc IAMMPool
+     */
+    function previewCumulativeFundingIndex(uint256 marketId)
+        external
+        view
+        override
+        marketExists(marketId)
+        returns (
+            int256 cumulativeFundingIndex,
+            int256 fundingRate
+        )
+    {
+        MarketConfig storage config = _marketConfigs[marketId];
+        MarketSkew storage skew = _marketSkews[marketId];
+        FundingRateCalculator.FundingState storage state = _fundingStates[marketId];
+
+        uint256 timeElapsed = block.timestamp - state.lastFundingTime;
+        if (timeElapsed < config.fundingInterval) {
+            return (state.cumulativeFundingIndex, state.currentFundingRate);
+        }
+
+        uint256 intervals = timeElapsed / config.fundingInterval;
+
+        fundingRate = FundingRateCalculator.calculateFundingRate(
+            skew.longOpenInterest,
+            skew.shortOpenInterest,
+            config.skewScale,
+            config.fundingInterval
+        );
+
+        if (fundingRate > int256(config.maxFundingRate)) {
+            fundingRate = int256(config.maxFundingRate);
+        } else if (fundingRate < -int256(config.maxFundingRate)) {
+            fundingRate = -int256(config.maxFundingRate);
+        }
+
+        cumulativeFundingIndex = state.cumulativeFundingIndex + (fundingRate * int256(intervals));
+    }
+
+    /**
+     * @inheritdoc IAMMPool
      * @notice Warning: Simplified TWAP implementation. In production uses oracle history.
      */
     function getTWAFundingRate(uint256 marketId, uint256 period)

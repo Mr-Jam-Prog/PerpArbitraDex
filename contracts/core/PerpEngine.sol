@@ -7,6 +7,8 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 
 import {IPerpEngine} from "../interfaces/IPerpEngine.sol";
+import {IPerpEngineViewer} from "../interfaces/IPerpEngineViewer.sol";
+import {PerpEngineViewer} from "../view/PerpEngineViewer.sol";
 import {IPositionViewer} from "../interfaces/IPositionViewer.sol";
 import {IAMMPool} from "../interfaces/IAMMPool.sol";
 import {IOracleAggregator} from "../interfaces/IOracleAggregator.sol";
@@ -19,21 +21,12 @@ import {ILiquidityVault} from "../interfaces/ILiquidityVault.sol";
 import {PositionMath} from "../libraries/PositionMath.sol";
 import {SafeDecimalMath} from "../libraries/SafeDecimalMath.sol";
 import {FundingRateCalculator} from "../libraries/FundingRateCalculator.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /**
  * @title PerpEngine
  * @notice Core perpetual DEX engine - manages positions, funding, and liquidations according to ECONOMIC_SPEC.md (ADR-001)
  * @dev Central business logic with economic safety invariants using LiquidityVault as counterparty.
- *
- * FUNDING SPECIFICATION & FORMULAS (ECONOMIC_SPEC.md):
- * - fundingRate: Rate per interval (WAD 1e18, signed)
- * - cumulativeFundingIndex: Accumulated funding per unit size (WAD 1e18, signed)
- * - lastFundingIndex: Cumulative funding index at position's last settlement (WAD 1e18, signed)
- * - position.size: Position size in base asset units (WAD 1e18)
- * - deltaIndex = market.cumulativeFundingIndex - position.lastFundingIndex (WAD 1e18, signed)
- * - fundingPayment = position.isLong ? (size * deltaIndex / 1e18) : -(size * deltaIndex / 1e18) (Quote WAD 1e18, signed)
- * - Positive funding payment owed by trader reduces trader equity:
- *     Equity = Margin + PnL - fundingPayment
  */
 contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
@@ -69,7 +62,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     mapping(uint256 => IPerpEngine.Position) private _positions;
     
     // Market ID => Market state
-    mapping(uint256 => Market) private _markets;
+    mapping(uint256 => IPerpEngine.Market) private _markets;
     
     // Trader address => array of position IDs
     mapping(address => uint256[]) private _traderPositions;
@@ -86,6 +79,157 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     // Admin and governance
     address public governance;
 
+    // Economic metrics for invariants
+    uint256 public totalCollateral;
+    uint256 public totalPositionSize; // Total open interest across markets in base units
+    int256 public totalFundingPaid;
+    int256 public totalFundingReceived;
+    uint256 public totalFeesAccrued;
+
+    // Viewer address
+    address private immutable _positionViewer;
+
+    // ============ STRUCTS ============
+    
+    struct FundingState {
+        int256 fundingRate;
+        uint256 lastFundingTime;
+        int256 cumulativeFundingIndex;
+    }
+
+    struct SettlementResult {
+        uint256 preSize;
+        uint256 postFundingPreChangeMargin;
+        uint256 sizeReduced;
+        uint256 proportionalMarginReleased;
+        int256 realizedPnl;
+        uint256 unpaidFundingDebt;
+        uint256 protocolFee;
+        uint256 traderPayout;
+        uint256 extraMarginDebit;
+        uint256 totalTraderCollateralConsumed;
+        int256 collateralDelta;
+        uint256 grossTradingDeficit;
+        uint256 lossCoveredByCollateral;
+        uint256 residualBadDebt;
+        uint256 unlockedNotional;
+        uint256 remainingPositionMargin;
+        uint256 remainingPositionSize;
+    }
+
+    struct BalanceSheet {
+        uint256 totalTraderCollateral;   // WAD Quote (1e18)
+        uint256 totalLpAssets;          // WAD Quote (1e18)
+        uint256 lockedLiquidity;        // WAD Quote (1e18)
+        uint256 availableLiquidity;     // WAD Quote (1e18)
+        uint256 insuranceFundBalance;   // WAD Quote (1e18)
+        uint256 protocolFeeBalance;     // WAD Quote (1e18)
+        uint256 totalOpenInterestBase;  // WAD Base  (1e18)
+        uint256 vaultQuoteBalance;      // WAD Quote (1e18)
+    }
+
+    // ============ MODIFIERS ============
+    
+    function _checkOnlyPositionManager() internal view {
+        if (msg.sender != positionManager) revert OnlyPositionManager();
+    }
+
+    function _checkOnlyLiquidationEngine() internal view {
+        if (msg.sender != liquidationEngine) revert OnlyLiquidationEngine();
+    }
+
+    function _checkOnlyGovernance() internal view {
+        if (msg.sender != governance) revert OnlyGovernance();
+    }
+
+    function _checkMarketActive(uint256 marketId) internal view {
+        if (!_markets[marketId].isActive) revert MarketInactive();
+    }
+
+    function _checkValidPosition(uint256 positionId) internal view {
+        if (!_positions[positionId].isActive) revert InvalidPosition();
+    }
+
+    modifier onlyPositionManager() {
+        _checkOnlyPositionManager();
+        _;
+    }
+    
+    modifier onlyLiquidationEngine() {
+        _checkOnlyLiquidationEngine();
+        _;
+    }
+    
+    modifier onlyGovernance() {
+        _checkOnlyGovernance();
+        _;
+    }
+    
+    modifier marketActive(uint256 marketId) {
+        _checkMarketActive(marketId);
+        _;
+    }
+    
+    modifier validPosition(uint256 positionId) {
+        _checkValidPosition(positionId);
+        _;
+    }
+
+    // ============ CONSTRUCTOR ============
+    
+    constructor(
+        address positionManager_,
+        address ammPool_,
+        address oracleAggregator_,
+        address liquidationEngine_,
+        address riskManager_,
+        address configRegistry_,
+        address liquidityVault_,
+        address baseToken_,
+        address quoteToken_
+    ) {
+        if (positionManager_ == address(0)) revert ZeroAddress();
+        if (ammPool_ == address(0)) revert ZeroAddress();
+        if (oracleAggregator_ == address(0)) revert ZeroAddress();
+        if (liquidationEngine_ == address(0)) revert ZeroAddress();
+        if (riskManager_ == address(0)) revert ZeroAddress();
+        if (configRegistry_ == address(0)) revert ZeroAddress();
+        if (liquidityVault_ == address(0)) revert ZeroAddress();
+        if (baseToken_ == address(0)) revert ZeroAddress();
+        if (quoteToken_ == address(0)) revert ZeroAddress();
+        
+        positionManager = positionManager_;
+        ammPool = ammPool_;
+        oracleAggregator = oracleAggregator_;
+        liquidationEngine = liquidationEngine_;
+        riskManager = riskManager_;
+        configRegistry = configRegistry_;
+        liquidityVault = liquidityVault_;
+        governance = msg.sender;
+        
+        baseToken = IERC20(baseToken_);
+        quoteToken = IERC20(quoteToken_);
+        
+        _nextPositionId = 1;
+        _positionViewer = address(new PerpEngineViewer());
+    }
+
+    /**
+     * @notice Backward-compatible view for total position size
+     */
+    function totalPositionValue() external view returns (uint256) {
+        return totalPositionSize;
+    }
+
+    /**
+     * @notice Update governance address
+     * @param newGovernance New governance address
+     */
+    function setGovernance(address newGovernance) external onlyGovernance {
+        if (newGovernance == address(0)) revert ZeroAddress();
+        governance = newGovernance;
+    }
+
     // ============ DECIMAL NORMALIZATION HELPERS ============
 
     function _toVaultUnits(uint256 wadAmount) internal view returns (uint256) {
@@ -95,6 +239,19 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             return wadAmount;
         } else if (vaultDec < 18) {
             return wadAmount / (10 ** (18 - vaultDec));
+        } else {
+            return wadAmount * (10 ** (vaultDec - 18));
+        }
+    }
+
+    function _toVaultUnitsCeil(uint256 wadAmount) internal view returns (uint256) {
+        if (wadAmount == 0) return 0;
+        uint8 vaultDec = ILiquidityVault(liquidityVault).decimals();
+        if (vaultDec == 18) {
+            return wadAmount;
+        } else if (vaultDec < 18) {
+            uint256 divisor = 10 ** (18 - vaultDec);
+            return Math.ceilDiv(wadAmount, divisor);
         } else {
             return wadAmount * (10 ** (vaultDec - 18));
         }
@@ -112,6 +269,658 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         }
     }
 
+    function _signedMarginDelta(
+        uint256 beforeMargin,
+        uint256 afterMargin
+    ) internal pure returns (int256) {
+        if (afterMargin >= beforeMargin) {
+            uint256 increase = afterMargin - beforeMargin;
+            require(increase <= uint256(type(int256).max), "PerpEngine: margin delta overflow");
+            return int256(increase);
+        }
+
+        uint256 decrease = beforeMargin - afterMargin;
+        require(decrease <= uint256(type(int256).max), "PerpEngine: margin delta overflow");
+        return -int256(decrease);
+    }
+
+    // ============ CANONICAL FUNDING SETTLEMENT HELPER ============
+
+    /**
+     * @dev Settles pending funding payment for position's current pre-modification size.
+     * Calculates funding payment based on deltaIndex between market.cumulativeFundingIndex
+     * and position.lastFundingIndex. Updates position.margin, engine totalCollateral,
+     * and Vault traderMarginTotal / totalLpAssets atomically. Returns unpaid funding debt if funding debt exceeds margin.
+     */
+    function _settleFunding(IPerpEngine.Position storage position) internal returns (int256 fundingPayment, uint256 unpaidFundingDebt) {
+        _accrueFunding(position.marketId);
+        int256 marketCumIndex = IAMMPool(ammPool).getCumulativeFundingIndex(position.marketId);
+
+        if (position.size > 0 && position.lastFundingIndex != marketCumIndex) {
+            fundingPayment = IAMMPool(ammPool).calculateFundingPayment(
+                position.marketId,
+                position.size,
+                position.isLong,
+                position.lastFundingIndex
+            );
+            if (fundingPayment != 0) {
+                if (fundingPayment > 0) {
+                    uint256 debtWad = uint256(fundingPayment);
+                    uint256 nativeDebt = _toVaultUnitsCeil(debtWad);
+                    uint256 chargedDebtWad = _fromVaultUnits(nativeDebt);
+
+                    if (position.margin >= chargedDebtWad) {
+                        position.margin -= chargedDebtWad;
+                        totalCollateral -= chargedDebtWad;
+                        ILiquidityVault(liquidityVault).settleTraderLoss(position.trader, 0, nativeDebt);
+                        unpaidFundingDebt = 0;
+                    } else {
+                        uint256 nativeMarginAvailable = _toVaultUnits(position.margin);
+                        uint256 marginForfeitedWad = _fromVaultUnits(nativeMarginAvailable);
+
+                        unpaidFundingDebt = debtWad > marginForfeitedWad ? debtWad - marginForfeitedWad : 0;
+                        totalCollateral -= marginForfeitedWad;
+                        position.margin -= marginForfeitedWad;
+
+                        if (nativeMarginAvailable > 0) {
+                            ILiquidityVault(liquidityVault).settleTraderLoss(position.trader, 0, nativeMarginAvailable);
+                        }
+                    }
+                } else {
+                    uint256 creditWad = uint256(-fundingPayment);
+                    uint256 nativeCredit = _toVaultUnits(creditWad);
+                    uint256 creditedWad = _fromVaultUnits(nativeCredit);
+
+                    position.margin += creditedWad;
+                    totalCollateral += creditedWad;
+                    if (nativeCredit > 0) {
+                        ILiquidityVault(liquidityVault).creditTraderMarginFromLP(position.trader, nativeCredit);
+                    }
+                    unpaidFundingDebt = 0;
+                }
+            }
+        }
+        position.lastFundingIndex = marketCumIndex;
+    }
+
+    // ============ SINGLE INTERNAL SETTLEMENT HELPER ============
+
+    /**
+     * @dev Core internal settlement function for position reduction / closure according to ECONOMIC_SPEC.md.
+     * Performs funding settlement on pre-modification size, computes canonical proportional margin release,
+     * realized PnL, closing fees, applies priority order (Trading Loss -> Protocol Fee -> Bad Debt),
+     * applies state updates (CEI), and interacts atomically with LiquidityVault.
+     */
+    function _settlePositionChange(
+        uint256 positionId,
+        uint256 sizeReduced,
+        uint256 requestedMarginReduced,
+        uint256 currentPrice
+    ) internal returns (SettlementResult memory res) {
+        IPerpEngine.Position storage position = _positions[positionId];
+
+        uint256 preTransactionMargin = position.margin;
+
+        // 1. Settle pending funding on pre-decrease position size
+        (int256 fundingPayment, uint256 unpaidFunding) = _settleFunding(position);
+
+        // For non-terminal partial decrease, funding debt must not exceed position margin
+        if (sizeReduced < position.size) {
+            if (unpaidFunding != 0 || position.margin == 0) revert MarginExhaustedByFunding();
+        }
+
+        res.preSize = position.size;
+        res.postFundingPreChangeMargin = position.margin;
+        res.sizeReduced = sizeReduced;
+        res.unpaidFundingDebt = unpaidFunding;
+
+        // Canonical proportional margin release per ECONOMIC_SPEC.md §5.2
+        if (sizeReduced == position.size) {
+            res.proportionalMarginReleased = position.margin;
+        } else {
+            uint256 rawRel = position.size > 0
+                ? position.margin.mulDiv(sizeReduced, position.size)
+                : 0;
+            res.proportionalMarginReleased = _fromVaultUnits(_toVaultUnits(rawRel));
+            if (requestedMarginReduced > 0) {
+                require(
+                    requestedMarginReduced == res.proportionalMarginReleased,
+                    "PerpEngine: invalid margin reduction"
+                );
+            }
+        }
+
+        // 2. Realized PnL for reduced size portion (in quote WAD)
+        res.realizedPnl = PositionMath.calculatePnL(
+            position.entryPrice,
+            currentPrice,
+            sizeReduced,
+            position.isLong
+        );
+
+        // 3. Protocol fee for reduced size portion (in quote WAD with Ceil rounding)
+        Market storage market = _markets[position.marketId];
+        uint256 reducedNotional = sizeReduced.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
+        uint256 nominalProtocolFee = Math.mulDiv(reducedNotional, market.protocolFeeRatio, PRECISION, Math.Rounding.Up);
+
+        // 4. Proportional LP locked liquidity released based on stored lockedNotional (Native-backed)
+        uint256 rawUnlock = position.size > 0
+            ? (position.lockedNotional * sizeReduced) / position.size
+            : position.lockedNotional;
+        uint256 nativeUnlock = sizeReduced == position.size
+            ? _toVaultUnits(position.lockedNotional)
+            : _toVaultUnits(rawUnlock);
+        res.unlockedNotional = _fromVaultUnits(nativeUnlock);
+
+        // 5. Canonical Signed Netting & Priority Order
+        int256 netPnl = res.realizedPnl - int256(res.unpaidFundingDebt);
+
+        if (netPnl >= 0) {
+            uint256 netProfit = uint256(netPnl);
+            uint256 grossEquity = res.proportionalMarginReleased + netProfit;
+
+            uint256 nominalNative = _toVaultUnitsCeil(nominalProtocolFee);
+            uint256 capacityNative = _toVaultUnits(grossEquity);
+            uint256 nativeFee = nominalNative < capacityNative ? nominalNative : capacityNative;
+
+            uint256 chargedFeeWad = _fromVaultUnits(nativeFee);
+            res.protocolFee = chargedFeeWad;
+
+            uint256 feeFromMargin = chargedFeeWad < res.proportionalMarginReleased
+                ? chargedFeeWad
+                : res.proportionalMarginReleased;
+            uint256 feeFromProfit = chargedFeeWad - feeFromMargin;
+
+            uint256 nativeMarginToReturn = _toVaultUnits(res.proportionalMarginReleased - feeFromMargin);
+            uint256 effectiveMarginToReturn = _fromVaultUnits(nativeMarginToReturn);
+            uint256 profitToPayout = netProfit - feeFromProfit;
+
+            res.traderPayout = effectiveMarginToReturn + profitToPayout;
+            res.totalTraderCollateralConsumed = res.proportionalMarginReleased;
+            res.lossCoveredByCollateral = 0;
+            res.residualBadDebt = 0;
+
+            res.remainingPositionMargin = position.margin > res.proportionalMarginReleased
+                ? position.margin - res.proportionalMarginReleased
+                : 0;
+            res.remainingPositionSize = position.size - sizeReduced;
+
+            if (sizeReduced < position.size) {
+                if (res.remainingPositionMargin == 0) revert RemainingMarginZero();
+                uint256 remainingNotional = res.remainingPositionSize.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
+                uint256 minMarginRequired = Math.mulDiv(remainingNotional, market.minMarginRatio, PRECISION, Math.Rounding.Up);
+                if (res.remainingPositionMargin < minMarginRequired) revert RemainingMarginTooLow();
+            }
+
+            // 6. CHECKS-EFFECTS
+            position.size = res.remainingPositionSize;
+            position.margin = res.remainingPositionMargin;
+            if (position.lockedNotional >= res.unlockedNotional) {
+                position.lockedNotional -= res.unlockedNotional;
+            } else {
+                position.lockedNotional = 0;
+            }
+            if (position.size == 0) {
+                position.isActive = false;
+            }
+            position.lastUpdated = block.timestamp;
+
+            totalCollateral -= res.totalTraderCollateralConsumed;
+            totalPositionSize -= sizeReduced;
+
+            IAMMPool(ammPool).updateSkew(position.marketId, position.isLong, -int256(sizeReduced));
+            _totalOpenInterest[position.marketId] -= sizeReduced;
+
+            // 7. INTERACTIONS
+            ILiquidityVault(liquidityVault).unlockLiquidity(nativeUnlock);
+
+            if (nativeFee > 0) {
+                _protocolFees[address(quoteToken)] += chargedFeeWad;
+                totalFeesAccrued += chargedFeeWad;
+                if (feeFromProfit > 0) {
+                    ILiquidityVault(liquidityVault).creditTraderMarginFromLP(position.trader, _toVaultUnits(feeFromProfit));
+                }
+                ILiquidityVault(liquidityVault).collectProtocolFees(nativeFee);
+            }
+
+            if (netProfit > 0) {
+                (uint256 profitPaidVaultUnits, uint256 unbackedProfitVaultUnits) = ILiquidityVault(liquidityVault).settleTraderProfit(
+                    position.trader,
+                    nativeMarginToReturn,
+                    _toVaultUnits(profitToPayout)
+                );
+                if (unbackedProfitVaultUnits != 0) revert UnbackedProfit();
+                res.traderPayout = effectiveMarginToReturn + _fromVaultUnits(profitPaidVaultUnits);
+            } else if (nativeMarginToReturn > 0) {
+                ILiquidityVault(liquidityVault).withdrawTraderMargin(position.trader, nativeMarginToReturn);
+            }
+        } else {
+            // netPnl < 0
+            uint256 netDeficit = uint256(-netPnl);
+            res.grossTradingDeficit = netDeficit;
+
+            uint256 posMarginAvailable = position.margin;
+
+            uint256 nominalNativeFee = _toVaultUnitsCeil(nominalProtocolFee);
+            uint256 chargedFeeNominalWad = _fromVaultUnits(nominalNativeFee);
+
+            uint256 nativeLossNominal = _toVaultUnitsCeil(netDeficit);
+            uint256 chargedLossNominalWad = _fromVaultUnits(nativeLossNominal);
+
+            if (res.proportionalMarginReleased >= chargedLossNominalWad + chargedFeeNominalWad) {
+                // Case 1: Proportional released margin covers deficit + fee fully
+                res.protocolFee = chargedFeeNominalWad;
+                res.lossCoveredByCollateral = chargedLossNominalWad;
+
+                uint256 nativeRel = _toVaultUnits(res.proportionalMarginReleased);
+                uint256 nativePayout = nativeRel - nativeLossNominal - nominalNativeFee;
+                uint256 effectivePayoutWad = _fromVaultUnits(nativePayout);
+
+                res.traderPayout = effectivePayoutWad;
+                res.totalTraderCollateralConsumed = res.proportionalMarginReleased;
+                res.residualBadDebt = 0;
+
+                if (nominalNativeFee > 0) {
+                    _protocolFees[address(quoteToken)] += chargedFeeNominalWad;
+                    totalFeesAccrued += chargedFeeNominalWad;
+                    ILiquidityVault(liquidityVault).collectProtocolFees(nominalNativeFee);
+                }
+            } else {
+                // Shortfall exceeds proportional released margin -> trader payout is 0, consume extra from retained collateral
+                res.traderPayout = 0;
+
+                uint256 nativeLossCap = _toVaultUnitsCeil(netDeficit);
+                uint256 chargedLossWad = _fromVaultUnits(nativeLossCap);
+
+                uint256 posMarginNative = _toVaultUnits(posMarginAvailable);
+                uint256 posMarginWad = _fromVaultUnits(posMarginNative);
+
+                if (chargedLossNominalWad <= posMarginWad) {
+                    res.lossCoveredByCollateral = chargedLossNominalWad;
+                    uint256 remainingCollateralAfterLoss = posMarginWad - chargedLossNominalWad;
+
+                    uint256 capacityNative = _toVaultUnits(remainingCollateralAfterLoss);
+                    uint256 nativeFee = nominalNativeFee < capacityNative ? nominalNativeFee : capacityNative;
+                    uint256 chargedFeeWad = _fromVaultUnits(nativeFee);
+
+                    res.protocolFee = chargedFeeWad;
+                    res.totalTraderCollateralConsumed = res.lossCoveredByCollateral + res.protocolFee;
+                    res.residualBadDebt = 0;
+
+                    if (nativeFee > 0) {
+                        _protocolFees[address(quoteToken)] += chargedFeeWad;
+                        totalFeesAccrued += chargedFeeWad;
+                        ILiquidityVault(liquidityVault).collectProtocolFees(nativeFee);
+                    }
+                } else {
+                    res.lossCoveredByCollateral = posMarginWad;
+                    res.protocolFee = 0;
+                    res.totalTraderCollateralConsumed = posMarginWad;
+                    res.residualBadDebt = netDeficit > posMarginWad ? netDeficit - posMarginWad : 0;
+                }
+            }
+
+            res.remainingPositionMargin = position.margin > res.totalTraderCollateralConsumed
+                ? position.margin - res.totalTraderCollateralConsumed
+                : 0;
+            res.remainingPositionSize = position.size - sizeReduced;
+
+            if (sizeReduced < position.size) {
+                if (res.remainingPositionMargin == 0) revert RemainingMarginZero();
+                uint256 remainingNotional = res.remainingPositionSize.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
+                uint256 minMarginRequired = Math.mulDiv(remainingNotional, market.minMarginRatio, PRECISION, Math.Rounding.Up);
+                if (res.remainingPositionMargin < minMarginRequired) revert RemainingMarginTooLow();
+            }
+
+            // 6. CHECKS-EFFECTS
+            position.size = res.remainingPositionSize;
+            position.margin = res.remainingPositionMargin;
+            if (position.lockedNotional >= res.unlockedNotional) {
+                position.lockedNotional -= res.unlockedNotional;
+            } else {
+                position.lockedNotional = 0;
+            }
+            if (position.size == 0) {
+                position.isActive = false;
+            }
+            position.lastUpdated = block.timestamp;
+
+            totalCollateral -= res.totalTraderCollateralConsumed;
+            totalPositionSize -= sizeReduced;
+
+            IAMMPool(ammPool).updateSkew(position.marketId, position.isLong, -int256(sizeReduced));
+            _totalOpenInterest[position.marketId] -= sizeReduced;
+
+            // 7. INTERACTIONS
+            ILiquidityVault(liquidityVault).unlockLiquidity(_toVaultUnits(res.unlockedNotional));
+
+            if (res.residualBadDebt == 0) {
+                ILiquidityVault(liquidityVault).settleTraderLoss(
+                    position.trader,
+                    _toVaultUnits(res.traderPayout),
+                    _toVaultUnits(res.lossCoveredByCollateral)
+                );
+            } else {
+                ILiquidityVault(liquidityVault).settleBadDebt(
+                    position.trader,
+                    _toVaultUnits(res.lossCoveredByCollateral),
+                    _toVaultUnitsCeil(netDeficit)
+                );
+            }
+        }
+    }
+
+    // ============ POSITION MANAGEMENT ============
+
+    /**
+     * @inheritdoc IPerpEngine
+     */
+    function openPosition(TradeParams calldata params)
+        external
+        override
+        nonReentrant
+        whenNotPaused
+        marketActive(params.marketId)
+        returns (uint256 positionId)
+    {
+        // Validate parameters
+        if (params.size < _markets[params.marketId].minPositionSize) revert SizeTooSmall();
+        if (params.size == 0) revert ZeroSize();
+        if (params.margin == 0) revert ZeroMargin();
+        if (params.deadline < block.timestamp) revert DeadlinePassed();
+        
+        // Get current price
+        (uint256 currentPrice, bool priceValid) = _getMarketPrice(params.marketId);
+        if (!priceValid) revert InvalidPrice();
+        
+        // Validate against acceptable price
+        if (params.isLong) {
+            if (currentPrice > params.acceptablePrice) revert PriceTooHigh();
+        } else {
+            if (currentPrice < params.acceptablePrice) revert PriceTooLow();
+        }
+
+        // 1. Derive native-backed gross margin deposit
+        uint256 nativeMarginDeposit = _toVaultUnits(params.margin);
+        uint256 effectiveGrossMarginWad = _fromVaultUnits(nativeMarginDeposit);
+
+        // 2. Derive opening protocol fee using canonical ceil pipeline
+        Market storage market = _markets[params.marketId];
+        uint256 currentPriceNormalized = currentPrice * PRICE_NORMALIZATION;
+        uint256 notionalValue = params.size.mulDiv(currentPriceNormalized, PRECISION);
+        uint256 nominalFeeWad = Math.mulDiv(notionalValue, market.protocolFeeRatio, PRECISION, Math.Rounding.Up);
+        
+        uint256 feeNative = 0;
+        uint256 chargedFeeWad = 0;
+        if (nominalFeeWad > 0) {
+            feeNative = _toVaultUnitsCeil(nominalFeeWad);
+            chargedFeeWad = _fromVaultUnits(feeNative);
+        }
+
+        if (effectiveGrossMarginWad < chargedFeeWad) revert MarginTooLowForFees();
+        uint256 finalMarginWad = effectiveGrossMarginWad - chargedFeeWad;
+
+        // 3. Calculate leverage and validate risk on actual final post-fee native-backed margin
+        uint256 leverage = notionalValue.mulDiv(PRECISION, finalMarginWad);
+        if (leverage > MAX_LEVERAGE) revert LeverageTooHigh();
+        _validatePositionRisk(params.marketId, params.size, finalMarginWad, leverage, currentPrice);
+
+        // 4. Derive native-backed LP locked liquidity
+        uint256 nativeLocked = _toVaultUnits(notionalValue);
+        uint256 effectiveLockedWad = _fromVaultUnits(nativeLocked);
+
+        // 5. External transfers and fee collection
+        ILiquidityVault(liquidityVault).lockLiquidity(nativeLocked);
+        ILiquidityVault(liquidityVault).depositTraderMargin(msg.sender, nativeMarginDeposit);
+
+        if (feeNative > 0) {
+            _protocolFees[address(quoteToken)] += chargedFeeWad;
+            totalFeesAccrued += chargedFeeWad;
+            ILiquidityVault(liquidityVault).collectProtocolFees(feeNative);
+        }
+
+        // 6. Accrue funding before opening
+        _accrueFunding(params.marketId);
+        
+        // Update AMM pool skew
+        IAMMPool(ammPool).updateSkew(
+            params.marketId,
+            params.isLong,
+            int256(params.size)
+        );
+        
+        // Create position
+        positionId = _nextPositionId++;
+        int256 marketCumIndex = IAMMPool(ammPool).getCumulativeFundingIndex(params.marketId);
+        
+        _positions[positionId] = IPerpEngine.Position({
+            trader: msg.sender,
+            marketId: params.marketId,
+            isLong: params.isLong,
+            size: params.size,
+            margin: finalMarginWad,
+            entryPrice: currentPrice,
+            leverage: leverage,
+            lastFundingIndex: marketCumIndex,
+            openTime: block.timestamp,
+            lastUpdated: block.timestamp,
+            isActive: true,
+            lockedNotional: effectiveLockedWad
+        });
+        
+        // Update trader positions & open interest
+        _traderPositions[msg.sender].push(positionId);
+        _totalOpenInterest[params.marketId] += params.size;
+        
+        // Update global metrics
+        totalCollateral += finalMarginWad;
+        totalPositionSize += params.size;
+
+        // Mint position NFT
+        IPositionManager(positionManager).mint(msg.sender, positionId);
+        
+        emit PositionOpened(
+            positionId,
+            msg.sender,
+            params.marketId,
+            params.isLong,
+            params.size,
+            finalMarginWad,
+            currentPrice,
+            leverage,
+            chargedFeeWad
+        );
+    }
+
+    /**
+     * @inheritdoc IPerpEngine
+     */
+    function increasePosition(
+        uint256 positionId,
+        uint256 sizeAdded,
+        uint256 marginAdded
+    )
+        external
+        override
+        nonReentrant
+        whenNotPaused
+        validPosition(positionId)
+    {
+        IPerpEngine.Position storage position = _positions[positionId];
+        if (position.trader != msg.sender) revert NotPositionOwner();
+        
+        if (sizeAdded == 0) revert ZeroSize();
+        if (marginAdded == 0) revert ZeroMargin();
+        
+        // Get current price
+        (uint256 currentPrice, bool priceValid) = _getMarketPrice(position.marketId);
+        if (!priceValid) revert InvalidPrice();
+        
+        // Settle funding on pre-increase size Q before adding dQ
+        (, uint256 unpaidFunding) = _settleFunding(position);
+        if (unpaidFunding != 0) revert UnpaidFundingDebt();
+
+        // 1. Derive native-backed margin added
+        uint256 nativeMarginDeposit = _toVaultUnits(marginAdded);
+        uint256 effectiveMarginAdded = _fromVaultUnits(nativeMarginDeposit);
+
+        // 2. Derive increase protocol fee using canonical ceil pipeline
+        Market storage market = _markets[position.marketId];
+        uint256 addedNotional = sizeAdded.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
+        uint256 nominalFeeWad = Math.mulDiv(addedNotional, market.protocolFeeRatio, PRECISION, Math.Rounding.Up);
+
+        uint256 feeNative = 0;
+        uint256 chargedFeeWad = 0;
+        if (nominalFeeWad > 0) {
+            feeNative = _toVaultUnitsCeil(nominalFeeWad);
+            chargedFeeWad = _fromVaultUnits(feeNative);
+        }
+
+        uint256 grossNewMargin = position.margin + effectiveMarginAdded;
+        if (grossNewMargin < chargedFeeWad) revert MarginTooLowForFees();
+        uint256 finalNewMargin = grossNewMargin - chargedFeeWad;
+
+        // 3. Calculate new leverage and validate risk on actual final post-fee native-backed margin
+        uint256 newSize = position.size + sizeAdded;
+        uint256 newNotionalValue = newSize.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
+        if (finalNewMargin == 0) revert ZeroMargin();
+        uint256 newLeverage = newNotionalValue.mulDiv(PRECISION, finalNewMargin);
+
+        if (newLeverage > MAX_LEVERAGE) revert LeverageTooHigh();
+        _validatePositionRisk(position.marketId, newSize, finalNewMargin, newLeverage, currentPrice);
+
+        // 4. Derive native-backed LP locked liquidity
+        uint256 nativeAddedLocked = _toVaultUnits(addedNotional);
+        uint256 effectiveAddedLockedWad = _fromVaultUnits(nativeAddedLocked);
+
+        // 5. External transfers and fee collection
+        ILiquidityVault(liquidityVault).lockLiquidity(nativeAddedLocked);
+        ILiquidityVault(liquidityVault).depositTraderMargin(msg.sender, nativeMarginDeposit);
+
+        if (feeNative > 0) {
+            _protocolFees[address(quoteToken)] += chargedFeeWad;
+            totalFeesAccrued += chargedFeeWad;
+            ILiquidityVault(liquidityVault).collectProtocolFees(feeNative);
+        }
+
+        // 6. Update AMM pool skew
+        IAMMPool(ammPool).updateSkew(
+            position.marketId,
+            position.isLong,
+            int256(sizeAdded)
+        );
+        
+        // Update position
+        uint256 oldSize = position.size;
+        
+        // Update global metrics
+        totalCollateral = totalCollateral + effectiveMarginAdded - chargedFeeWad;
+        totalPositionSize += sizeAdded;
+
+        position.size = newSize;
+        position.margin = finalNewMargin;
+        position.leverage = newLeverage;
+        position.lockedNotional += effectiveAddedLockedWad;
+        position.entryPrice = _calculateNewEntryPrice(
+            oldSize,
+            position.entryPrice,
+            sizeAdded,
+            currentPrice
+        );
+        position.lastUpdated = block.timestamp;
+        
+        // Update total open interest
+        _totalOpenInterest[position.marketId] += sizeAdded;
+        
+        emit PositionIncreased(
+            positionId,
+            sizeAdded,
+            effectiveMarginAdded,
+            position.entryPrice,
+            chargedFeeWad
+        );
+    }
+
+    /**
+     * @inheritdoc IPerpEngine
+     */
+    function decreasePosition(
+        uint256 positionId,
+        uint256 sizeReduced,
+        uint256 marginReduced
+    )
+        external
+        override
+        nonReentrant
+        whenNotPaused
+        validPosition(positionId)
+    {
+        IPerpEngine.Position storage position = _positions[positionId];
+        if (position.trader != msg.sender) revert NotPositionOwner();
+        
+        if (sizeReduced == 0 || sizeReduced > position.size) revert InvalidSizeReduction();
+        if (marginReduced > position.margin) revert InvalidMarginReduction();
+        
+        // Get current price
+        (uint256 currentPrice, bool priceValid) = _getMarketPrice(position.marketId);
+        if (!priceValid) revert InvalidPrice();
+        
+        uint256 preTransactionMargin = position.margin;
+
+        // Perform atomic settlement via internal settlement helper
+        SettlementResult memory res = _settlePositionChange(positionId, sizeReduced, marginReduced, currentPrice);
+        
+        res.collateralDelta = _signedMarginDelta(preTransactionMargin, position.margin);
+
+        emit PositionDecreased(
+            positionId,
+            sizeReduced,
+            res.totalTraderCollateralConsumed,
+            res.collateralDelta,
+            uint256(res.realizedPnl >= 0 ? res.realizedPnl : -res.realizedPnl),
+            res.protocolFee
+        );
+    }
+
+    /**
+     * @inheritdoc IPerpEngine
+     */
+    function closePosition(uint256 positionId)
+        external
+        override
+        nonReentrant
+        whenNotPaused
+        validPosition(positionId)
+    {
+        IPerpEngine.Position storage position = _positions[positionId];
+        if (position.trader != msg.sender) revert NotPositionOwner();
+        
+        // Get current price
+        (uint256 currentPrice, bool priceValid) = _getMarketPrice(position.marketId);
+        if (!priceValid) revert InvalidPrice();
+        
+        // Perform full atomic settlement via internal settlement helper
+        SettlementResult memory res = _settlePositionChange(
+            positionId,
+            position.size,
+            position.margin,
+            currentPrice
+        );
+        
+        // Burn position NFT
+        IPositionManager(positionManager).burn(positionId);
+        
+        emit PositionClosed(
+            positionId,
+            currentPrice,
+            uint256(res.realizedPnl >= 0 ? res.realizedPnl : -res.realizedPnl),
+            res.protocolFee,
+            res.traderPayout
+        );
+    }
+
+    // ============ LIQUIDATION ============
+
     function _settleLiquidationVault(
         address positionTrader,
         uint256 marginProportion,
@@ -120,7 +929,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         uint256 penalty
     ) internal returns (uint256 liquidationReward) {
         uint256 vaultMarginProp = _toVaultUnits(marginProportion);
-        uint256 vaultTotalDef = _toVaultUnits(totalDeficit);
+        uint256 vaultTotalDef = _toVaultUnitsCeil(totalDeficit);
 
         if (marginProportion >= totalDeficit) {
             liquidationReward = penalty / 2;
@@ -150,512 +959,6 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         }
     }
 
-    // Economic metrics for invariants
-    uint256 public totalCollateral;
-    uint256 public totalPositionValue;
-    int256 public totalFundingPaid;
-    int256 public totalFundingReceived;
-    uint256 public totalFeesAccrued;
-
-    // ============ STRUCTS ============
-    
-    struct Market {
-        bool isActive;
-        uint256 maxLeverage;
-        uint256 minMarginRatio;
-        uint256 minPositionSize;
-        uint256 liquidationFeeRatio;
-        uint256 protocolFeeRatio;
-        bytes32 oracleFeedId;
-        uint256 lastPriceUpdate;
-        uint256 lastFundingUpdate;
-    }
-    
-    struct FundingState {
-        int256 fundingRate;
-        uint256 lastFundingTime;
-        int256 cumulativeFundingIndex;
-    }
-
-    // ============ MODIFIERS ============
-    
-    modifier onlyPositionManager() {
-        require(msg.sender == positionManager, "PerpEngine: only PositionManager");
-        _;
-    }
-    
-    modifier onlyLiquidationEngine() {
-        require(msg.sender == liquidationEngine, "PerpEngine: only LiquidationEngine");
-        _;
-    }
-    
-    modifier onlyGovernance() {
-        require(msg.sender == governance, "PerpEngine: only Governance");
-        _;
-    }
-    
-    modifier marketActive(uint256 marketId) {
-        require(_markets[marketId].isActive, "PerpEngine: market inactive");
-        _;
-    }
-    
-    modifier validPosition(uint256 positionId) {
-        require(_positions[positionId].isActive, "PerpEngine: invalid position");
-        _;
-    }
-
-    // ============ CONSTRUCTOR ============
-    
-    constructor(
-        address positionManager_,
-        address ammPool_,
-        address oracleAggregator_,
-        address liquidationEngine_,
-        address riskManager_,
-        address configRegistry_,
-        address liquidityVault_,
-        address baseToken_,
-        address quoteToken_
-    ) {
-        require(positionManager_ != address(0), "PerpEngine: zero address");
-        require(ammPool_ != address(0), "PerpEngine: zero address");
-        require(oracleAggregator_ != address(0), "PerpEngine: zero address");
-        require(liquidationEngine_ != address(0), "PerpEngine: zero address");
-        require(riskManager_ != address(0), "PerpEngine: zero address");
-        require(configRegistry_ != address(0), "PerpEngine: zero address");
-        require(liquidityVault_ != address(0), "PerpEngine: zero address");
-        require(baseToken_ != address(0), "PerpEngine: zero address");
-        require(quoteToken_ != address(0), "PerpEngine: zero address");
-        
-        positionManager = positionManager_;
-        ammPool = ammPool_;
-        oracleAggregator = oracleAggregator_;
-        liquidationEngine = liquidationEngine_;
-        riskManager = riskManager_;
-        configRegistry = configRegistry_;
-        liquidityVault = liquidityVault_;
-        governance = msg.sender;
-        
-        baseToken = IERC20(baseToken_);
-        quoteToken = IERC20(quoteToken_);
-        
-        _nextPositionId = 1;
-    }
-
-    /**
-     * @notice Update governance address
-     * @param newGovernance New governance address
-     */
-    function setGovernance(address newGovernance) external onlyGovernance {
-        require(newGovernance != address(0), "PerpEngine: zero address");
-        governance = newGovernance;
-    }
-
-    // ============ CANONICAL FUNDING SETTLEMENT HELPER ============
-
-    /**
-     * @dev Settles pending funding payment for position's current pre-modification size.
-     * Calculates funding payment based on deltaIndex between market.cumulativeFundingIndex
-     * and position.lastFundingIndex. Updates position.margin and sets
-     * position.lastFundingIndex = marketCumulativeIndex exactly once.
-     * Returns the funding payment (positive = trader owed, reducing margin).
-     */
-    function _settleFunding(IPerpEngine.Position storage position) internal returns (int256 fundingPayment) {
-        _accrueFunding(position.marketId);
-        int256 marketCumIndex = IAMMPool(ammPool).getCumulativeFundingIndex(position.marketId);
-
-        if (position.size > 0 && position.lastFundingIndex != marketCumIndex) {
-            fundingPayment = IAMMPool(ammPool).calculateFundingPayment(
-                position.marketId,
-                position.size,
-                position.isLong,
-                position.lastFundingIndex
-            );
-            if (fundingPayment != 0) {
-                if (fundingPayment > 0) {
-                    uint256 debt = uint256(fundingPayment);
-                    if (position.margin >= debt) {
-                        position.margin -= debt;
-                    } else {
-                        position.margin = 0;
-                    }
-                } else {
-                    position.margin += uint256(-fundingPayment);
-                }
-            }
-        }
-        position.lastFundingIndex = marketCumIndex;
-    }
-
-    // ============ POSITION MANAGEMENT ============
-
-    /**
-     * @inheritdoc IPerpEngine
-     */
-    function openPosition(TradeParams calldata params)
-        external
-        override
-        nonReentrant
-        whenNotPaused
-        marketActive(params.marketId)
-        returns (uint256 positionId)
-    {
-        // Validate parameters
-        require(params.size >= _markets[params.marketId].minPositionSize, "Position size too small");
-        require(params.size > 0, "PerpEngine: zero size");
-        require(params.margin > 0, "PerpEngine: zero margin");
-        require(params.deadline >= block.timestamp, "PerpEngine: deadline passed");
-        
-        // Get current price
-        (uint256 currentPrice, bool priceValid) = _getMarketPrice(params.marketId);
-        require(priceValid, "PerpEngine: invalid price");
-        
-        // Validate against acceptable price
-        if (params.isLong) {
-            require(currentPrice <= params.acceptablePrice, "PerpEngine: price too high");
-        } else {
-            require(currentPrice >= params.acceptablePrice, "PerpEngine: price too low");
-        }
-        
-        // Calculate leverage: (size * price) / margin
-        uint256 currentPriceNormalized = currentPrice * PRICE_NORMALIZATION;
-        uint256 notionalValue = params.size.mulDiv(currentPriceNormalized, PRECISION);
-        uint256 leverage = notionalValue.mulDiv(PRECISION, params.margin);
-        require(leverage <= MAX_LEVERAGE, "PerpEngine: leverage too high");
-        
-        // Check risk parameters
-        _validatePositionRisk(params.marketId, params.size, params.margin, leverage);
-        
-        // Lock LP liquidity backstop and deposit trader margin into vault
-        ILiquidityVault(liquidityVault).lockLiquidity(_toVaultUnits(notionalValue));
-        ILiquidityVault(liquidityVault).depositTraderMargin(msg.sender, _toVaultUnits(params.margin));
-        
-        // Accrue funding before opening
-        _accrueFunding(params.marketId);
-        
-        // Update AMM pool skew
-        IAMMPool(ammPool).updateSkew(
-            params.marketId,
-            params.isLong,
-            int256(params.size)
-        );
-        
-        // Create position
-        positionId = _nextPositionId++;
-        int256 marketCumIndex = IAMMPool(ammPool).getCumulativeFundingIndex(params.marketId);
-        
-        _positions[positionId] = IPerpEngine.Position({
-            trader: msg.sender,
-            marketId: params.marketId,
-            isLong: params.isLong,
-            size: params.size,
-            margin: params.margin,
-            entryPrice: currentPrice,
-            leverage: leverage,
-            lastFundingIndex: marketCumIndex,
-            openTime: block.timestamp,
-            lastUpdated: block.timestamp,
-            isActive: true,
-            lockedNotional: notionalValue
-        });
-        
-        // Update trader positions & open interest
-        _traderPositions[msg.sender].push(positionId);
-        _totalOpenInterest[params.marketId] += params.size;
-        
-        // Update global metrics
-        totalCollateral += params.margin;
-        totalPositionValue += params.size;
-
-        // Calculate and collect fees
-        uint256 protocolFee = _collectFees(positionId, params.size, params.margin);
-        
-        // Mint position NFT
-        IPositionManager(positionManager).mint(msg.sender, positionId);
-        
-        emit PositionOpened(
-            positionId,
-            msg.sender,
-            params.marketId,
-            params.isLong,
-            params.size,
-            params.margin - protocolFee,
-            currentPrice,
-            leverage,
-            protocolFee
-        );
-    }
-
-    /**
-     * @inheritdoc IPerpEngine
-     */
-    function increasePosition(
-        uint256 positionId,
-        uint256 sizeAdded,
-        uint256 marginAdded
-    )
-        external
-        override
-        nonReentrant
-        whenNotPaused
-        validPosition(positionId)
-    {
-        IPerpEngine.Position storage position = _positions[positionId];
-        require(position.trader == msg.sender, "PerpEngine: not position owner");
-        
-        require(sizeAdded > 0, "PerpEngine: zero size");
-        require(marginAdded > 0, "PerpEngine: zero margin");
-        
-        // Get current price
-        (uint256 currentPrice, bool priceValid) = _getMarketPrice(position.marketId);
-        require(priceValid, "PerpEngine: invalid price");
-        
-        // Settle funding on pre-increase size Q before adding dQ
-        _settleFunding(position);
-
-        // Calculate new values
-        uint256 newSize = position.size + sizeAdded;
-        uint256 newMargin = position.margin + marginAdded;
-        
-        // Calculate leverage: (size * price) / margin
-        uint256 newNotionalValue = newSize.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
-        uint256 newLeverage = newNotionalValue.mulDiv(PRECISION, newMargin);
-        
-        require(newLeverage <= MAX_LEVERAGE, "PerpEngine: leverage too high");
-        
-        // Validate risk
-        _validatePositionRisk(position.marketId, newSize, newMargin, newLeverage);
-        
-        // Lock additional LP liquidity and deposit additional margin
-        uint256 addedNotional = sizeAdded.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
-        ILiquidityVault(liquidityVault).lockLiquidity(_toVaultUnits(addedNotional));
-        ILiquidityVault(liquidityVault).depositTraderMargin(msg.sender, _toVaultUnits(marginAdded));
-        position.lockedNotional += addedNotional;
-        
-        // Update AMM pool skew
-        IAMMPool(ammPool).updateSkew(
-            position.marketId,
-            position.isLong,
-            int256(sizeAdded)
-        );
-        
-        // Update position
-        uint256 oldSize = position.size;
-        
-        // Update global metrics
-        totalCollateral += marginAdded;
-        totalPositionValue += sizeAdded;
-
-        position.size = newSize;
-        position.margin = newMargin;
-        position.leverage = newLeverage;
-        position.entryPrice = _calculateNewEntryPrice(
-            oldSize,
-            position.entryPrice,
-            sizeAdded,
-            currentPrice
-        );
-        position.lastUpdated = block.timestamp;
-        
-        // Update total open interest
-        _totalOpenInterest[position.marketId] += sizeAdded;
-        
-        // Calculate and collect fees
-        uint256 protocolFee = _collectFees(positionId, sizeAdded, marginAdded);
-        
-        emit PositionIncreased(
-            positionId,
-            sizeAdded,
-            marginAdded,
-            position.entryPrice,
-            protocolFee
-        );
-    }
-
-    /**
-     * @inheritdoc IPerpEngine
-     */
-    function decreasePosition(
-        uint256 positionId,
-        uint256 sizeReduced,
-        uint256 marginReduced
-    )
-        external
-        override
-        nonReentrant
-        whenNotPaused
-        validPosition(positionId)
-    {
-        IPerpEngine.Position storage position = _positions[positionId];
-        require(position.trader == msg.sender, "PerpEngine: not position owner");
-        
-        require(sizeReduced > 0 && sizeReduced <= position.size, "PerpEngine: invalid size reduction");
-        require(marginReduced <= position.margin, "PerpEngine: invalid margin reduction");
-        
-        // Get current price
-        (uint256 currentPrice, bool priceValid) = _getMarketPrice(position.marketId);
-        require(priceValid, "PerpEngine: invalid price");
-        
-        // Settle funding on pre-decrease size Q before reducing
-        _settleFunding(position);
-
-        // Calculate PnL for reduced portion (in quote units)
-        int256 totalPnl = PositionMath.calculatePnL(
-            position.entryPrice,
-            currentPrice,
-            sizeReduced,
-            position.isLong
-        );
-        
-        // Unlock proportional LP liquidity based on stored lockedNotional
-        uint256 reducedNotional = position.size > 0
-            ? position.lockedNotional.mulDiv(sizeReduced, position.size)
-            : position.lockedNotional;
-
-        ILiquidityVault(liquidityVault).unlockLiquidity(_toVaultUnits(reducedNotional));
-
-        // Update global metrics
-        totalCollateral -= marginReduced;
-        totalPositionValue -= sizeReduced;
-
-        // Update position
-        position.size -= sizeReduced;
-        position.margin -= marginReduced;
-        position.lockedNotional -= reducedNotional;
-        
-        if (position.size == 0) {
-            position.isActive = false;
-        }
-        
-        position.lastUpdated = block.timestamp;
-        
-        // Update AMM pool skew
-        IAMMPool(ammPool).updateSkew(
-            position.marketId,
-            position.isLong,
-            -int256(sizeReduced)
-        );
-        
-        // Update total open interest
-        _totalOpenInterest[position.marketId] -= sizeReduced;
-        
-        // Settle PnL via LiquidityVault
-        if (totalPnl >= 0) {
-            ILiquidityVault(liquidityVault).settleTraderProfit(
-                msg.sender,
-                _toVaultUnits(marginReduced),
-                _toVaultUnits(uint256(totalPnl))
-            );
-        } else {
-            uint256 loss = uint256(-totalPnl);
-            require(marginReduced >= loss, "PerpEngine: insufficient margin");
-            ILiquidityVault(liquidityVault).settleTraderLoss(
-                msg.sender,
-                _toVaultUnits(marginReduced - loss),
-                _toVaultUnits(loss)
-            );
-        }
-        
-        emit PositionDecreased(
-            positionId,
-            sizeReduced,
-            marginReduced,
-            uint256(totalPnl >= 0 ? totalPnl : -totalPnl),
-            0
-        );
-    }
-
-    /**
-     * @inheritdoc IPerpEngine
-     */
-    function closePosition(uint256 positionId)
-        external
-        override
-        nonReentrant
-        whenNotPaused
-        validPosition(positionId)
-    {
-        IPerpEngine.Position storage position = _positions[positionId];
-        require(position.trader == msg.sender, "PerpEngine: not position owner");
-        
-        // Get current price
-        (uint256 currentPrice, bool priceValid) = _getMarketPrice(position.marketId);
-        require(priceValid, "PerpEngine: invalid price");
-        
-        // Settle funding on full pre-close size before closing
-        _settleFunding(position);
-        
-        // Calculate PnL (in quote units)
-        int256 totalPnl = PositionMath.calculatePnL(
-            position.entryPrice,
-            currentPrice,
-            position.size,
-            position.isLong
-        );
-        
-        // Unlock exact stored LP liquidity
-        ILiquidityVault(liquidityVault).unlockLiquidity(_toVaultUnits(position.lockedNotional));
-
-        // Update global metrics
-        totalCollateral -= position.margin;
-        totalPositionValue -= position.size;
-
-        // Update AMM pool skew
-        IAMMPool(ammPool).updateSkew(
-            position.marketId,
-            position.isLong,
-            -int256(position.size)
-        );
-        
-        // Update total open interest
-        _totalOpenInterest[position.marketId] -= position.size;
-        
-        uint256 returnAmount = 0;
-        if (totalPnl >= 0) {
-            (uint256 profitPaidVaultUnits, ) = ILiquidityVault(liquidityVault).settleTraderProfit(
-                msg.sender,
-                _toVaultUnits(position.margin),
-                _toVaultUnits(uint256(totalPnl))
-            );
-            returnAmount = position.margin + _fromVaultUnits(profitPaidVaultUnits);
-        } else {
-            uint256 loss = uint256(-totalPnl);
-            if (loss <= position.margin) {
-                returnAmount = position.margin - loss;
-                ILiquidityVault(liquidityVault).settleTraderLoss(
-                    msg.sender,
-                    _toVaultUnits(returnAmount),
-                    _toVaultUnits(loss)
-                );
-            } else {
-                // Bad debt waterfall
-                ILiquidityVault(liquidityVault).settleBadDebt(
-                    msg.sender,
-                    _toVaultUnits(position.margin),
-                    _toVaultUnits(loss)
-                );
-                returnAmount = 0;
-            }
-        }
-        
-        // Mark position as closed
-        position.isActive = false;
-        position.lastUpdated = block.timestamp;
-        
-        // Burn position NFT
-        IPositionManager(positionManager).burn(positionId);
-        
-        emit PositionClosed(
-            positionId,
-            currentPrice,
-            uint256(totalPnl >= 0 ? totalPnl : -totalPnl),
-            0,
-            returnAmount
-        );
-    }
-
-    // ============ LIQUIDATION ============
-
     /**
      * @inheritdoc IPerpEngine
      */
@@ -665,19 +968,19 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         nonReentrant
         returns (uint256 liquidationReward)
     {
-        require(msg.sender == liquidationEngine, "PerpEngine: only LiquidationEngine");
+        if (msg.sender != liquidationEngine) revert OnlyLiquidationEngine();
         
         IPerpEngine.Position storage position = _positions[params.positionId];
-        require(position.isActive, "PerpEngine: position inactive");
-        require(position.trader == params.trader, "PerpEngine: trader mismatch");
-        require(position.marketId == params.marketId, "PerpEngine: market mismatch");
+        if (!position.isActive) revert PositionInactive();
+        if (position.trader != params.trader) revert TraderMismatch();
+        if (position.marketId != params.marketId) revert MarketMismatch();
         
         // Accrue funding before liquidation checks
         _accrueFunding(position.marketId);
 
         // Get current price
         (uint256 currentPrice, bool priceValid) = _getMarketPrice(position.marketId);
-        require(priceValid, "PerpEngine: invalid price");
+        if (!priceValid) revert InvalidPrice();
         
         // Verify position is liquidatable using up-to-date accrued funding
         {
@@ -698,10 +1001,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
                 maintenanceMarginBps: _markets[position.marketId].minMarginRatio / (PRECISION / 10000),
                 liquidationThresholdBps: 10000
             });
-            require(
-                PositionMath.isPositionLiquidatable(posParams, currentPrice, riskParams),
-                "PerpEngine: not liquidatable"
-            );
+            if (!PositionMath.isPositionLiquidatable(posParams, currentPrice, riskParams)) revert NotLiquidatable();
         }
         
         // Calculate liquidation
@@ -751,7 +1051,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         );
         
         // Update global metrics
-        totalPositionValue -= liquidatedSize;
+        totalPositionSize -= liquidatedSize;
         totalCollateral -= marginProportion;
 
         position.size -= liquidatedSize;
@@ -816,6 +1116,10 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     // ============ MARGIN MANAGEMENT ============
 
     /**
+     * @notice Adds collateral to an open position, curing any unpaid funding debt first.
+     * @dev Unpaid funding debt blocks non-terminal risk/exposure mutations and withdrawals.
+     * addMargin is the recovery path: newly deposited collateral first cures any unpaid funding debt,
+     * and only the residual increases position margin.
      * @inheritdoc IPerpEngine
      */
     function addMargin(uint256 positionId, uint256 amount)
@@ -826,18 +1130,47 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         validPosition(positionId)
     {
         IPerpEngine.Position storage position = _positions[positionId];
-        require(position.trader == msg.sender, "PerpEngine: not position owner");
-        require(amount > 0, "PerpEngine: zero amount");
+        if (position.trader != msg.sender) revert NotPositionOwner();
+        if (amount == 0) revert ZeroMargin();
         
         (uint256 currentPrice, ) = _getMarketPrice(position.marketId);
         
-        _settleFunding(position);
+        // Settle funding on pre-mutation position size Q before processing top-up
+        (, uint256 unpaidFunding) = _settleFunding(position);
 
-        ILiquidityVault(liquidityVault).depositTraderMargin(msg.sender, _toVaultUnits(amount));
-        
-        position.margin += amount;
-        totalCollateral += amount;
-        
+        uint256 nativeDeposit = _toVaultUnits(amount);
+        if (nativeDeposit == 0) revert ZeroMargin();
+
+        if (unpaidFunding == 0) {
+            uint256 effectiveMarginAdded = _fromVaultUnits(nativeDeposit);
+
+            ILiquidityVault(liquidityVault).depositTraderMargin(msg.sender, nativeDeposit);
+
+            position.margin += effectiveMarginAdded;
+            totalCollateral += effectiveMarginAdded;
+        } else {
+            uint256 nativeFundingDebt = _toVaultUnitsCeil(unpaidFunding);
+
+            if (nativeDeposit < nativeFundingDebt) revert TopUpBelowFundingDebt();
+
+            uint256 residualNative = nativeDeposit - nativeFundingDebt;
+            uint256 residualMarginWad = _fromVaultUnits(residualNative);
+
+            // 1. Deposit physical tokens into Vault
+            ILiquidityVault(liquidityVault).depositTraderMargin(msg.sender, nativeDeposit);
+
+            // 2. Reclassify debt portion from traderMarginTotal to totalLpAssets
+            if (nativeFundingDebt > 0) {
+                ILiquidityVault(liquidityVault).settleTraderLoss(msg.sender, 0, nativeFundingDebt);
+            }
+
+            // 3. Only residual becomes new position margin
+            position.margin += residualMarginWad;
+            totalCollateral += residualMarginWad;
+        }
+
+        if (position.margin == 0) revert TopUpLeavesZeroMargin();
+
         uint256 notionalValue = position.size.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
         position.leverage = notionalValue.mulDiv(PRECISION, position.margin);
         
@@ -855,16 +1188,22 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         validPosition(positionId)
     {
         IPerpEngine.Position storage position = _positions[positionId];
-        require(position.trader == msg.sender, "PerpEngine: not position owner");
-        require(amount > 0, "PerpEngine: zero amount");
+        if (position.trader != msg.sender) revert NotPositionOwner();
+        if (amount == 0) revert ZeroMargin();
         
         (uint256 currentPrice, bool priceValid) = _getMarketPrice(position.marketId);
-        require(priceValid, "PerpEngine: invalid price");
+        if (!priceValid) revert InvalidPrice();
         
-        _settleFunding(position);
-        require(amount <= position.margin, "PerpEngine: insufficient margin");
+        // Settle funding on position before margin mutation
+        (, uint256 unpaidFunding) = _settleFunding(position);
+        if (unpaidFunding != 0) revert UnpaidFundingDebt();
 
-        uint256 newMargin = position.margin - amount;
+        uint256 nativePayout = _toVaultUnits(amount);
+        uint256 effectivePayoutWad = _fromVaultUnits(nativePayout);
+
+        if (effectivePayoutWad > position.margin) revert InsufficientMargin();
+
+        uint256 newMargin = position.margin - effectivePayoutWad;
         uint256 healthFactor;
         {
             PositionMath.PositionParams memory posParams = PositionMath.PositionParams({
@@ -881,17 +1220,50 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             healthFactor = PositionMath.calculateHealthFactor(posParams, currentPrice, riskParams);
         }
         
-        require(healthFactor > LIQUIDATION_THRESHOLD, "PerpEngine: below liquidation threshold");
+        if (healthFactor <= LIQUIDATION_THRESHOLD) revert BelowLiquidationThreshold();
         
         position.margin = newMargin;
-        totalCollateral -= amount;
+        totalCollateral -= effectivePayoutWad;
         
         uint256 notionalValue = position.size.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
         position.leverage = notionalValue.mulDiv(PRECISION, position.margin);
         
         position.lastUpdated = block.timestamp;
         
-        ILiquidityVault(liquidityVault).withdrawTraderMargin(msg.sender, _toVaultUnits(amount));
+        if (nativePayout > 0) {
+            ILiquidityVault(liquidityVault).withdrawTraderMargin(msg.sender, nativePayout);
+        }
+    }
+
+    // ============ BALANCE SHEET & MONITORING VIEWS ============
+
+    /**
+     * @notice Balance sheet view for real-time risk monitoring
+     * @dev All quote-denominated values are normalized to WAD Quote (1e18 decimals).
+     *      totalOpenInterestBase is in WAD Base asset units (1e18 decimals).
+     */
+    function getBalanceSheet() external view returns (BalanceSheet memory) {
+        (
+            uint256 totalTraderCollateral,
+            uint256 totalLpAssets,
+            uint256 lockedLiquidity,
+            uint256 availableLiquidity,
+            uint256 insuranceFundBalance,
+            uint256 protocolFeeBalance,
+            uint256 totalOpenInterestBase,
+            uint256 vaultQuoteBalance
+        ) = IPerpEngineViewer(_positionViewer).getBalanceSheet(address(this));
+
+        return BalanceSheet({
+            totalTraderCollateral: totalTraderCollateral,
+            totalLpAssets: totalLpAssets,
+            lockedLiquidity: lockedLiquidity,
+            availableLiquidity: availableLiquidity,
+            insuranceFundBalance: insuranceFundBalance,
+            protocolFeeBalance: protocolFeeBalance,
+            totalOpenInterestBase: totalOpenInterestBase,
+            vaultQuoteBalance: vaultQuoteBalance
+        });
     }
 
     // ============ VIEW FUNCTIONS ============
@@ -905,32 +1277,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         override
         returns (uint256 healthFactor)
     {
-        IPerpEngine.Position storage position = _positions[positionId];
-        require(position.isActive, "PerpEngine: position inactive");
-        
-        (uint256 currentPrice, bool priceValid) = _getMarketPrice(position.marketId);
-        require(priceValid, "PerpEngine: invalid price");
-        
-        int256 fundingPayment = IAMMPool(ammPool).calculateFundingPayment(
-            position.marketId,
-            position.size,
-            position.isLong,
-            position.lastFundingIndex
-        );
-        
-        PositionMath.PositionParams memory posParams = PositionMath.PositionParams({
-            size: position.size,
-            collateral: position.margin,
-            entryPrice: position.entryPrice,
-            isLong: position.isLong,
-            fundingAccrued: fundingPayment
-        });
-        PositionMath.PositionRiskParams memory riskParams = PositionMath.PositionRiskParams({
-            maintenanceMarginBps: _markets[position.marketId].minMarginRatio / (PRECISION / 10000),
-            liquidationThresholdBps: 10000
-        });
-        
-        healthFactor = PositionMath.calculateHealthFactor(posParams, currentPrice, riskParams);
+        return IPerpEngineViewer(_positionViewer).getHealthFactor(address(this), positionId);
     }
 
     /**
@@ -942,30 +1289,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         override
         returns (uint256 liquidationPrice)
     {
-        IPerpEngine.Position storage position = _positions[positionId];
-        require(position.isActive, "PerpEngine: position inactive");
-        
-        int256 fundingPayment = IAMMPool(ammPool).calculateFundingPayment(
-            position.marketId,
-            position.size,
-            position.isLong,
-            position.lastFundingIndex
-        );
-        
-        PositionMath.PositionParams memory posParams = PositionMath.PositionParams({
-            size: position.size,
-            collateral: position.margin,
-            entryPrice: position.entryPrice,
-            isLong: position.isLong,
-            fundingAccrued: fundingPayment
-        });
-        PositionMath.PositionRiskParams memory riskParams = PositionMath.PositionRiskParams({
-            maintenanceMarginBps: _markets[position.marketId].minMarginRatio / (PRECISION / 10000),
-            liquidationThresholdBps: 10000
-        });
-        
-        PositionMath.LiquidationResult memory result = PositionMath.calculateLiquidationPriceSafe(posParams, riskParams);
-        liquidationPrice = result.liquidationPrice;
+        return IPerpEngineViewer(_positionViewer).getLiquidationPrice(address(this), positionId);
     }
 
     /**
@@ -977,25 +1301,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         override
         returns (int256 pnl)
     {
-        IPerpEngine.Position storage position = _positions[positionId];
-        require(position.isActive, "PerpEngine: position inactive");
-        
-        pnl = PositionMath.calculatePnL(
-            position.entryPrice,
-            currentPrice,
-            position.size,
-            position.isLong
-        );
-        
-        int256 fundingPayment = IAMMPool(ammPool).calculateFundingPayment(
-            position.marketId,
-            position.size,
-            position.isLong,
-            position.lastFundingIndex
-        );
-        
-        // PnL net of funding owed by trader
-        pnl -= fundingPayment;
+        return IPerpEngineViewer(_positionViewer).getUnrealizedPnl(address(this), positionId, currentPrice);
     }
 
     /**
@@ -1016,29 +1322,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         override
         returns (bool liquidatable)
     {
-        IPerpEngine.Position storage position = _positions[positionId];
-        if (!position.isActive) return false;
-        
-        int256 fundingPayment = IAMMPool(ammPool).calculateFundingPayment(
-            position.marketId,
-            position.size,
-            position.isLong,
-            position.lastFundingIndex
-        );
-        
-        PositionMath.PositionParams memory posParams = PositionMath.PositionParams({
-            size: position.size,
-            collateral: position.margin,
-            entryPrice: position.entryPrice,
-            isLong: position.isLong,
-            fundingAccrued: fundingPayment
-        });
-        PositionMath.PositionRiskParams memory riskParams = PositionMath.PositionRiskParams({
-            maintenanceMarginBps: _markets[position.marketId].minMarginRatio / (PRECISION / 10000),
-            liquidationThresholdBps: 10000
-        });
-        
-        liquidatable = PositionMath.isPositionLiquidatable(posParams, currentPrice, riskParams);
+        return IPerpEngineViewer(_positionViewer).isPositionLiquidatable(address(this), positionId, currentPrice);
     }
 
     /**
@@ -1052,50 +1336,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
      * @inheritdoc IPositionViewer
      */
     function getPosition(uint256 positionId) public view override returns (PositionView memory viewData) {
-        IPerpEngine.Position storage position = _positions[positionId];
-        if (!position.isActive) return viewData;
-
-        (uint256 currentPrice, ) = _getMarketPrice(position.marketId);
-        
-        int256 fundingPayment = IAMMPool(ammPool).calculateFundingPayment(
-            position.marketId,
-            position.size,
-            position.isLong,
-            position.lastFundingIndex
-        );
-
-        PositionMath.PositionParams memory posParams = PositionMath.PositionParams({
-            size: position.size,
-            collateral: position.margin,
-            entryPrice: position.entryPrice,
-            isLong: position.isLong,
-            fundingAccrued: fundingPayment
-        });
-        PositionMath.PositionRiskParams memory riskParams = PositionMath.PositionRiskParams({
-            maintenanceMarginBps: _markets[position.marketId].minMarginRatio / (PRECISION / 10000),
-            liquidationThresholdBps: 10000
-        });
-
-        PositionMath.LiquidationResult memory liqResult = PositionMath.calculateLiquidationPriceSafe(posParams, riskParams);
-        uint256 healthFactor = PositionMath.calculateHealthFactor(posParams, currentPrice, riskParams);
-        int256 pnl = PositionMath.calculatePnL(position.entryPrice, currentPrice, position.size, position.isLong) - fundingPayment;
-
-        return PositionView({
-            positionId: positionId,
-            trader: position.trader,
-            marketId: position.marketId,
-            isLong: position.isLong,
-            size: position.size,
-            margin: position.margin,
-            entryPrice: position.entryPrice,
-            leverage: position.leverage,
-            liquidationPrice: liqResult.liquidationPrice,
-            healthFactor: healthFactor,
-            unrealizedPnl: pnl,
-            fundingAccrued: uint256(fundingPayment > 0 ? fundingPayment : int256(0)),
-            openTime: position.openTime,
-            lastUpdated: position.lastUpdated
-        });
+        return IPerpEngineViewer(_positionViewer).getPosition(address(this), positionId);
     }
 
     // ============ ADMIN FUNCTIONS ============
@@ -1148,9 +1389,9 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         uint256 liquidationFeeRatio,
         uint256 protocolFeeRatio
     ) external override onlyGovernance {
-        require(!_markets[marketId].isActive, "PerpEngine: market already active");
+        if (_markets[marketId].isActive) revert MarketAlreadyActive();
         
-        _markets[marketId] = Market({
+        _markets[marketId] = IPerpEngine.Market({
             isActive: true,
             maxLeverage: maxLeverage,
             minMarginRatio: minMarginRatio,
@@ -1208,12 +1449,16 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         uint256 marketId,
         uint256 size,
         uint256 margin,
-        uint256 leverage
+        uint256 leverage,
+        uint256 currentPrice
     ) internal view {
-        Market storage market = _markets[marketId];
+        IPerpEngine.Market storage market = _markets[marketId];
         
-        require(leverage <= market.maxLeverage, "PerpEngine: leverage exceeds market max");
-        require(margin >= size.mulDiv(market.minMarginRatio, PRECISION), "PerpEngine: margin too low");
+        if (leverage > market.maxLeverage) revert LeverageTooHigh();
+
+        uint256 notionalValue = size.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
+        uint256 minMarginRequired = Math.mulDiv(notionalValue, market.minMarginRatio, PRECISION, Math.Rounding.Up);
+        if (margin < minMarginRequired) revert MarginTooLow();
         
         (bool riskOk, string memory reason) = IRiskManager(riskManager).validatePosition(
             marketId,
@@ -1221,7 +1466,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             margin,
             leverage
         );
-        require(riskOk, reason);
+        if (!riskOk) revert(reason);
     }
 
     /**
@@ -1240,32 +1485,6 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         newEntryPrice = totalValue.mulDiv(PRECISION, totalSize);
     }
 
-    /**
-     * @dev Collect protocol fees
-     */
-    function _collectFees(
-        uint256 positionId,
-        uint256 size,
-        uint256 margin
-    ) internal returns (uint256 protocolFee) {
-        IPerpEngine.Position storage position = _positions[positionId];
-        Market storage market = _markets[position.marketId];
-        
-        uint256 currentPrice = IOracleAggregator(oracleAggregator).getPrice(market.oracleFeedId);
-        uint256 notionalValue = size.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
-        protocolFee = notionalValue.mulDiv(market.protocolFeeRatio, PRECISION);
-        
-        if (protocolFee > 0) {
-            _protocolFees[address(quoteToken)] += protocolFee;
-            totalFeesAccrued += protocolFee;
-            require(position.margin >= protocolFee, "PerpEngine: margin too low for fees");
-            position.margin -= protocolFee;
-            totalCollateral -= protocolFee;
-            ILiquidityVault(liquidityVault).collectProtocolFees(_toVaultUnits(protocolFee));
-        }
-        
-        return protocolFee;
-    }
 
     // ============ GETTERS ============
 
@@ -1279,7 +1498,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     /**
      * @notice Get market state
      */
-    function getMarket(uint256 marketId) external view returns (Market memory) {
+    function getMarket(uint256 marketId) external view override returns (Market memory) {
         return _markets[marketId];
     }
 
@@ -1306,24 +1525,51 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
 
     // ============ IPOSITIONVIEWER IMPLEMENTATION ============
 
-    function getPositionsByTrader(address trader, uint256 cursor, uint256 limit) external view override returns (PositionView[] memory positions, uint256 newCursor) {
+    function getPositionsByTrader(
+        address trader,
+        uint256 cursor,
+        uint256 limit
+    )
+        external
+        view
+        override
+        returns (
+            PositionView[] memory positions,
+            uint256 newCursor
+        )
+    {
         uint256[] storage ids = _traderPositions[trader];
         uint256 total = ids.length;
-        if (cursor >= total) return (positions, total);
-        
-        uint256 end = cursor + limit;
-        if (end > total) end = total;
-        uint256 count = end - cursor;
-        
-        positions = new PositionView[](count);
-        for (uint256 i = 0; i < count; i++) {
-            positions[i] = getPosition(ids[cursor + i]);
+
+        if (cursor >= total) {
+            return (new PositionView[](0), total);
         }
-        return (positions, end);
+
+        if (limit == 0) {
+            return (new PositionView[](0), cursor);
+        }
+
+        uint256 remaining = total - cursor;
+        uint256 count = limit < remaining
+            ? limit
+            : remaining;
+
+        uint256[] memory pageIds = new uint256[](count);
+
+        for (uint256 i = 0; i < count; i++) {
+            pageIds[i] = ids[cursor + i];
+        }
+
+        positions = IPerpEngineViewer(_positionViewer).batchGetPositions(
+            address(this),
+            pageIds
+        );
+
+        newCursor = cursor + count;
     }
 
     function getPositionsByMarket(uint256 marketId, uint256 cursor, uint256 limit) external view override returns (PositionView[] memory positions, uint256 newCursor) {
-        revert("PerpEngine: getPositionsByMarket unimplemented");
+        return IPerpEngineViewer(_positionViewer).getPositionsByMarket(address(this), marketId, cursor, limit);
     }
 
     function getPositionStats() external view override returns (PositionStats memory stats) {
@@ -1340,45 +1586,11 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     }
 
     function getAvailableMargin(uint256 positionId) external view override returns (uint256 availableMargin) {
-        IPerpEngine.Position storage position = _positions[positionId];
-        if (!position.isActive) return 0;
-
-        (uint256 currentPrice, ) = _getMarketPrice(position.marketId);
-        
-        int256 fundingPayment = IAMMPool(ammPool).calculateFundingPayment(
-            position.marketId,
-            position.size,
-            position.isLong,
-            position.lastFundingIndex
-        );
-
-        int256 pnl = PositionMath.calculatePnL(position.entryPrice, currentPrice, position.size, position.isLong);
-        int256 equity = int256(position.margin) + pnl - fundingPayment;
-        
-        if (equity <= 0) return 0;
-
-        uint256 maintenanceMargin = position.size.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION)
-            .mulDiv(_markets[position.marketId].minMarginRatio, PRECISION);
-            
-        if (uint256(equity) <= maintenanceMargin) return 0;
-        
-        return uint256(equity) - maintenanceMargin;
+        return IPerpEngineViewer(_positionViewer).getAvailableMargin(address(this), positionId);
     }
 
     function getMaxAdditionalSize(uint256 positionId, uint256 additionalMargin) external view override returns (uint256 maxAdditionalSize) {
-        IPerpEngine.Position storage position = _positions[positionId];
-        if (!position.isActive) return 0;
-
-        (uint256 currentPrice, ) = _getMarketPrice(position.marketId);
-        uint256 totalMargin = position.margin + additionalMargin;
-        
-        uint256 currentNotional = position.size.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
-        uint256 maxNotional = totalMargin.mulDiv(_markets[position.marketId].maxLeverage, PRECISION);
-        
-        if (maxNotional <= currentNotional) return 0;
-        
-        uint256 additionalNotional = maxNotional - currentNotional;
-        return additionalNotional.mulDiv(PRECISION, currentPrice * PRICE_NORMALIZATION);
+        return IPerpEngineViewer(_positionViewer).getMaxAdditionalSize(address(this), positionId, additionalMargin);
     }
 
     function batchGetPositions(uint256[] calldata positionIds) external view override returns (PositionView[] memory views) {

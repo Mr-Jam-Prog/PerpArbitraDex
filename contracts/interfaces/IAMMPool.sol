@@ -151,6 +151,20 @@ interface IAMMPool {
         returns (int256 cumulativeFundingIndex);
 
     /**
+     * @notice Previews the cumulative funding index that updateFundingRate would accrue to at block.timestamp
+     * @param marketId Market ID
+     * @return cumulativeFundingIndex Previews accumulated index
+     * @return fundingRate Current or newly calculated funding rate
+     */
+    function previewCumulativeFundingIndex(uint256 marketId)
+        external
+        view
+        returns (
+            int256 cumulativeFundingIndex,
+            int256 fundingRate
+        );
+
+    /**
      * @notice Get time-weighted average funding rate
      * @param marketId Market ID
      * @param period Time period in seconds

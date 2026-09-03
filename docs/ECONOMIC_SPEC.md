@@ -122,7 +122,7 @@ When opening or adding size $\Delta S$ at price $P_{\text{exec}}$ with additiona
    $$\Delta M_{\text{net}} = \Delta M - \text{Fee}$$
 3. **Volume-Weighted Average Entry Price ($E_{\text{new}}$)**:
    $$E_{\text{new}} = \frac{(S_{\text{old}} \times E_{\text{old}}) + (\Delta S \times P_{\text{exec}})}{S_{\text{old}} + \Delta S}$$
-4. **Funding Accrual**: Prior accrued funding is settled or rolled over into updated $F_0$.
+4. **Funding Accrual**: Prior accrued funding is settled or rolled over into updated $F_0$. Unpaid funding debt blocks non-terminal risk/exposure mutations (`increasePosition`) and withdrawals (`removeMargin`, non-terminal `decreasePosition`). `addMargin` is the recovery path: newly deposited collateral first cures any unpaid funding debt, and only the residual increases position margin.
 
 ### 5.2 Partial Decrease & Full Close
 When decreasing position by size $\Delta S \le S$:
@@ -153,7 +153,11 @@ When a position is liquidated ($\text{HF}_i < 10^{18}$):
    - **Insolvent Liquidation / Bad Debt ($\text{Equity}_i < 0$)**:
      - $\text{BadDebt} = |\text{Equity}_i|$.
      - Liquidator reward is paid from Insurance Fund (or fallback LP Vault).
-     - Insurance Fund absorbs $\text{BadDebt}$. If Insurance Fund is exhausted, `LiquidityVault` absorbs remainder.
+     - **Trader negative equity waterfall**:
+       1. Forfeit available trader collateral (transferred to LP capital).
+       2. Insurance Fund compensates LPs up to its available balance (reclassified to LP capital).
+       3. Any unrecovered remainder is economically socialized to LPs as foregone counterparty PnL (`coveredByLP`).
+       The LP absorption at step 3 is a write-off of an uncollected receivable, not an additional quote-token outflow. Therefore no second decrement of `totalLpAssets` occurs at that step.
 
 ---
 
