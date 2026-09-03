@@ -11,8 +11,8 @@ const TARGET_BYTES = 24000;
 function checkContractSize(contractName, relativeArtifactPath) {
   const artifactPath = path.resolve(__dirname, "..", relativeArtifactPath);
   if (!fs.existsSync(artifactPath)) {
-    console.warn(`⚠️ Artifact for ${contractName} not found at ${artifactPath}. Skipping...`);
-    return { name: contractName, exists: false, runtimeBytes: 0, initcodeBytes: 0, ok: true };
+    console.error(`❌ ERROR: Mandatory artifact for ${contractName} not found at ${artifactPath}. Fail-closed!`);
+    return { name: contractName, exists: false, runtimeBytes: 0, initcodeBytes: 0, ok: false };
   }
 
   const artifact = JSON.parse(fs.readFileSync(artifactPath, "utf8"));

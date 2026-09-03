@@ -1555,26 +1555,14 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     }
 
     function batchGetPositions(uint256[] calldata positionIds) external view override returns (PositionView[] memory views) {
-        views = new PositionView[](positionIds.length);
-        for (uint256 i = 0; i < positionIds.length; i++) {
-            views[i] = getPosition(positionIds[i]);
-        }
-        return views;
+        return IPerpEngineViewer(_positionViewer).batchGetPositions(address(this), positionIds);
     }
 
     function batchGetHealthFactors(uint256[] calldata positionIds) external view override returns (uint256[] memory healthFactors) {
-        healthFactors = new uint256[](positionIds.length);
-        for (uint256 i = 0; i < positionIds.length; i++) {
-            healthFactors[i] = getHealthFactor(positionIds[i]);
-        }
-        return healthFactors;
+        return IPerpEngineViewer(_positionViewer).batchGetHealthFactors(address(this), positionIds);
     }
 
     function batchIsLiquidatable(uint256[] calldata positionIds, uint256[] calldata currentPrices) external view override returns (bool[] memory liquidatable) {
-        liquidatable = new bool[](positionIds.length);
-        for (uint256 i = 0; i < positionIds.length; i++) {
-            liquidatable[i] = isPositionLiquidatable(positionIds[i], currentPrices[i]);
-        }
-        return liquidatable;
+        return IPerpEngineViewer(_positionViewer).batchIsLiquidatable(address(this), positionIds, currentPrices);
     }
 }
