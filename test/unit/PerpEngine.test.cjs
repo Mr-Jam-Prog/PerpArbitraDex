@@ -381,5 +381,57 @@ describe("🚀 PerpEngine - Unit Tests", function () {
         perpEngine.connect(user1).increasePosition(1, maxAdd, COLLATERAL_AMOUNT)
       ).to.emit(perpEngine, "PositionIncreased");
     });
+
+    it("TRADER-R1..TRADER-R4 — Trader Position Bounded Pagination Suite", async function () {
+      const depositLp = ethers.parseUnits("100000", 18);
+      await mockUSD.mint(owner.address, depositLp);
+      await mockUSD.connect(owner).approve(liquidityVault.target, depositLp);
+      await liquidityVault.connect(owner).deposit(depositLp, owner.address);
+
+      const numPositions = 5;
+      await mockUSD.mint(user1.address, COLLATERAL_AMOUNT * BigInt(numPositions));
+      await mockUSD.connect(user1).approve(liquidityVault.target, COLLATERAL_AMOUNT * BigInt(numPositions));
+
+      for (let i = 0; i < numPositions; i++) {
+        await perpEngine.connect(user1).openPosition({
+          marketId: MARKET_ID,
+          isLong: i % 2 === 0,
+          size: ethers.parseUnits("1", 18),
+          margin: COLLATERAL_AMOUNT,
+          acceptablePrice: i % 2 === 0 ? INITIAL_PRICE * 101n / 100n : INITIAL_PRICE * 99n / 100n,
+          deadline: (await time.latest()) + 3600,
+          referralCode: ethers.ZeroHash
+        });
+      }
+
+      // TRADER-R1: bounded first page
+      const [page1, cursor1] = await perpEngine.getPositionsByTrader(user1.address, 0, 2);
+      expect(page1.length).to.equal(2);
+      expect(cursor1).to.equal(2);
+      expect(page1[0].positionId).to.equal(1);
+      expect(page1[1].positionId).to.equal(2);
+
+      // TRADER-R2: second and final pages without duplicates or omissions
+      const [page2, cursor2] = await perpEngine.getPositionsByTrader(user1.address, cursor1, 2);
+      expect(page2.length).to.equal(2);
+      expect(cursor2).to.equal(4);
+      expect(page2[0].positionId).to.equal(3);
+      expect(page2[1].positionId).to.equal(4);
+
+      const [page3, cursor3] = await perpEngine.getPositionsByTrader(user1.address, cursor2, 2);
+      expect(page3.length).to.equal(1);
+      expect(cursor3).to.equal(5);
+      expect(page3[0].positionId).to.equal(5);
+
+      // TRADER-R3: zero limit returns empty array and unchanged cursor
+      const [pageZero, cursorZero] = await perpEngine.getPositionsByTrader(user1.address, 2, 0);
+      expect(pageZero.length).to.equal(0);
+      expect(cursorZero).to.equal(2);
+
+      // TRADER-R4: terminal cursor >= total returns empty array and total length
+      const [pageTerm, cursorTerm] = await perpEngine.getPositionsByTrader(user1.address, 5, 2);
+      expect(pageTerm.length).to.equal(0);
+      expect(cursorTerm).to.equal(5);
+    });
   });
 });

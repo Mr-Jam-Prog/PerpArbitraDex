@@ -195,26 +195,6 @@ contract PerpEngineViewer is IPerpEngineViewer {
         vaultQuoteBalance = _fromVaultUnits(IERC20(pe.quoteToken()).balanceOf(vault), vaultDec);
     }
 
-    function getPositionsByTrader(address engine, address trader, uint256 cursor, uint256 limit)
-        external
-        view
-        returns (IPositionViewer.PositionView[] memory positions, uint256 newCursor)
-    {
-        uint256[] memory ids = IPerpEngine(engine).getTraderPositions(trader);
-        uint256 total = ids.length;
-        if (cursor >= total) return (positions, total);
-
-        uint256 end = cursor + limit;
-        if (end > total) end = total;
-        uint256 count = end - cursor;
-
-        positions = new IPositionViewer.PositionView[](count);
-        for (uint256 i = 0; i < count; i++) {
-            positions[i] = _getPosition(engine, ids[cursor + i]);
-        }
-        return (positions, end);
-    }
-
     function getMaxAdditionalSize(address engine, uint256 positionId, uint256 additionalMargin)
         external
         view

@@ -68,11 +68,6 @@ interface IPerpEngineViewer {
             uint256 vaultQuoteBalance
         );
 
-    function getPositionsByTrader(address engine, address trader, uint256 cursor, uint256 limit)
-        external
-        view
-        returns (IPositionViewer.PositionView[] memory positions, uint256 newCursor);
-
     function getMaxAdditionalSize(address engine, uint256 positionId, uint256 additionalMargin)
         external
         view

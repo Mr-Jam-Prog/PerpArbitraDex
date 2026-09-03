@@ -1525,8 +1525,47 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
 
     // ============ IPOSITIONVIEWER IMPLEMENTATION ============
 
-    function getPositionsByTrader(address trader, uint256 cursor, uint256 limit) external view override returns (PositionView[] memory positions, uint256 newCursor) {
-        return IPerpEngineViewer(_positionViewer).getPositionsByTrader(address(this), trader, cursor, limit);
+    function getPositionsByTrader(
+        address trader,
+        uint256 cursor,
+        uint256 limit
+    )
+        external
+        view
+        override
+        returns (
+            PositionView[] memory positions,
+            uint256 newCursor
+        )
+    {
+        uint256[] storage ids = _traderPositions[trader];
+        uint256 total = ids.length;
+
+        if (cursor >= total) {
+            return (new PositionView[](0), total);
+        }
+
+        if (limit == 0) {
+            return (new PositionView[](0), cursor);
+        }
+
+        uint256 remaining = total - cursor;
+        uint256 count = limit < remaining
+            ? limit
+            : remaining;
+
+        uint256[] memory pageIds = new uint256[](count);
+
+        for (uint256 i = 0; i < count; i++) {
+            pageIds[i] = ids[cursor + i];
+        }
+
+        positions = IPerpEngineViewer(_positionViewer).batchGetPositions(
+            address(this),
+            pageIds
+        );
+
+        newCursor = cursor + count;
     }
 
     function getPositionsByMarket(uint256 marketId, uint256 cursor, uint256 limit) external view override returns (PositionView[] memory positions, uint256 newCursor) {
@@ -1555,14 +1594,26 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     }
 
     function batchGetPositions(uint256[] calldata positionIds) external view override returns (PositionView[] memory views) {
-        return IPerpEngineViewer(_positionViewer).batchGetPositions(address(this), positionIds);
+        views = new PositionView[](positionIds.length);
+        for (uint256 i = 0; i < positionIds.length; i++) {
+            views[i] = getPosition(positionIds[i]);
+        }
+        return views;
     }
 
     function batchGetHealthFactors(uint256[] calldata positionIds) external view override returns (uint256[] memory healthFactors) {
-        return IPerpEngineViewer(_positionViewer).batchGetHealthFactors(address(this), positionIds);
+        healthFactors = new uint256[](positionIds.length);
+        for (uint256 i = 0; i < positionIds.length; i++) {
+            healthFactors[i] = getHealthFactor(positionIds[i]);
+        }
+        return healthFactors;
     }
 
     function batchIsLiquidatable(uint256[] calldata positionIds, uint256[] calldata currentPrices) external view override returns (bool[] memory liquidatable) {
-        return IPerpEngineViewer(_positionViewer).batchIsLiquidatable(address(this), positionIds, currentPrices);
+        liquidatable = new bool[](positionIds.length);
+        for (uint256 i = 0; i < positionIds.length; i++) {
+            liquidatable[i] = isPositionLiquidatable(positionIds[i], currentPrices[i]);
+        }
+        return liquidatable;
     }
 }
