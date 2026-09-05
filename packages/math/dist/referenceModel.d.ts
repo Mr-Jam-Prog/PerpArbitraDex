@@ -48,6 +48,10 @@ export declare function normalizeOraclePrice(rawPrice8Decimals: bigint): bigint;
  */
 export declare function wadToNativeQuote(wadAmount: bigint, quoteDecimals: number): bigint;
 /**
+ * Converts 18-decimal quote WAD amount to native ERC20 quote token units (ceil rounding)
+ */
+export declare function wadToNativeQuoteCeil(wadAmount: bigint, quoteDecimals: number): bigint;
+/**
  * Converts native ERC20 quote token units to 18-decimal quote WAD amount
  */
 export declare function nativeQuoteToWad(nativeAmount: bigint, quoteDecimals: number): bigint;
@@ -118,6 +122,6 @@ export declare function openOrIncreasePosition(position: PositionState | null, a
  */
 export declare function decreaseOrClosePosition(position: PositionState, closedSizeWad: bigint, execPriceWad: bigint, currentFundingIndexWad: bigint, params: ProtocolParams): TradeResult;
 /**
- * Execute Liquidation according to Solvency Rules
+ * Execute Liquidation according to Solvency Rules (Prompt 07B Full Liquidation)
  */
 export declare function executeLiquidation(position: PositionState, currentPriceWad: bigint, currentFundingIndexWad: bigint, params: ProtocolParams): LiquidationExecutionResult;

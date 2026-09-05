@@ -356,10 +356,8 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
         // Preview liquidation
         const [reward, penalty] = await liquidationEngine.previewLiquidation(positionId, customPrice);
 
-        // Penalty 5% on 5 ETH * $2000 = $10,000 notionnel.
-        // Liquidation ratio for health factor 0.8 to 0.95 = (1 - 0.8) / (1 - 0.95) = 0.2 / 0.05 = 4 -> capped at 100%.
-        // 100% of $10,000 = $10,000 notionnel. Penalty @ 5% = $500 = 500e18 quote tokens.
-        expect(penalty).to.equal(ethers.parseUnits("500", 18));
+        // Penalty 1% (market.liquidationFeeRatio) on 5 ETH * $2000 = $10,000 notional = $100 = 100e18 quote tokens.
+        expect(penalty).to.equal(ethers.parseUnits("100", 18));
     });
   });
 });

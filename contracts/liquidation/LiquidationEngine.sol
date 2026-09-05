@@ -269,7 +269,7 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
                 continue;
             }
             
-            try this._executeFromQueue(nextPositionId, liquidatorConfig.minReward, msg.sender) {
+            try this._executeFromQueue(nextPositionId, 0, msg.sender) {
                 numProcessed++;
             } catch {
                 // Skip and continue
@@ -360,76 +360,25 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
     // ============ INTERNAL FUNCTIONS ============
 
     /**
-     * @dev Calculate liquidation details
+     * @dev Calculate canonical full liquidation details (07B)
      */
     function _calculateLiquidation(
         uint256 positionId,
         uint256 currentPrice,
-        uint256 healthFactor
+        uint256 /* healthFactor */
     ) internal view returns (uint256 reward, uint256 penalty, uint256 newHealthFactor, uint256 liquidatedSize) {
         IPerpEngine.PositionView memory position = perpEngine.getPosition(positionId);
-        
-        // Calculate how much to liquidate to bring health factor to MIN_HEALTH_FACTOR
-        uint256 targetHealthFactor = MIN_HEALTH_FACTOR;
-        uint256 liquidationRatio = (HEALTH_FACTOR_SCALE - healthFactor) * HEALTH_FACTOR_SCALE / 
-                                  (HEALTH_FACTOR_SCALE - targetHealthFactor);
-        
-        // Cap at 100%
-        liquidationRatio = liquidationRatio > HEALTH_FACTOR_SCALE ? HEALTH_FACTOR_SCALE : liquidationRatio;
-        
-        liquidatedSize = (position.size * liquidationRatio) / HEALTH_FACTOR_SCALE;
-        
-        // Calculate penalty based on liquidated size notionnel in quote token units
-        uint256 notionalLiquidated = (liquidatedSize * currentPrice) / 1e8;
-        penalty = (notionalLiquidated * liquidatorConfig.penaltyRatio) / HEALTH_FACTOR_SCALE;
-        
-        // Calculate reward
-        reward = estimateReward(positionId, liquidatedSize, currentPrice);
-        
-        /// @dev WARNING: newHealthFactor is an approximation only.
-        /// The formula (remainingMargin / remainingSize * 2) has no
-        /// mathematical basis. Do not use this value for on-chain
-        /// liquidation decisions. It is for UI estimation only.
-        if (liquidatedSize < position.size) {
-            uint256 remainingSize = position.size - liquidatedSize;
-            uint256 remainingMargin = position.margin - (position.margin * liquidationRatio) / HEALTH_FACTOR_SCALE;
-            
-            // Simplified health factor calculation
-            uint256 remainingLiqPrice = (remainingMargin * HEALTH_FACTOR_SCALE) / (remainingSize * 2); // Approximation
-            newHealthFactor = (currentPrice * HEALTH_FACTOR_SCALE) / remainingLiqPrice;
-        } else {
-            newHealthFactor = HEALTH_FACTOR_SCALE; // Fully liquidated
-        }
-    }
+        IPerpEngine.Market memory market = perpEngine.getMarket(position.marketId);
 
-    /**
-     * @dev Execute liquidation through PerpEngine
-     */
-    function _executePerpLiquidation(
-        uint256 positionId,
-        uint256 liquidationPrice,
-        uint256 penalty,
-        uint256 sizeToLiquidate
-    ) internal returns (uint256 remainingSize) {
-        // Get position before liquidation
-        IPerpEngine.PositionView memory positionBefore = perpEngine.getPosition(positionId);
-        
-        // Call PerpEngine to liquidate
-        perpEngine.liquidatePosition(
-            IPerpEngine.LiquidateParams({
-                positionId: positionId,
-                trader: positionBefore.trader,
-                marketId: positionBefore.marketId,
-                sizeToLiquidate: sizeToLiquidate,
-                minReward: 0,
-                liquidator: msg.sender
-            })
-        );
-        
-        // Get position after liquidation
-        IPerpEngine.PositionView memory positionAfter = perpEngine.getPosition(positionId);
-        
-        return positionAfter.size;
+        liquidatedSize = position.size;
+        uint256 liquidatedNotional = (liquidatedSize * currentPrice * 10**10) / HEALTH_FACTOR_SCALE;
+
+        // Penalty CEIL rounding
+        penalty = (liquidatedNotional * market.liquidationFeeRatio + HEALTH_FACTOR_SCALE - 1) / HEALTH_FACTOR_SCALE;
+
+        // Reward FLOOR rounding (50% reward share)
+        reward = (penalty * 5000) / 10000;
+        newHealthFactor = HEALTH_FACTOR_SCALE; // Fully liquidated
     }
 
     /**

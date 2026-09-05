@@ -981,50 +981,19 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         uint256 unlockedNotional = position.lockedNotional;
 
         // 6. Branch Evaluation & Vault Settlement
-        int256 equitySigned = int256(marginAvailable) + netPnl;
+        if (params.liquidator == address(0)) revert ZeroAddress();
         liquidationReward = nominalReward;
 
-        if (equitySigned > 0) {
-            uint256 equity = uint256(equitySigned);
-            uint256 collectiblePenalty = equity >= nominalPenalty ? nominalPenalty : equity;
-            uint256 traderPayout = equity > nominalPenalty ? equity - nominalPenalty : 0;
-
-            if (traderPayout + collectiblePenalty <= marginAvailable) {
-                uint256 loss = marginAvailable - (traderPayout + collectiblePenalty);
-                ILiquidityVault(liquidityVault).settleTraderLoss(
-                    position.trader,
-                    _toVaultUnits(traderPayout),
-                    _toVaultUnits(loss)
-                );
-                if (collectiblePenalty > 0) {
-                    ILiquidityVault(liquidityVault).fundInsuranceFund(_toVaultUnits(collectiblePenalty));
-                }
-            } else {
-                uint256 profit = (traderPayout + collectiblePenalty) - marginAvailable;
-                if (collectiblePenalty > 0) {
-                    ILiquidityVault(liquidityVault).fundInsuranceFund(_toVaultUnits(collectiblePenalty));
-                }
-                (, uint256 unbacked) = ILiquidityVault(liquidityVault).settleTraderProfit(
-                    position.trader,
-                    _toVaultUnits(marginAvailable > collectiblePenalty ? marginAvailable - collectiblePenalty : 0),
-                    _toVaultUnits(profit)
-                );
-                if (unbacked != 0) revert UnbackedProfit();
-            }
-        } else {
-            // Branch C (Terminal Insolvent)
-            uint256 grossDeficit = uint256(-netPnl);
-            ILiquidityVault(liquidityVault).settleBadDebt(
-                position.trader,
-                _toVaultUnits(marginAvailable),
-                _toVaultUnitsCeil(grossDeficit)
-            );
-        }
+        ILiquidityVault(liquidityVault).settleLiquidation(
+            position.trader,
+            _toVaultUnits(marginAvailable),
+            netPnl >= 0 ? int256(_toVaultUnits(uint256(netPnl))) : -int256(_toVaultUnitsCeil(uint256(-netPnl))),
+            _toVaultUnitsCeil(nominalPenalty)
+        );
 
         // 7. Pay Liquidator Reward via Vault (IF -> LP fallback)
-        address recipient = params.liquidator != address(0) ? params.liquidator : tx.origin;
         if (liquidationReward > 0) {
-            ILiquidityVault(liquidityVault).payLiquidationReward(recipient, _toVaultUnits(liquidationReward));
+            ILiquidityVault(liquidityVault).payLiquidationReward(params.liquidator, _toVaultUnits(liquidationReward));
         }
 
         // 8. State Updates & Skew Update
@@ -1051,7 +1020,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
 
         emit PositionLiquidated(
             params.positionId,
-            recipient,
+            params.liquidator,
             currentPrice,
             nominalPenalty,
             liquidationReward

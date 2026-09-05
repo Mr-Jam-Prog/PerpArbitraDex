@@ -74,6 +74,16 @@ export function wadToNativeQuote(wadAmount: bigint, quoteDecimals: number): bigi
 }
 
 /**
+ * Converts 18-decimal quote WAD amount to native ERC20 quote token units (ceil rounding)
+ */
+export function wadToNativeQuoteCeil(wadAmount: bigint, quoteDecimals: number): bigint {
+    if (quoteDecimals === 18) return wadAmount;
+    if (wadAmount === 0n) return 0n;
+    const scale = 10n ** BigInt(18 - quoteDecimals);
+    return (wadAmount + scale - 1n) / scale;
+}
+
+/**
  * Converts native ERC20 quote token units to 18-decimal quote WAD amount
  */
 export function nativeQuoteToWad(nativeAmount: bigint, quoteDecimals: number): bigint {
@@ -369,7 +379,7 @@ export function decreaseOrClosePosition(
 }
 
 /**
- * Execute Liquidation according to Solvency Rules
+ * Execute Liquidation according to Solvency Rules (Prompt 07B Full Liquidation)
  */
 export function executeLiquidation(
     position: PositionState,
@@ -390,26 +400,17 @@ export function executeLiquidation(
         position.isLong
     );
 
-    const equity = calculateEquityWad(position.marginWad, unrealizedPnl, fundingPayment);
+    const netPnl = unrealizedPnl - fundingPayment;
+    const equity = position.marginWad + netPnl;
     const notional = calculateNotionalQuoteWad(position.sizeWad, currentPriceWad);
 
     // Penalty = ceil(notional * liquidationPenaltyBps / 10000)
     const penalty = mulDivCeil(notional, params.liquidationPenaltyBps, 10000n);
     const reward = mulDivFloor(penalty, params.liquidatorRewardShareBps, 10000n);
 
-    if (equity <= 0n) {
-        // Bad Debt scenario
-        const badDebtWad = abs(equity);
-        return {
-            liquidatedSizeWad: position.sizeWad,
-            liquidatorRewardWad: reward,
-            insuranceFundAddWad: 0n,
-            badDebtWad,
-            traderRemainingEquityWad: 0n
-        };
-    } else {
-        // Equity > 0
+    if (equity > 0n) {
         if (equity >= penalty) {
+            // Branch A
             const rem = equity - penalty;
             return {
                 liquidatedSizeWad: position.sizeWad,
@@ -419,7 +420,7 @@ export function executeLiquidation(
                 traderRemainingEquityWad: rem
             };
         } else {
-            // Partial equity left, less than penalty
+            // Branch B (0 < Equity < Penalty)
             return {
                 liquidatedSizeWad: position.sizeWad,
                 liquidatorRewardWad: reward,
@@ -428,5 +429,15 @@ export function executeLiquidation(
                 traderRemainingEquityWad: 0n
             };
         }
+    } else {
+        // Branch C / Exact Zero Equity (Equity <= 0)
+        const badDebtWad = abs(equity);
+        return {
+            liquidatedSizeWad: position.sizeWad,
+            liquidatorRewardWad: reward,
+            insuranceFundAddWad: 0n,
+            badDebtWad,
+            traderRemainingEquityWad: 0n
+        };
     }
 }

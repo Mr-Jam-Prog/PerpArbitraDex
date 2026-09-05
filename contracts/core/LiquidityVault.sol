@@ -384,6 +384,102 @@ contract LiquidityVault is ILiquidityVault, ERC20, Ownable, ReentrancyGuard, Pau
         emit BadDebtSettled(trader, marginForfeited, coveredByIF, coveredByLP, residualBadDebt);
     }
 
+    /**
+     * @notice Consolidated full liquidation settlement in native/WAD quote units (Branch A/B/C).
+     */
+    function settleLiquidation(
+        address trader,
+        uint256 marginAvailable,
+        int256 netPnl,
+        uint256 nominalPenalty
+    ) external override onlyPerpEngine nonReentrant {
+        int256 equitySigned = int256(marginAvailable) + netPnl;
+
+        if (equitySigned > 0) {
+            uint256 equity = uint256(equitySigned);
+            uint256 collectiblePenalty = equity >= nominalPenalty ? nominalPenalty : equity;
+            uint256 traderPayout = equity > nominalPenalty ? equity - nominalPenalty : 0;
+
+            if (netPnl <= 0) {
+                // Trading loss branch
+                uint256 netLoss = uint256(-netPnl);
+                require(traderMarginTotal >= marginAvailable, "Vault: margin underflow");
+                traderMarginTotal -= marginAvailable;
+                totalLpAssets += netLoss;
+                insuranceFundBalance += collectiblePenalty;
+
+                if (traderPayout > 0) {
+                    quoteToken.safeTransfer(trader, traderPayout);
+                }
+                emit TraderLossSettled(trader, traderPayout, netLoss);
+            } else {
+                // Trading profit branch (LIQ-PROFIT-PEN1)
+                uint256 netProfit = uint256(netPnl);
+
+                if (marginAvailable >= collectiblePenalty) {
+                    require(traderMarginTotal >= marginAvailable, "Vault: margin underflow");
+                    traderMarginTotal -= marginAvailable;
+                    insuranceFundBalance += collectiblePenalty;
+
+                    uint256 marginReturned = marginAvailable - collectiblePenalty;
+                    uint256 profitToPay = traderPayout > marginReturned ? traderPayout - marginReturned : 0;
+
+                    if (profitToPay > 0) {
+                        require(totalLpAssets >= profitToPay, "Vault: unbacked profit");
+                        totalLpAssets -= profitToPay;
+                    }
+                    if (traderPayout > 0) {
+                        quoteToken.safeTransfer(trader, traderPayout);
+                    }
+                    emit TraderProfitSettled(trader, marginReturned, profitToPay, 0);
+                } else {
+                    uint256 profitContrib = collectiblePenalty - marginAvailable;
+                    uint256 profitToPay = netProfit > profitContrib ? netProfit - profitContrib : 0;
+
+                    require(traderMarginTotal >= marginAvailable, "Vault: margin underflow");
+                    traderMarginTotal -= marginAvailable;
+                    insuranceFundBalance += marginAvailable;
+
+                    if (profitContrib > 0) {
+                        require(totalLpAssets >= profitContrib, "Vault: unbacked penalty profit");
+                        totalLpAssets -= profitContrib;
+                        insuranceFundBalance += profitContrib;
+                    }
+                    if (profitToPay > 0) {
+                        require(totalLpAssets >= profitToPay, "Vault: unbacked profit");
+                        totalLpAssets -= profitToPay;
+                        quoteToken.safeTransfer(trader, profitToPay);
+                    }
+                    emit TraderProfitSettled(trader, 0, profitToPay, 0);
+                }
+            }
+        } else if (equitySigned == 0) {
+            // Exact Zero Equity (LIQ-ZEQ1)
+            require(traderMarginTotal >= marginAvailable, "Vault: margin underflow");
+            traderMarginTotal -= marginAvailable;
+            totalLpAssets += marginAvailable;
+            emit TraderLossSettled(trader, 0, marginAvailable);
+        } else {
+            // Branch C (Strict Insolvent)
+            uint256 grossDeficit = uint256(-netPnl);
+            require(grossDeficit > marginAvailable, "Vault: no bad debt");
+            require(traderMarginTotal >= marginAvailable, "Vault: margin underflow");
+
+            traderMarginTotal -= marginAvailable;
+            totalLpAssets += marginAvailable;
+
+            uint256 remainingDeficit = grossDeficit - marginAvailable;
+            uint256 coveredByIF = insuranceFundBalance >= remainingDeficit ? remainingDeficit : insuranceFundBalance;
+
+            if (coveredByIF > 0) {
+                insuranceFundBalance -= coveredByIF;
+                totalLpAssets += coveredByIF;
+            }
+            uint256 coveredByLP = remainingDeficit - coveredByIF;
+            emit BadDebtSettled(trader, marginAvailable, coveredByIF, coveredByLP, 0);
+        }
+    }
+
     function collectProtocolFees(uint256 feeAmount) external override onlyPerpEngine {
         if (feeAmount == 0) return;
         require(traderMarginTotal >= feeAmount, "Vault: margin underflow for fees");
