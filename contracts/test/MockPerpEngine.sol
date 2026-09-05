@@ -13,9 +13,14 @@ contract MockPerpEngine is IPerpEngine {
     mapping(uint256 => int256) private _pnl;
     
     address private _ammPool;
+    uint256 private _mockPrice;
 
     function setAMMPool(address amm) external {
         _ammPool = amm;
+    }
+
+    function setMockPrice(uint256 p) external {
+        _mockPrice = p;
     }
 
     function getMarket(uint256) external view override returns (Market memory) {
@@ -73,10 +78,16 @@ contract MockPerpEngine is IPerpEngine {
         _positions[positionId].trader = viewData.trader;
         _positions[positionId].marketId = viewData.marketId;
         _positions[positionId].size = viewData.size;
+        _positions[positionId].margin = viewData.margin;
+        _positions[positionId].entryPrice = viewData.entryPrice;
+        _positions[positionId].isLong = viewData.isLong;
     }
 
     function setHealthFactor(uint256 positionId, uint256 hf) external {
         _healthFactors[positionId] = hf;
+        if (_positionViews[positionId].positionId != 0) {
+            _positionViews[positionId].healthFactor = hf;
+        }
     }
 
     // Required by IPerpEngine
@@ -86,13 +97,23 @@ contract MockPerpEngine is IPerpEngine {
     function closePosition(uint256) external override {}
 
     function liquidatePosition(LiquidateParams calldata params) external override returns (uint256) {
-        // Actual liquidation logic in mock
+        if (_healthFactors[params.positionId] >= 1e18 || _positionViews[params.positionId].healthFactor >= 1e18) revert NotLiquidatable();
+
+        uint256 size = _positions[params.positionId].size;
+        if (size == 0 && _positionViews[params.positionId].positionId != 0) {
+            size = _positionViews[params.positionId].size;
+        }
+        uint256 price = _mockPrice > 0 ? _mockPrice : (_positionViews[params.positionId].entryPrice > 0 ? _positionViews[params.positionId].entryPrice : 2000e8);
+        uint256 notional = (size * price * 10**10) / 1e18;
+        uint256 penalty = (notional * 1e16 + 1e18 - 1) / 1e18;
+        uint256 reward = (penalty * 5000) / 10000;
+
         _positions[params.positionId].size = 0;
         _positions[params.positionId].isActive = false;
         if (_positionViews[params.positionId].positionId != 0) {
             _positionViews[params.positionId].size = 0;
         }
-        return 0; 
+        return reward;
     }
 
     function accrueFunding(uint256) external override {}
@@ -162,7 +183,7 @@ contract MockPerpEngine is IPerpEngine {
         return _pnl[positionId];
     }
     function isPositionLiquidatable(uint256 positionId, uint256) external view override returns (bool) {
-        return _healthFactors[positionId] < 1e18 && _healthFactors[positionId] > 0;
+        return _healthFactors[positionId] < 1e18;
     }
     function getAvailableMargin(uint256) external view override returns (uint256) { return 0; }
     function getMaxAdditionalSize(uint256, uint256) external view override returns (uint256) { return 0; }

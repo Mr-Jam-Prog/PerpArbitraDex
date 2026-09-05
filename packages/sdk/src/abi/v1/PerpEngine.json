@@ -1762,6 +1762,11 @@
               "internalType": "uint256",
               "name": "minReward",
               "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "liquidator",
+              "type": "address"
             }
           ],
           "internalType": "struct IPerpEngine.LiquidateParams",
@@ -2074,18 +2079,18 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "newFundingInterval",
+          "name": "",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "newMaxFundingRate",
+          "name": "",
           "type": "uint256"
         }
       ],
       "name": "updateFundingParams",
       "outputs": [],
-      "stateMutability": "nonpayable",
+      "stateMutability": "pure",
       "type": "function"
     },
     {

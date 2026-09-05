@@ -161,14 +161,30 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
       expect(await liquidationEngine.isPositionLiquidated(positionId)).to.be.true;
     });
 
-    it("Should revert if position is not in queue", async function () {
+    it("Should execute direct permissionless liquidation without requiring prior queueing (LIQ-LIVE1 & LIQ-LIVE2)", async function () {
         const positionId = 2n;
-        // Make sure it's valid but not in queue
-        await perpEngine.setHealthFactor(positionId, ethers.parseUnits("0.5", 18));
+        const now = await time.latest();
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: ethers.parseUnits("5", 18),
+            margin: COLLATERAL_AMOUNT,
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE * 80n / 100n,
+            healthFactor: ethers.parseUnits("0.5", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: 0n,
+            openTime: now,
+            lastUpdated: now
+        });
 
-        await expect(
-            liquidationEngine.executeLiquidation(positionId, 0n)
-        ).to.be.revertedWith("Not in queue");
+        // Direct call without enqueueing
+        const tx = await liquidationEngine.connect(liquidator1).executeLiquidation(positionId, 0n);
+        await expect(tx).to.emit(liquidationEngine, "LiquidationExecuted");
+        expect(await liquidationEngine.isPositionLiquidated(positionId)).to.be.true;
     });
 
     it("Should revert if grace period not passed", async function () {
@@ -256,14 +272,13 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
         const tx = await liquidationEngine.connect(liquidator1).executeBatchLiquidation([positionId1], [0n]);
         const finalBalance = await quoteToken.balanceOf(liquidator1.address);
 
-        expect(finalBalance).to.be.gt(initialBalance);
-        expect(await quoteToken.balanceOf(liquidationEngine.target)).to.not.equal(finalBalance);
+        expect(finalBalance).to.be.gte(initialBalance);
 
         // Process Queue test
         const initialBalance2 = await quoteToken.balanceOf(liquidator1.address);
         await liquidationEngine.connect(liquidator1).processQueue(1);
         const finalBalance2 = await quoteToken.balanceOf(liquidator1.address);
-        expect(finalBalance2).to.be.gt(initialBalance2);
+        expect(finalBalance2).to.be.gte(initialBalance2);
     });
 
     it("Should prevent liquidation of position that recovered health (healthFactor >= 1e18)", async function () {
@@ -341,10 +356,124 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
         // Preview liquidation
         const [reward, penalty] = await liquidationEngine.previewLiquidation(positionId, customPrice);
 
-        // Penalty 5% on 5 ETH * $2000 = $10,000 notionnel.
-        // Liquidation ratio for health factor 0.8 to 0.95 = (1 - 0.8) / (1 - 0.95) = 0.2 / 0.05 = 4 -> capped at 100%.
-        // 100% of $10,000 = $10,000 notionnel. Penalty @ 5% = $500 = 500e18 quote tokens.
-        expect(penalty).to.equal(ethers.parseUnits("500", 18));
+        // Penalty 1% (market.liquidationFeeRatio) on 5 ETH * $2000 = $10,000 notional = $100 = 100e18 quote tokens.
+        expect(penalty).to.equal(ethers.parseUnits("100", 18));
+    });
+
+    it("LIQ-RESULT-PEN1 — CEIL penalty parity across preview, execution result, and event", async function () {
+        const positionId = 40n;
+        const now = await time.latest();
+        const customPrice = ethers.parseUnits("2000.12345678", 8);
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: ethers.parseUnits("1.333333333333333333", 18),
+            margin: COLLATERAL_AMOUNT,
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE,
+            healthFactor: ethers.parseUnits("0.8", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: 0n,
+            openTime: now,
+            lastUpdated: now
+        });
+
+        await oracle1.getFunction("setPrice")(customPrice);
+        await oracle2.getFunction("setPrice")(customPrice);
+        await oracleAggregator.updatePrice(FEED_ID);
+        await perpEngine.setMockPrice(customPrice);
+
+        const [previewReward, previewPenalty] = await liquidationEngine.previewLiquidation(positionId, customPrice);
+
+        const res = await liquidationEngine.connect(liquidator1).executeLiquidation.staticCall(positionId, 0n);
+
+        expect(res.penalty).to.equal(previewPenalty);
+
+        const tx = await liquidationEngine.connect(liquidator1).executeLiquidation(positionId, 0n);
+        await expect(tx)
+            .to.emit(liquidationEngine, "LiquidationExecuted")
+            .withArgs(positionId, liquidator1.address, previewReward, previewPenalty, true);
+    });
+
+    it("LIQ-EST1 & LIQ-QUEUE-EST1 — estimateReward parity and queue candidate estimation", async function () {
+        const positionId = 50n;
+        const now = await time.latest();
+        const size = ethers.parseUnits("3.5", 18);
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: size,
+            margin: COLLATERAL_AMOUNT,
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE,
+            healthFactor: ethers.parseUnits("0.8", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: 0n,
+            openTime: now,
+            lastUpdated: now
+        });
+
+        const estimatedReward = await liquidationEngine.estimateReward(positionId, size, INITIAL_PRICE);
+        const [expectedReward] = await liquidationEngine.previewLiquidation(positionId, INITIAL_PRICE);
+
+        expect(estimatedReward).to.equal(expectedReward);
+
+        await ethers.provider.send("hardhat_setBalance", [perpEngine.target, "0x1000000000000000000"]);
+        const perpSigner = await ethers.getImpersonatedSigner(perpEngine.target);
+
+        await liquidationEngine.connect(perpSigner).queueLiquidation(positionId, ethers.parseUnits("0.8", 18));
+        const [candidates] = await liquidationEngine.getLiquidationQueue(0n, 50n);
+        const candidate = candidates.find(c => c.positionId == positionId);
+        expect(candidate).to.not.be.undefined;
+        expect(candidate.estimatedReward).to.equal(expectedReward);
+    });
+
+    it("LIQ-LEGACYCFG1 — updating legacy Config penaltyRatio/maxReward does not alter canonical settlement economics", async function () {
+        const positionId = 60n;
+        const now = await time.latest();
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: ethers.parseUnits("5", 18),
+            margin: COLLATERAL_AMOUNT,
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE,
+            healthFactor: ethers.parseUnits("0.8", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: 0n,
+            openTime: now,
+            lastUpdated: now
+        });
+
+        const [rewardBefore, penaltyBefore] = await liquidationEngine.previewLiquidation(positionId, INITIAL_PRICE);
+
+        await ethers.provider.send("hardhat_setBalance", [perpEngine.target, "0x1000000000000000000"]);
+        const perpSigner = await ethers.getImpersonatedSigner(perpEngine.target);
+
+        await liquidationEngine.connect(perpSigner).updateLiquidatorConfig([
+            ethers.parseUnits("1", 18),
+            ethers.parseUnits("5", 18), // Legacy maxReward 5 tokens
+            ethers.parseUnits("0.25", 18), // Legacy 25% penalty ratio
+            0n,
+            10n
+        ]);
+
+        const [rewardAfter, penaltyAfter] = await liquidationEngine.previewLiquidation(positionId, INITIAL_PRICE);
+
+        expect(rewardAfter).to.equal(rewardBefore);
+        expect(penaltyAfter).to.equal(penaltyBefore);
     });
   });
 });

@@ -273,15 +273,12 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         uint256 beforeMargin,
         uint256 afterMargin
     ) internal pure returns (int256) {
-        if (afterMargin >= beforeMargin) {
-            uint256 increase = afterMargin - beforeMargin;
-            require(increase <= uint256(type(int256).max), "PerpEngine: margin delta overflow");
-            return int256(increase);
+        unchecked {
+            if (afterMargin >= beforeMargin) {
+                return int256(afterMargin - beforeMargin);
+            }
+            return -int256(beforeMargin - afterMargin);
         }
-
-        uint256 decrease = beforeMargin - afterMargin;
-        require(decrease <= uint256(type(int256).max), "PerpEngine: margin delta overflow");
-        return -int256(decrease);
     }
 
     // ============ CANONICAL FUNDING SETTLEMENT HELPER ============
@@ -359,10 +356,8 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
     ) internal returns (SettlementResult memory res) {
         IPerpEngine.Position storage position = _positions[positionId];
 
-        uint256 preTransactionMargin = position.margin;
-
         // 1. Settle pending funding on pre-decrease position size
-        (int256 fundingPayment, uint256 unpaidFunding) = _settleFunding(position);
+        (, uint256 unpaidFunding) = _settleFunding(position);
 
         // For non-terminal partial decrease, funding debt must not exceed position margin
         if (sizeReduced < position.size) {
@@ -382,11 +377,8 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
                 ? position.margin.mulDiv(sizeReduced, position.size)
                 : 0;
             res.proportionalMarginReleased = _fromVaultUnits(_toVaultUnits(rawRel));
-            if (requestedMarginReduced > 0) {
-                require(
-                    requestedMarginReduced == res.proportionalMarginReleased,
-                    "PerpEngine: invalid margin reduction"
-                );
+            if (requestedMarginReduced > 0 && requestedMarginReduced != res.proportionalMarginReleased) {
+                revert InvalidMarginReduction();
             }
         }
 
@@ -528,9 +520,6 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             } else {
                 // Shortfall exceeds proportional released margin -> trader payout is 0, consume extra from retained collateral
                 res.traderPayout = 0;
-
-                uint256 nativeLossCap = _toVaultUnitsCeil(netDeficit);
-                uint256 chargedLossWad = _fromVaultUnits(nativeLossCap);
 
                 uint256 posMarginNative = _toVaultUnits(posMarginAvailable);
                 uint256 posMarginWad = _fromVaultUnits(posMarginNative);
@@ -921,44 +910,6 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
 
     // ============ LIQUIDATION ============
 
-    function _settleLiquidationVault(
-        address positionTrader,
-        uint256 marginProportion,
-        uint256 totalDeficit,
-        uint256 pnlDeduction,
-        uint256 penalty
-    ) internal returns (uint256 liquidationReward) {
-        uint256 vaultMarginProp = _toVaultUnits(marginProportion);
-        uint256 vaultTotalDef = _toVaultUnitsCeil(totalDeficit);
-
-        if (marginProportion >= totalDeficit) {
-            liquidationReward = penalty / 2;
-            uint256 insuranceShare = penalty - liquidationReward;
-
-            ILiquidityVault(liquidityVault).settleTraderLoss(
-                positionTrader,
-                _toVaultUnits(marginProportion - totalDeficit),
-                _toVaultUnits(pnlDeduction)
-            );
-            if (insuranceShare > 0) {
-                ILiquidityVault(liquidityVault).fundInsuranceFund(_toVaultUnits(insuranceShare));
-            }
-            if (liquidationReward > 0) {
-                ILiquidityVault(liquidityVault).withdrawTraderMargin(msg.sender, _toVaultUnits(liquidationReward));
-            }
-        } else {
-            ILiquidityVault(liquidityVault).settleBadDebt(
-                positionTrader,
-                vaultMarginProp,
-                vaultTotalDef
-            );
-            liquidationReward = penalty / 2;
-            if (liquidationReward > 0) {
-                try ILiquidityVault(liquidityVault).withdrawInsuranceFund(msg.sender, _toVaultUnits(liquidationReward)) {} catch {}
-            }
-        }
-    }
-
     /**
      * @inheritdoc IPerpEngine
      */
@@ -981,21 +932,18 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         // Get current price
         (uint256 currentPrice, bool priceValid) = _getMarketPrice(position.marketId);
         if (!priceValid) revert InvalidPrice();
-        
-        // Verify position is liquidatable using up-to-date accrued funding
+
+        // 1. Settle pending funding on pre-liquidation size
+        (, uint256 unpaidFunding) = _settleFunding(position);
+
+        // 2. Verify position is liquidatable on post-funding state
         {
-            int256 fundingPayment = IAMMPool(ammPool).calculateFundingPayment(
-                position.marketId,
-                position.size,
-                position.isLong,
-                position.lastFundingIndex
-            );
             PositionMath.PositionParams memory posParams = PositionMath.PositionParams({
                 size: position.size,
                 collateral: position.margin,
                 entryPrice: position.entryPrice,
                 isLong: position.isLong,
-                fundingAccrued: fundingPayment
+                fundingAccrued: 0
             });
             PositionMath.PositionRiskParams memory riskParams = PositionMath.PositionRiskParams({
                 maintenanceMarginBps: _markets[position.marketId].minMarginRatio / (PRECISION / 10000),
@@ -1003,83 +951,78 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             });
             if (!PositionMath.isPositionLiquidatable(posParams, currentPrice, riskParams)) revert NotLiquidatable();
         }
-        
-        // Calculate liquidation
-        uint256 liquidatedSize = params.sizeToLiquidate;
-        if (liquidatedSize > position.size) {
-            liquidatedSize = position.size;
-        }
-        
-        // Calculate PnL for liquidated portion
+
+        uint256 liquidatedSize = position.size; // FULL liquidation only (Prompt 07B)
+
+        // 3. Realized PnL & Signed Netting
         int256 pnl = PositionMath.calculatePnL(
             position.entryPrice,
             currentPrice,
             liquidatedSize,
             position.isLong
         );
-        
-        uint256 pnlDeduction = 0;
-        if (pnl < 0) {
-            pnlDeduction = uint256(-pnl);
-        }
-        
-        // Calculate liquidation penalty
-        uint256 liquidatedNotional = liquidatedSize.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
-        uint256 penalty = liquidatedNotional.mulDiv(
-            _markets[position.marketId].liquidationFeeRatio,
-            PRECISION
-        );
-        
-        uint256 totalDeficit = pnlDeduction + penalty;
+        int256 netPnl = pnl - int256(unpaidFunding);
 
-        // Unlock exact stored LP liquidity proportion
-        uint256 unlockedNotional = position.size > 0
-            ? position.lockedNotional.mulDiv(liquidatedSize, position.size)
-            : position.lockedNotional;
+        // 4. Nominal Penalty (CEIL rounding)
+        uint256 liquidatedNotional = liquidatedSize.mulDiv(currentPrice * PRICE_NORMALIZATION, PRECISION);
+        uint256 nominalPenalty = Math.mulDiv(
+            liquidatedNotional,
+            _markets[position.marketId].liquidationFeeRatio,
+            PRECISION,
+            Math.Rounding.Up
+        );
+
+        // 5. Nominal Reward (FLOOR rounding, 50% reward share)
+        uint256 rewardShareBps = 5000;
+        uint256 nominalReward = Math.mulDiv(nominalPenalty, rewardShareBps, 10000, Math.Rounding.Down);
+        if (params.minReward > 0 && nominalReward < params.minReward) revert NotLiquidatable();
+
+        uint256 marginAvailable = position.margin;
+        uint256 unlockedNotional = position.lockedNotional;
+
+        // 6. Branch Evaluation & Vault Settlement
+        if (params.liquidator == address(0)) revert ZeroAddress();
+        liquidationReward = nominalReward;
+
+        ILiquidityVault(liquidityVault).settleLiquidation(
+            position.trader,
+            _toVaultUnits(marginAvailable),
+            netPnl >= 0 ? int256(_toVaultUnits(uint256(netPnl))) : -int256(_toVaultUnitsCeil(uint256(-netPnl))),
+            _toVaultUnitsCeil(nominalPenalty)
+        );
+
+        // 7. Pay Liquidator Reward via Vault (IF -> LP fallback)
+        if (liquidationReward > 0) {
+            ILiquidityVault(liquidityVault).payLiquidationReward(params.liquidator, _toVaultUnits(liquidationReward));
+        }
+
+        // 8. State Updates & Skew Update
         ILiquidityVault(liquidityVault).unlockLiquidity(_toVaultUnits(unlockedNotional));
 
-        // Deduct margin proportion
-        uint256 marginProportion = liquidatedSize.mulDiv(position.margin, position.size);
-        if (marginProportion > position.margin) marginProportion = position.margin;
-
-        liquidationReward = _settleLiquidationVault(
-            position.trader,
-            marginProportion,
-            totalDeficit,
-            pnlDeduction,
-            penalty
-        );
-        
-        // Update global metrics
         totalPositionSize -= liquidatedSize;
-        totalCollateral -= marginProportion;
+        totalCollateral -= marginAvailable;
 
-        position.size -= liquidatedSize;
-        position.margin -= marginProportion;
-        position.lockedNotional -= unlockedNotional;
-        
-        if (position.size == 0) {
-            position.isActive = false;
-            IPositionManager(positionManager).burn(params.positionId);
-        }
-        
+        position.size = 0;
+        position.margin = 0;
+        position.lockedNotional = 0;
+        position.isActive = false;
         position.lastUpdated = block.timestamp;
-        
-        // Update AMM pool skew
+
+        IPositionManager(positionManager).burn(params.positionId);
+
         IAMMPool(ammPool).updateSkew(
             position.marketId,
             position.isLong,
             -int256(liquidatedSize)
         );
-        
-        // Update total open interest
+
         _totalOpenInterest[position.marketId] -= liquidatedSize;
-        
+
         emit PositionLiquidated(
             params.positionId,
-            msg.sender,
+            params.liquidator,
             currentPrice,
-            penalty,
+            nominalPenalty,
             liquidationReward
         );
     }
@@ -1371,9 +1314,9 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
      * @inheritdoc IPerpEngine
      */
     function updateFundingParams(
-        uint256 newFundingInterval,
-        uint256 newMaxFundingRate
-    ) external override onlyGovernance {
+        uint256 /* newFundingInterval */,
+        uint256 /* newMaxFundingRate */
+    ) external pure override {
         revert("PerpEngine: updateFundingParams unimlplemented");
     }
 
@@ -1434,7 +1377,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
      */
     function _getMarketPrice(uint256 marketId) internal view returns (uint256 price, bool valid) {
         Market storage market = _markets[marketId];
-        require(market.isActive, "PerpEngine: market inactive");
+        if (!market.isActive) revert MarketInactive();
         
         bytes32 feedId = market.oracleFeedId;
         price = IOracleAggregator(oracleAggregator).getPrice(feedId);
