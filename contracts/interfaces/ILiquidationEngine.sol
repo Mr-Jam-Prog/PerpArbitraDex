@@ -30,10 +30,10 @@ interface ILiquidationEngine {
     }
 
     struct LiquidatorConfig {
-        uint256 minReward; // Minimum reward to incentivize
-        uint256 maxReward; // Maximum reward cap
-        uint256 penaltyRatio; // Penalty as % of position
-        uint256 gracePeriod; // Time before liquidation
+        uint256 minReward; // Minimum acceptable reward (caller slippage / keeper floor)
+        uint256 maxReward; // Legacy compatibility parameter (canonical 07B uses 50% reward share)
+        uint256 penaltyRatio; // Legacy compatibility parameter (canonical 07B uses market.liquidationFeeRatio)
+        uint256 gracePeriod; // Time before queued liquidation execution
         uint256 batchSize; // Max positions per batch
     }
 

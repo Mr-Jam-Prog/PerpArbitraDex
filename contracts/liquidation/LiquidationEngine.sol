@@ -139,6 +139,9 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         // Strict liquidatability check before calling PerpEngine
         require(perpEngine.isPositionLiquidatable(positionId, currentPrice), "Position not liquidatable");
 
+        // Calculate canonical penalty and reward before position state mutation
+        (, uint256 penalty, , ) = _calculateLiquidation(positionId, currentPrice, 0);
+
         // Execute full liquidation via PerpEngine
         uint256 reward = perpEngine.liquidatePosition(
             IPerpEngine.LiquidateParams({
@@ -150,8 +153,6 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
                 liquidator: liquidator
             })
         );
-
-        uint256 penalty = (positionSizeBefore * currentPrice / 1e8) * liquidatorConfig.penaltyRatio / HEALTH_FACTOR_SCALE;
 
         // Update state
         isPositionLiquidated[positionId] = true;
@@ -307,21 +308,17 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         uint256 liquidatedSize,
         uint256 liquidationPrice
     ) public view override returns (uint256 reward) {
-        // Calculate penalty based on liquidated size notionnel in quote token units
-        uint256 notionalLiquidated = (liquidatedSize * liquidationPrice) / 1e8;
-        uint256 penalty = (notionalLiquidated * liquidatorConfig.penaltyRatio) / HEALTH_FACTOR_SCALE;
-        
-        // Calculate reward (penalty + incentive)
-        uint256 baseReward = penalty;
-        uint256 incentive = (baseReward * _getIncentiveMultiplier()) / HEALTH_FACTOR_SCALE;
-        
-        reward = baseReward + incentive;
-        
-        // Apply caps
-        reward = reward > liquidatorConfig.maxReward ? liquidatorConfig.maxReward : reward;
-        reward = reward < liquidatorConfig.minReward ? liquidatorConfig.minReward : reward;
-        
-        return reward;
+        IPerpEngine.PositionView memory position = perpEngine.getPosition(positionId);
+        if (liquidationPrice == 0) {
+            liquidationPrice = _getValidatedPrice(position.marketId);
+        }
+        if (liquidatedSize == 0) {
+            liquidatedSize = position.size;
+        }
+        IPerpEngine.Market memory market = perpEngine.getMarket(position.marketId);
+        uint256 liquidatedNotional = (liquidatedSize * liquidationPrice * 10**10) / HEALTH_FACTOR_SCALE;
+        uint256 penalty = (liquidatedNotional * market.liquidationFeeRatio + HEALTH_FACTOR_SCALE - 1) / HEALTH_FACTOR_SCALE;
+        reward = (penalty * 5000) / 10000;
     }
 
     /**
@@ -432,13 +429,8 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
     function _estimateLiquidationReward(uint256 positionId, uint256 healthFactor) internal view returns (uint256) {
         uint256 marketId = perpEngine.getPosition(positionId).marketId;
         uint256 currentPrice = _getValidatedPrice(marketId);
-        
-        (, uint256 estimatedPenalty, , ) = _calculateLiquidation(positionId, currentPrice, healthFactor);
-        
-        uint256 baseReward = estimatedPenalty;
-        uint256 incentive = (baseReward * _getIncentiveMultiplier()) / HEALTH_FACTOR_SCALE;
-        
-        return baseReward + incentive;
+        (uint256 reward, , , ) = _calculateLiquidation(positionId, currentPrice, healthFactor);
+        return reward;
     }
 
     /**
