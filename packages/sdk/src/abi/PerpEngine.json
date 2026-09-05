@@ -1762,6 +1762,11 @@
               "internalType": "uint256",
               "name": "minReward",
               "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "liquidator",
+              "type": "address"
             }
           ],
           "internalType": "struct IPerpEngine.LiquidateParams",
