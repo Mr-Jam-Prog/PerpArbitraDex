@@ -54,7 +54,6 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
 
     modifier onlyValidPosition(uint256 positionId) {
         require(!isPositionLiquidated[positionId], "Position already liquidated");
-        require(perpEngine.getHealthFactor(positionId) > 0, "Invalid position");
         _;
     }
 
@@ -125,44 +124,43 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         uint256 minReward,
         address liquidator
     ) internal returns (LiquidationResult memory result) {
-        // Check position is in queue and grace period passed
-        require(liquidationQueue.isQueued(positionId), "Not in queue");
-        require(
-            block.timestamp >= liquidationQueue.getQueueTime(positionId) + liquidatorConfig.gracePeriod,
-            "Grace period not passed"
+        IPerpEngine.PositionView memory position = perpEngine.getPosition(positionId);
+        uint256 currentPrice = _getValidatedPrice(position.marketId);
+
+        if (liquidationQueue.isQueued(positionId)) {
+            require(
+                block.timestamp >= liquidationQueue.getQueueTime(positionId) + liquidatorConfig.gracePeriod,
+                "Grace period not passed"
+            );
+        }
+
+        uint256 positionSizeBefore = position.size;
+
+        // Strict liquidatability check before calling PerpEngine
+        require(perpEngine.isPositionLiquidatable(positionId, currentPrice), "Position not liquidatable");
+
+        // Execute full liquidation via PerpEngine
+        uint256 reward = perpEngine.liquidatePosition(
+            IPerpEngine.LiquidateParams({
+                positionId: positionId,
+                trader: position.trader,
+                marketId: position.marketId,
+                sizeToLiquidate: positionSizeBefore,
+                minReward: minReward,
+                liquidator: liquidator
+            })
         );
 
-        // Get current price and health factor
-        uint256 marketId = perpEngine.getPosition(positionId).marketId;
-        uint256 currentPrice = _getValidatedPrice(marketId);
-        uint256 healthFactor = perpEngine.getHealthFactor(positionId);
-        
-        // Strict liquidatability check
-        require(healthFactor > 0 && healthFactor < HEALTH_FACTOR_SCALE, "Position not liquidatable");
+        uint256 penalty = (positionSizeBefore * currentPrice / 1e8) * liquidatorConfig.penaltyRatio / HEALTH_FACTOR_SCALE;
 
-        // Calculate liquidation details
-        (uint256 reward, uint256 penalty, uint256 newHealthFactor, uint256 liquidatedSize) = _calculateLiquidation(
-            positionId,
-            currentPrice,
-            healthFactor
-        );
-        
-        require(reward >= minReward, "Reward below minimum");
-        require(reward <= liquidatorConfig.maxReward, "Reward exceeds maximum");
-        
-        // Execute liquidation via PerpEngine
-        uint256 positionSizeBefore = perpEngine.getPosition(positionId).size;
-        uint256 remainingSize = _executePerpLiquidation(positionId, currentPrice, penalty, liquidatedSize);
-        
         // Update state
-        isPositionLiquidated[positionId] = remainingSize == 0;
+        isPositionLiquidated[positionId] = true;
         lastLiquidationTime[positionId] = block.timestamp;
         totalLiquidations++;
-        totalLiquidationVolume += positionSizeBefore - remainingSize;
-        
-        // Distribute rewards
-        _distributeLiquidationRewards(positionId, reward, penalty, liquidator);
-        
+        totalLiquidationVolume += positionSizeBefore;
+
+        // Reward was physically paid directly by LiquidityVault via PerpEngine
+
         // Prepare result
         result = LiquidationResult({
             positionId: positionId,
@@ -170,16 +168,16 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
             liquidationPrice: currentPrice,
             penalty: penalty,
             reward: reward,
-            remainingSize: remainingSize,
-            fullyLiquidated: remainingSize == 0
+            remainingSize: 0,
+            fullyLiquidated: true
         });
-        
-        // Remove from queue if fully liquidated
-        if (remainingSize == 0) {
+
+        // Remove from queue if queued
+        if (liquidationQueue.isQueued(positionId)) {
             liquidationQueue.remove(positionId);
         }
-        
-        emit LiquidationExecuted(positionId, liquidator, reward, penalty, remainingSize == 0);
+
+        emit LiquidationExecuted(positionId, liquidator, reward, penalty, true);
     }
 
     /**
@@ -264,9 +262,9 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
                 continue;
             }
 
-            // Remove healthy or invalid positions from queue
-            uint256 hf = perpEngine.getHealthFactor(nextPositionId);
-            if (hf == 0 || hf >= HEALTH_FACTOR_SCALE) {
+            // Check liquidatability
+            IPerpEngine.PositionView memory pos = perpEngine.getPosition(nextPositionId);
+            if (!perpEngine.isPositionLiquidatable(nextPositionId, _getValidatedPrice(pos.marketId))) {
                 liquidationQueue.remove(nextPositionId);
                 continue;
             }
@@ -423,7 +421,8 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
                 trader: positionBefore.trader,
                 marketId: positionBefore.marketId,
                 sizeToLiquidate: sizeToLiquidate,
-                minReward: 0
+                minReward: 0,
+                liquidator: msg.sender
             })
         );
         
@@ -464,16 +463,16 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
 
     function _getValidatedPrice(uint256 marketId) internal view returns (uint256) {
         bytes32 feedId = marketFeedIds[marketId];
+        if (feedId == bytes32(0)) {
+            IPerpEngine.Market memory m = perpEngine.getMarket(marketId);
+            feedId = m.oracleFeedId;
+        }
         require(feedId != bytes32(0), "LiquidationEngine: feedId not configured");
         
         // Get price with validation
         uint256 price = oracleAggregator.getPrice(feedId);
         require(price > 0, "Invalid price");
         require(!oracleAggregator.isPriceStale(feedId), "Price stale");
-        
-        // Additional validation
-        IOracleAggregator.PriceData memory priceData = oracleAggregator.getPriceData(feedId);
-        require(priceData.status == IOracleAggregator.PriceStatus.ACTIVE, "Price not active");
         
         return price;
     }
@@ -482,15 +481,11 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
      * @dev Estimate liquidation reward for queuing
      */
     function _estimateLiquidationReward(uint256 positionId, uint256 healthFactor) internal view returns (uint256) {
-        // Get current price for estimation
         uint256 marketId = perpEngine.getPosition(positionId).marketId;
-        bytes32 feedId = marketFeedIds[marketId];
-        require(feedId != bytes32(0), "LiquidationEngine: feedId not configured");
-        uint256 currentPrice = oracleAggregator.getPrice(feedId);
+        uint256 currentPrice = _getValidatedPrice(marketId);
         
         (, uint256 estimatedPenalty, , ) = _calculateLiquidation(positionId, currentPrice, healthFactor);
         
-        // Base reward is penalty plus incentive
         uint256 baseReward = estimatedPenalty;
         uint256 incentive = (baseReward * _getIncentiveMultiplier()) / HEALTH_FACTOR_SCALE;
         

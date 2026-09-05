@@ -73,10 +73,16 @@ contract MockPerpEngine is IPerpEngine {
         _positions[positionId].trader = viewData.trader;
         _positions[positionId].marketId = viewData.marketId;
         _positions[positionId].size = viewData.size;
+        _positions[positionId].margin = viewData.margin;
+        _positions[positionId].entryPrice = viewData.entryPrice;
+        _positions[positionId].isLong = viewData.isLong;
     }
 
     function setHealthFactor(uint256 positionId, uint256 hf) external {
         _healthFactors[positionId] = hf;
+        if (_positionViews[positionId].positionId != 0) {
+            _positionViews[positionId].healthFactor = hf;
+        }
     }
 
     // Required by IPerpEngine
@@ -86,6 +92,7 @@ contract MockPerpEngine is IPerpEngine {
     function closePosition(uint256) external override {}
 
     function liquidatePosition(LiquidateParams calldata params) external override returns (uint256) {
+        if (_healthFactors[params.positionId] >= 1e18 || _positionViews[params.positionId].healthFactor >= 1e18) revert NotLiquidatable();
         // Actual liquidation logic in mock
         _positions[params.positionId].size = 0;
         _positions[params.positionId].isActive = false;
@@ -162,7 +169,7 @@ contract MockPerpEngine is IPerpEngine {
         return _pnl[positionId];
     }
     function isPositionLiquidatable(uint256 positionId, uint256) external view override returns (bool) {
-        return _healthFactors[positionId] < 1e18 && _healthFactors[positionId] > 0;
+        return _healthFactors[positionId] < 1e18;
     }
     function getAvailableMargin(uint256) external view override returns (uint256) { return 0; }
     function getMaxAdditionalSize(uint256, uint256) external view override returns (uint256) { return 0; }

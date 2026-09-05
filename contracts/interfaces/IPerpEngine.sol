@@ -79,6 +79,7 @@ interface IPerpEngine is IPositionViewer {
         uint256 marketId;
         uint256 sizeToLiquidate;
         uint256 minReward;
+        address liquidator;
     }
 
     struct Market {
