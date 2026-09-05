@@ -42,7 +42,8 @@ contract DriftTest is AdversarialTests {
             trader: trader,
             marketId: 1,
             sizeToLiquidate: size,
-            minReward: 0
+            minReward: 0,
+            liquidator: address(this)
         }));
 
         IPerpEngine.PositionView memory pos = perpEngine.getPosition(posId);
@@ -115,7 +116,8 @@ contract DriftTest is AdversarialTests {
                 trader: trader,
                 marketId: 1,
                 sizeToLiquidate: size,
-                minReward: 0
+                minReward: 0,
+                liquidator: address(this)
             }));
             
             assertEq(perpEngine.totalCollateral(), 0, "Collateral should be cleared after full liquidation");
