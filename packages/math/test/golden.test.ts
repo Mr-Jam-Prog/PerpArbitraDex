@@ -406,4 +406,25 @@ describe('Golden Vectors Spec Coverage (GV-01 to GV-20)', () => {
         assert.equal(res.insuranceFundAddWad % WAD, 0n);
         assert.equal(res.badDebtWad % WAD, 0n);
     });
+
+    test('LIQ-REF-REWARD-SHARE1 & LIQ-REF-REWARD-SHARE-REJECT1: canonical 50% reward share enforcement', () => {
+        const pos: PositionState = {
+            sizeWad: 1n * WAD,
+            entryPriceWad: 2000n * WAD,
+            marginWad: 200n * WAD,
+            isLong: true,
+            entryFundingIndexWad: 0n
+        };
+
+        // Standard 5000n share succeeds
+        const res = executeLiquidation(pos, 1800n * WAD, 0n, defaultParams);
+        assert.ok(res.liquidatorRewardWad > 0n);
+
+        // Non-5000n share throws error
+        const invalidParams: ProtocolParams = { ...defaultParams, liquidatorRewardShareBps: 6000n };
+        assert.throws(
+            () => executeLiquidation(pos, 1800n * WAD, 0n, invalidParams),
+            /non-canonical liquidatorRewardShareBps/
+        );
+    });
 });

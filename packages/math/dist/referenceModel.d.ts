@@ -5,6 +5,7 @@
 export declare const WAD: bigint;
 export declare const ORACLE_PRICE_DECIMALS = 8n;
 export declare const ORACLE_NORM_FACTOR: bigint;
+export declare const CANONICAL_LIQUIDATOR_REWARD_SHARE_BPS = 5000n;
 export interface ProtocolParams {
     maxLeverageBps: bigint;
     initialMarginBps: bigint;

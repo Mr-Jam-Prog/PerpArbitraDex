@@ -397,9 +397,7 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
             decimals = d;
         } catch {}
 
-        require(decimals <= 18, "LiquidationEngine: quote decimals > 18 not supported");
-
-        if (decimals == 18) {
+        if (decimals >= 18) {
             return amountWad;
         } else {
             uint256 factor = 10**(18 - decimals);
@@ -440,9 +438,6 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
     function _getValidatedPrice(uint256 marketId) internal view returns (uint256) {
         IPerpEngine.Market memory m = perpEngine.getMarket(marketId);
         bytes32 feedId = m.oracleFeedId;
-        if (feedId == bytes32(0)) {
-            feedId = marketFeedIds[marketId];
-        }
         require(feedId != bytes32(0), "LiquidationEngine: feedId not configured");
         
         // Get price with validation
