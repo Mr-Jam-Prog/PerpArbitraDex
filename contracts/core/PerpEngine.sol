@@ -972,17 +972,20 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
             Math.Rounding.Up
         );
 
-        // 5. Nominal Reward (FLOOR rounding, 50% reward share)
+        // 5. Nominal Reward & Native Payable Quantization (FLOOR rounding, 50% reward share)
         uint256 rewardShareBps = 5000;
         uint256 nominalReward = Math.mulDiv(nominalPenalty, rewardShareBps, 10000, Math.Rounding.Down);
-        if (params.minReward > 0 && nominalReward < params.minReward) revert NotLiquidatable();
+        uint256 rewardNative = _toVaultUnits(nominalReward);
+        uint256 effectiveRewardWad = _fromVaultUnits(rewardNative);
+
+        if (params.minReward > 0 && effectiveRewardWad < params.minReward) revert NotLiquidatable();
 
         uint256 marginAvailable = position.margin;
         uint256 unlockedNotional = position.lockedNotional;
 
         // 6. Branch Evaluation & Vault Settlement
         if (params.liquidator == address(0)) revert ZeroAddress();
-        liquidationReward = nominalReward;
+        liquidationReward = effectiveRewardWad;
 
         ILiquidityVault(liquidityVault).settleLiquidation(
             position.trader,
@@ -992,8 +995,8 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
         );
 
         // 7. Pay Liquidator Reward via Vault (IF -> LP fallback)
-        if (liquidationReward > 0) {
-            ILiquidityVault(liquidityVault).payLiquidationReward(params.liquidator, _toVaultUnits(liquidationReward));
+        if (rewardNative > 0) {
+            ILiquidityVault(liquidityVault).payLiquidationReward(params.liquidator, rewardNative);
         }
 
         // 8. State Updates & Skew Update

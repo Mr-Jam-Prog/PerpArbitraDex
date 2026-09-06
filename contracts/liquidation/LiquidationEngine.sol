@@ -2,6 +2,7 @@
 pragma solidity 0.8.19;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
@@ -161,6 +162,9 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         totalLiquidationVolume += positionSizeBefore;
 
         // Reward was physically paid directly by LiquidityVault via PerpEngine
+        if (reward > 0) {
+            liquidatorRewards[liquidator] += reward;
+        }
 
         // Prepare result
         result = LiquidationResult({
@@ -318,7 +322,8 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         IPerpEngine.Market memory market = perpEngine.getMarket(position.marketId);
         uint256 liquidatedNotional = (liquidatedSize * liquidationPrice * 10**10) / HEALTH_FACTOR_SCALE;
         uint256 penalty = (liquidatedNotional * market.liquidationFeeRatio + HEALTH_FACTOR_SCALE - 1) / HEALTH_FACTOR_SCALE;
-        reward = (penalty * 5000) / 10000;
+        uint256 nominalReward = (penalty * 5000) / 10000;
+        reward = _quantizeToNativeWad(nominalReward);
     }
 
     /**
@@ -357,7 +362,7 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
     // ============ INTERNAL FUNCTIONS ============
 
     /**
-     * @dev Calculate canonical full liquidation details (07B)
+     * @dev Calculate canonical full liquidation details (07B) with native quote quantization
      */
     function _calculateLiquidation(
         uint256 positionId,
@@ -373,9 +378,32 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         // Penalty CEIL rounding
         penalty = (liquidatedNotional * market.liquidationFeeRatio + HEALTH_FACTOR_SCALE - 1) / HEALTH_FACTOR_SCALE;
 
-        // Reward FLOOR rounding (50% reward share)
-        reward = (penalty * 5000) / 10000;
+        // Nominal Reward FLOOR rounding (50% reward share)
+        uint256 nominalReward = (penalty * 5000) / 10000;
+        reward = _quantizeToNativeWad(nominalReward);
         newHealthFactor = HEALTH_FACTOR_SCALE; // Fully liquidated
+    }
+
+    /**
+     * @dev Quantize WAD reward to native quote unit boundary and back to WAD
+     */
+    function _quantizeToNativeWad(uint256 amountWad) internal view returns (uint256) {
+        if (amountWad == 0) return 0;
+        uint8 decimals = 18;
+        try IERC20Metadata(address(quoteToken)).decimals() returns (uint8 d) {
+            decimals = d;
+        } catch {}
+
+        if (decimals == 18) {
+            return amountWad;
+        } else if (decimals < 18) {
+            uint256 factor = 10**(18 - decimals);
+            uint256 nativeUnits = amountWad / factor;
+            return nativeUnits * factor;
+        } else {
+            uint256 factor = 10**(decimals - 18);
+            return (amountWad / factor) * factor;
+        }
     }
 
     /**

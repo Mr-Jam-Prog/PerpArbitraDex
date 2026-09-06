@@ -475,5 +475,134 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
         expect(rewardAfter).to.equal(rewardBefore);
         expect(penaltyAfter).to.equal(penaltyBefore);
     });
+
+    it("LIQ-RTRACK1 — liquidatorRewards mapping tracks effective reward on success and is unchanged on revert", async function () {
+        const positionId = 70n;
+        const now = await time.latest();
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: ethers.parseUnits("5", 18),
+            margin: COLLATERAL_AMOUNT,
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE,
+            healthFactor: ethers.parseUnits("0.8", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: 0n,
+            openTime: now,
+            lastUpdated: now
+        });
+
+        const initialRewards = await liquidationEngine.liquidatorRewards(liquidator1.address);
+        const [expectedReward] = await liquidationEngine.previewLiquidation(positionId, INITIAL_PRICE);
+
+        await liquidationEngine.connect(liquidator1).executeLiquidation(positionId, 0n);
+
+        const finalRewards = await liquidationEngine.liquidatorRewards(liquidator1.address);
+        expect(finalRewards - initialRewards).to.equal(expectedReward);
+
+        await expect(
+            liquidationEngine.connect(liquidator1).executeLiquidation(positionId, 0n)
+        ).to.be.revertedWith("Position already liquidated");
+
+        expect(await liquidationEngine.liquidatorRewards(liquidator1.address)).to.equal(finalRewards);
+    });
+
+    it("LIQ-RNATIVE1 & LIQ-EST-NATIVE1 — 6-decimal quote token minReward check and estimate/preview native parity", async function () {
+        const MockERC20 = await ethers.getContractFactory("MockERC20");
+        const quoteToken6 = await MockERC20.deploy("USDC", "USDC", 6);
+        await quoteToken6.waitForDeployment();
+
+        const deployerAddr = owner.address;
+        const nonce = await ethers.provider.getTransactionCount(deployerAddr);
+        const liquidationEngine6Addr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 2 });
+
+        const LiquidationQueue = await ethers.getContractFactory("LiquidationQueue");
+        const liquidationQueue6 = await LiquidationQueue.deploy(liquidationEngine6Addr);
+        await liquidationQueue6.waitForDeployment();
+
+        const LiquidationEngine = await ethers.getContractFactory("LiquidationEngine");
+        const liquidationEngine6 = await LiquidationEngine.deploy(
+            perpEngine.target,
+            configRegistry.target,
+            oracleAggregator.target,
+            quoteToken6.target,
+            liquidationQueue6.target,
+            incentiveDistributor.target
+        );
+        await liquidationEngine6.waitForDeployment();
+
+        const perpSigner = await ethers.getImpersonatedSigner(perpEngine.target);
+        await liquidationEngine6.connect(perpSigner).setMarketFeedId(MARKET_ID, FEED_ID);
+        await perpEngine.setMock6Decimals(true);
+
+        const positionId = 80n;
+        const now = await time.latest();
+        const nonRepSize = ethers.parseUnits("1.333333333333333333", 18);
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: nonRepSize,
+            margin: COLLATERAL_AMOUNT,
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE,
+            healthFactor: ethers.parseUnits("0.8", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: 0n,
+            openTime: now,
+            lastUpdated: now
+        });
+
+        const [previewReward6] = await liquidationEngine6.previewLiquidation(positionId, INITIAL_PRICE);
+        const estimatedReward6 = await liquidationEngine6.estimateReward(positionId, nonRepSize, INITIAL_PRICE);
+
+        expect(previewReward6 % 10n**12n).to.equal(0n);
+        expect(estimatedReward6).to.equal(previewReward6);
+
+        const minRewardTooHigh = previewReward6 + 1n;
+        await expect(
+            liquidationEngine6.connect(liquidator1).executeLiquidation(positionId, minRewardTooHigh)
+        ).to.be.revertedWithCustomError(perpEngine, "NotLiquidatable");
+
+        const res = await liquidationEngine6.connect(liquidator1).executeLiquidation.staticCall(positionId, previewReward6);
+        expect(res.reward).to.equal(previewReward6);
+
+        await perpEngine.setMock6Decimals(false);
+    });
+
+    it("LIQ-RNATIVE2 — 18-decimal control (effectiveRewardWad == nominalRewardWad)", async function () {
+        const positionId = 90n;
+        const now = await time.latest();
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: ethers.parseUnits("1.333333333333333333", 18),
+            margin: COLLATERAL_AMOUNT,
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE,
+            healthFactor: ethers.parseUnits("0.8", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: 0n,
+            openTime: now,
+            lastUpdated: now
+        });
+
+        const [previewReward18, previewPenalty18] = await liquidationEngine.previewLiquidation(positionId, INITIAL_PRICE);
+        const expectedNominalWad = (previewPenalty18 * 5000n) / 10000n;
+
+        expect(previewReward18).to.equal(expectedNominalWad);
+    });
   });
 });

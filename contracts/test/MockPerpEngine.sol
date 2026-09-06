@@ -14,6 +14,7 @@ contract MockPerpEngine is IPerpEngine {
     
     address private _ammPool;
     uint256 private _mockPrice;
+    bool private _mockUse6Decimals;
 
     function setAMMPool(address amm) external {
         _ammPool = amm;
@@ -21,6 +22,10 @@ contract MockPerpEngine is IPerpEngine {
 
     function setMockPrice(uint256 p) external {
         _mockPrice = p;
+    }
+
+    function setMock6Decimals(bool b) external {
+        _mockUse6Decimals = b;
     }
 
     function getMarket(uint256) external view override returns (Market memory) {
@@ -106,14 +111,17 @@ contract MockPerpEngine is IPerpEngine {
         uint256 price = _mockPrice > 0 ? _mockPrice : (_positionViews[params.positionId].entryPrice > 0 ? _positionViews[params.positionId].entryPrice : 2000e8);
         uint256 notional = (size * price * 10**10) / 1e18;
         uint256 penalty = (notional * 1e16 + 1e18 - 1) / 1e18;
-        uint256 reward = (penalty * 5000) / 10000;
+        uint256 nominalReward = (penalty * 5000) / 10000;
+        uint256 effectiveReward = _mockUse6Decimals ? (nominalReward / 10**12) * 10**12 : nominalReward;
+
+        if (params.minReward > 0 && effectiveReward < params.minReward) revert NotLiquidatable();
 
         _positions[params.positionId].size = 0;
         _positions[params.positionId].isActive = false;
         if (_positionViews[params.positionId].positionId != 0) {
             _positionViews[params.positionId].size = 0;
         }
-        return reward;
+        return effectiveReward;
     }
 
     function accrueFunding(uint256) external override {}
