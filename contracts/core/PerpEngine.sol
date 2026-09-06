@@ -943,7 +943,7 @@ contract PerpEngine is IPerpEngine, ReentrancyGuard, Pausable {
                 collateral: position.margin,
                 entryPrice: position.entryPrice,
                 isLong: position.isLong,
-                fundingAccrued: 0
+                fundingAccrued: int256(unpaidFunding)
             });
             PositionMath.PositionRiskParams memory riskParams = PositionMath.PositionRiskParams({
                 maintenanceMarginBps: _markets[position.marketId].minMarginRatio / (PRECISION / 10000),

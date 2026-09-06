@@ -314,21 +314,16 @@ contract PerpEngineViewer is IPerpEngineViewer {
         (uint256 currentPrice, bool priceValid) = _getMarketPrice(engine, position.marketId);
         require(priceValid, "PerpEngine: invalid price");
 
-        int256 fundingPayment = IAMMPool(pe.ammPool()).calculateFundingPayment(
-            position.marketId,
-            position.size,
-            position.isLong,
-            position.lastFundingIndex
-        );
-
+        uint8 vaultDec = ILiquidityVault(pe.liquidityVault()).decimals();
+        (uint256 previewMargin, uint256 unpaidFundingDebt) = _previewPostFundingMargin(engine, position, vaultDec);
         IPerpEngine.Market memory market = pe.getMarket(position.marketId);
 
         PositionMath.PositionParams memory posParams = PositionMath.PositionParams({
             size: position.size,
-            collateral: position.margin,
+            collateral: previewMargin,
             entryPrice: position.entryPrice,
             isLong: position.isLong,
-            fundingAccrued: fundingPayment
+            fundingAccrued: int256(unpaidFundingDebt)
         });
         PositionMath.PositionRiskParams memory riskParams = PositionMath.PositionRiskParams({
             maintenanceMarginBps: market.minMarginRatio / (PRECISION / 10000),
@@ -347,21 +342,16 @@ contract PerpEngineViewer is IPerpEngineViewer {
         IPerpEngine.Position memory position = pe.getPositionInternal(positionId);
         require(position.isActive, "PerpEngine: position inactive");
 
-        int256 fundingPayment = IAMMPool(pe.ammPool()).calculateFundingPayment(
-            position.marketId,
-            position.size,
-            position.isLong,
-            position.lastFundingIndex
-        );
-
+        uint8 vaultDec = ILiquidityVault(pe.liquidityVault()).decimals();
+        (uint256 previewMargin, uint256 unpaidFundingDebt) = _previewPostFundingMargin(engine, position, vaultDec);
         IPerpEngine.Market memory market = pe.getMarket(position.marketId);
 
         PositionMath.PositionParams memory posParams = PositionMath.PositionParams({
             size: position.size,
-            collateral: position.margin,
+            collateral: previewMargin,
             entryPrice: position.entryPrice,
             isLong: position.isLong,
-            fundingAccrued: fundingPayment
+            fundingAccrued: int256(unpaidFundingDebt)
         });
         PositionMath.PositionRiskParams memory riskParams = PositionMath.PositionRiskParams({
             maintenanceMarginBps: market.minMarginRatio / (PRECISION / 10000),
@@ -388,14 +378,10 @@ contract PerpEngineViewer is IPerpEngineViewer {
             position.isLong
         );
 
-        int256 fundingPayment = IAMMPool(pe.ammPool()).calculateFundingPayment(
-            position.marketId,
-            position.size,
-            position.isLong,
-            position.lastFundingIndex
-        );
+        uint8 vaultDec = ILiquidityVault(pe.liquidityVault()).decimals();
+        (, uint256 unpaidFundingDebt) = _previewPostFundingMargin(engine, position, vaultDec);
 
-        pnl -= fundingPayment;
+        pnl -= int256(unpaidFundingDebt);
     }
 
     function _isPositionLiquidatable(address engine, uint256 positionId, uint256 currentPrice)
@@ -407,21 +393,16 @@ contract PerpEngineViewer is IPerpEngineViewer {
         IPerpEngine.Position memory position = pe.getPositionInternal(positionId);
         if (!position.isActive) return false;
 
-        int256 fundingPayment = IAMMPool(pe.ammPool()).calculateFundingPayment(
-            position.marketId,
-            position.size,
-            position.isLong,
-            position.lastFundingIndex
-        );
-
+        uint8 vaultDec = ILiquidityVault(pe.liquidityVault()).decimals();
+        (uint256 previewMargin, uint256 unpaidFundingDebt) = _previewPostFundingMargin(engine, position, vaultDec);
         IPerpEngine.Market memory market = pe.getMarket(position.marketId);
 
         PositionMath.PositionParams memory posParams = PositionMath.PositionParams({
             size: position.size,
-            collateral: position.margin,
+            collateral: previewMargin,
             entryPrice: position.entryPrice,
             isLong: position.isLong,
-            fundingAccrued: fundingPayment
+            fundingAccrued: int256(unpaidFundingDebt)
         });
         PositionMath.PositionRiskParams memory riskParams = PositionMath.PositionRiskParams({
             maintenanceMarginBps: market.minMarginRatio / (PRECISION / 10000),
@@ -442,15 +423,11 @@ contract PerpEngineViewer is IPerpEngineViewer {
 
         (uint256 currentPrice, ) = _getMarketPrice(engine, position.marketId);
 
-        int256 fundingPayment = IAMMPool(pe.ammPool()).calculateFundingPayment(
-            position.marketId,
-            position.size,
-            position.isLong,
-            position.lastFundingIndex
-        );
+        uint8 vaultDec = ILiquidityVault(pe.liquidityVault()).decimals();
+        (uint256 previewMargin, uint256 unpaidFundingDebt) = _previewPostFundingMargin(engine, position, vaultDec);
 
         int256 pnl = PositionMath.calculatePnL(position.entryPrice, currentPrice, position.size, position.isLong);
-        int256 equity = int256(position.margin) + pnl - fundingPayment;
+        int256 equity = int256(previewMargin) + pnl - int256(unpaidFundingDebt);
 
         if (equity <= 0) return 0;
 

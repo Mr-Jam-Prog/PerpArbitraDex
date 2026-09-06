@@ -304,4 +304,35 @@ describe('Golden Vectors Spec Coverage (GV-01 to GV-20)', () => {
         const res = executeLiquidation(pos, 500n * WAD, 0n, defaultParams);
         assert.equal(res.badDebtWad, 300n * WAD); // Margin 200, PnL -500 -> Bad debt 300
     });
+
+    test('LIQ-REF-NATIVE1: 6-decimal non-exact native quantization liquidation parity', () => {
+        const usdcParams: ProtocolParams = { ...defaultParams, quoteDecimals: 6 };
+        const pos: PositionState = {
+            sizeWad: 1333333333333333333n,
+            entryPriceWad: 2000n * WAD,
+            marginWad: 200n * WAD,
+            isLong: true,
+            entryFundingIndexWad: 0n
+        };
+
+        const res = executeLiquidation(pos, 1800n * WAD, 0n, usdcParams);
+        assert.equal(res.liquidatorRewardWad % 10n**12n, 0n);
+    });
+
+    test('LIQ-REF-NATIVE2: 18-decimal control (effectiveRewardWad == nominalRewardWad)', () => {
+        const pos: PositionState = {
+            sizeWad: 1333333333333333333n,
+            entryPriceWad: 2000n * WAD,
+            marginWad: 200n * WAD,
+            isLong: true,
+            entryFundingIndexWad: 0n
+        };
+
+        const res = executeLiquidation(pos, 1800n * WAD, 0n, defaultParams);
+        const notional = (pos.sizeWad * 1800n * WAD) / WAD;
+        const penalty = (notional * defaultParams.liquidationPenaltyBps + 9999n) / 10000n;
+        const nominalReward = (penalty * defaultParams.liquidatorRewardShareBps) / 10000n;
+
+        assert.equal(res.liquidatorRewardWad, nominalReward);
+    });
 });

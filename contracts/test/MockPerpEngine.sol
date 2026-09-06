@@ -28,8 +28,9 @@ contract MockPerpEngine is IPerpEngine {
         _mockUse6Decimals = b;
     }
 
-    function getMarket(uint256) external view override returns (Market memory) {
-        return Market(true, 100 * 1e18, 1e16, 1e18, 1e16, 1e16, bytes32(0), block.timestamp, block.timestamp);
+    function getMarket(uint256 marketId) external view override returns (Market memory) {
+        bytes32 feed = marketId == 0 ? bytes32(0) : bytes32(marketId);
+        return Market(true, 100 * 1e18, 1e16, 1e18, 1e16, 1e16, feed, block.timestamp, block.timestamp);
     }
     function getTraderPositions(address) external view override returns (uint256[] memory) {
         return new uint256[](0);

@@ -370,6 +370,9 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         uint256 /* healthFactor */
     ) internal view returns (uint256 reward, uint256 penalty, uint256 newHealthFactor, uint256 liquidatedSize) {
         IPerpEngine.PositionView memory position = perpEngine.getPosition(positionId);
+        if (currentPrice == 0) {
+            currentPrice = _getValidatedPrice(position.marketId);
+        }
         IPerpEngine.Market memory market = perpEngine.getMarket(position.marketId);
 
         liquidatedSize = position.size;
@@ -394,15 +397,14 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
             decimals = d;
         } catch {}
 
+        require(decimals <= 18, "LiquidationEngine: quote decimals > 18 not supported");
+
         if (decimals == 18) {
             return amountWad;
-        } else if (decimals < 18) {
+        } else {
             uint256 factor = 10**(18 - decimals);
             uint256 nativeUnits = amountWad / factor;
             return nativeUnits * factor;
-        } else {
-            uint256 factor = 10**(decimals - 18);
-            return (amountWad / factor) * factor;
         }
     }
 
@@ -436,10 +438,10 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
     }
 
     function _getValidatedPrice(uint256 marketId) internal view returns (uint256) {
-        bytes32 feedId = marketFeedIds[marketId];
+        IPerpEngine.Market memory m = perpEngine.getMarket(marketId);
+        bytes32 feedId = m.oracleFeedId;
         if (feedId == bytes32(0)) {
-            IPerpEngine.Market memory m = perpEngine.getMarket(marketId);
-            feedId = m.oracleFeedId;
+            feedId = marketFeedIds[marketId];
         }
         require(feedId != bytes32(0), "LiquidationEngine: feedId not configured");
         

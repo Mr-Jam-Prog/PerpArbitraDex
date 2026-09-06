@@ -122,6 +122,6 @@ export declare function openOrIncreasePosition(position: PositionState | null, a
  */
 export declare function decreaseOrClosePosition(position: PositionState, closedSizeWad: bigint, execPriceWad: bigint, currentFundingIndexWad: bigint, params: ProtocolParams): TradeResult;
 /**
- * Execute Liquidation according to Solvency Rules (Prompt 07B Full Liquidation)
+ * Execute Liquidation according to Solvency Rules (Prompt 07B Full Liquidation) with Native Quote Quantization
  */
 export declare function executeLiquidation(position: PositionState, currentPriceWad: bigint, currentFundingIndexWad: bigint, params: ProtocolParams): LiquidationExecutionResult;

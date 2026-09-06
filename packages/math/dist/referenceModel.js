@@ -260,25 +260,51 @@ export function decreaseOrClosePosition(position, closedSizeWad, execPriceWad, c
     };
 }
 /**
- * Execute Liquidation according to Solvency Rules (Prompt 07B Full Liquidation)
+ * Execute Liquidation according to Solvency Rules (Prompt 07B Full Liquidation) with Native Quote Quantization
  */
 export function executeLiquidation(position, currentPriceWad, currentFundingIndexWad, params) {
+    const dec = params.quoteDecimals || 18;
     const unrealizedPnl = calculateUnrealizedPnlWad(position.sizeWad, position.entryPriceWad, currentPriceWad, position.isLong);
-    const fundingPayment = calculateFundingPaymentWad(position.sizeWad, position.entryFundingIndexWad, currentFundingIndexWad, position.isLong);
-    const netPnl = unrealizedPnl - fundingPayment;
-    const equity = position.marginWad + netPnl;
+    const fundingPaymentRaw = calculateFundingPaymentWad(position.sizeWad, position.entryFundingIndexWad, currentFundingIndexWad, position.isLong);
+    // Quantize funding debit (CEIL) and funding credit (FLOOR) in native quote units
+    let fundingPayment = 0n;
+    if (fundingPaymentRaw > 0n) {
+        const nativeUnits = wadToNativeQuoteCeil(fundingPaymentRaw, dec);
+        fundingPayment = nativeQuoteToWad(nativeUnits, dec);
+    }
+    else if (fundingPaymentRaw < 0n) {
+        const nativeUnits = wadToNativeQuote(-fundingPaymentRaw, dec);
+        fundingPayment = -nativeQuoteToWad(nativeUnits, dec);
+    }
+    // Quantize PnL
+    let pnl = 0n;
+    if (unrealizedPnl > 0n) {
+        const nativeUnits = wadToNativeQuote(unrealizedPnl, dec);
+        pnl = nativeQuoteToWad(nativeUnits, dec);
+    }
+    else if (unrealizedPnl < 0n) {
+        const nativeUnits = wadToNativeQuoteCeil(-unrealizedPnl, dec);
+        pnl = -nativeQuoteToWad(nativeUnits, dec);
+    }
+    const netPnl = pnl - fundingPayment;
+    const marginNative = wadToNativeQuote(position.marginWad, dec);
+    const marginWad = nativeQuoteToWad(marginNative, dec);
+    const equity = marginWad + netPnl;
     const notional = calculateNotionalQuoteWad(position.sizeWad, currentPriceWad);
     // Penalty = ceil(notional * liquidationPenaltyBps / 10000)
-    const penalty = mulDivCeil(notional, params.liquidationPenaltyBps, 10000n);
-    const reward = mulDivFloor(penalty, params.liquidatorRewardShareBps, 10000n);
+    const nominalPenalty = mulDivCeil(notional, params.liquidationPenaltyBps, 10000n);
+    const nominalReward = mulDivFloor(nominalPenalty, params.liquidatorRewardShareBps, 10000n);
+    // Liquidator reward floor native quantization
+    const rewardNative = wadToNativeQuote(nominalReward, dec);
+    const effectiveRewardWad = nativeQuoteToWad(rewardNative, dec);
     if (equity > 0n) {
-        if (equity >= penalty) {
+        if (equity >= nominalPenalty) {
             // Branch A
-            const rem = equity - penalty;
+            const rem = equity - nominalPenalty;
             return {
                 liquidatedSizeWad: position.sizeWad,
-                liquidatorRewardWad: reward,
-                insuranceFundAddWad: penalty - reward,
+                liquidatorRewardWad: effectiveRewardWad,
+                insuranceFundAddWad: nominalPenalty - effectiveRewardWad,
                 badDebtWad: 0n,
                 traderRemainingEquityWad: rem
             };
@@ -287,8 +313,8 @@ export function executeLiquidation(position, currentPriceWad, currentFundingInde
             // Branch B (0 < Equity < Penalty)
             return {
                 liquidatedSizeWad: position.sizeWad,
-                liquidatorRewardWad: reward,
-                insuranceFundAddWad: equity > reward ? equity - reward : 0n,
+                liquidatorRewardWad: effectiveRewardWad,
+                insuranceFundAddWad: equity > effectiveRewardWad ? equity - effectiveRewardWad : 0n,
                 badDebtWad: 0n,
                 traderRemainingEquityWad: 0n
             };
@@ -299,7 +325,7 @@ export function executeLiquidation(position, currentPriceWad, currentFundingInde
         const badDebtWad = abs(equity);
         return {
             liquidatedSizeWad: position.sizeWad,
-            liquidatorRewardWad: reward,
+            liquidatorRewardWad: effectiveRewardWad,
             insuranceFundAddWad: 0n,
             badDebtWad,
             traderRemainingEquityWad: 0n

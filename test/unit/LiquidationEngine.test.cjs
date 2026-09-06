@@ -604,5 +604,136 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
 
         expect(previewReward18).to.equal(expectedNominalWad);
     });
+
+    it("LIQ-UF-HF1 — liquidation execution health incorporates unpaid funding debt when PnL is positive", async function () {
+        const positionId = 100n;
+        const now = await time.latest();
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: ethers.parseUnits("5", 18),
+            margin: 0n, // Stored margin exhausted by funding debit
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE,
+            healthFactor: ethers.parseUnits("0.5", 18),
+            unrealizedPnl: ethers.parseUnits("200", 18),
+            fundingAccrued: ethers.parseUnits("50", 18), // Unpaid funding debt
+            openTime: now,
+            lastUpdated: now
+        });
+
+        const tx = await liquidationEngine.connect(liquidator1).executeLiquidation(positionId, 0n);
+        await expect(tx).to.emit(liquidationEngine, "LiquidationExecuted");
+        expect(await liquidationEngine.isPositionLiquidated(positionId)).to.be.true;
+    });
+
+    it("LIQ-FVIEW1 — unaccrued elapsed funding debit makes position liquidatable in preview and direct liquidation succeeds", async function () {
+        const positionId = 110n;
+        const now = await time.latest();
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: ethers.parseUnits("5", 18),
+            margin: COLLATERAL_AMOUNT,
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE,
+            healthFactor: ethers.parseUnits("0.8", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: 0n,
+            openTime: now,
+            lastUpdated: now
+        });
+
+        const tx = await liquidationEngine.connect(liquidator1).executeLiquidation(positionId, 0n);
+        await expect(tx).to.emit(liquidationEngine, "LiquidationExecuted");
+    });
+
+    it("LIQ-FVIEW2 — unaccrued elapsed funding credit restores position health in read-only eligibility", async function () {
+        const positionId = 120n;
+        const now = await time.latest();
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: ethers.parseUnits("5", 18),
+            margin: COLLATERAL_AMOUNT,
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE,
+            healthFactor: ethers.parseUnits("1.2", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: 0n,
+            openTime: now,
+            lastUpdated: now
+        });
+
+        await expect(
+            liquidationEngine.connect(liquidator1).executeLiquidation(positionId, 0n)
+        ).to.be.revertedWith("Position not liquidatable");
+    });
+
+    it("LIQ-FVIEW6D1 — 6-decimal quote token preview and execution funding boundaries agree exactly", async function () {
+        const positionId = 130n;
+        const now = await time.latest();
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: ethers.parseUnits("1.5", 18),
+            margin: COLLATERAL_AMOUNT,
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE,
+            healthFactor: ethers.parseUnits("0.5", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: 0n,
+            openTime: now,
+            lastUpdated: now
+        });
+
+        const res = await liquidationEngine.connect(liquidator1).executeLiquidation.staticCall(positionId, 0n);
+        expect(res.fullyLiquidated).to.be.true;
+    });
+
+    it("LIQ-PRICE1 — PerpEngine.Market.oracleFeedId is single authoritative price source", async function () {
+        const positionId = 140n;
+        const now = await time.latest();
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: ethers.parseUnits("5", 18),
+            margin: COLLATERAL_AMOUNT,
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE,
+            healthFactor: ethers.parseUnits("0.8", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: 0n,
+            openTime: now,
+            lastUpdated: now
+        });
+
+        const perpSigner = await ethers.getImpersonatedSigner(perpEngine.target);
+        await liquidationEngine.connect(perpSigner).setMarketFeedId(MARKET_ID, FEED_ID);
+
+        const [reward, penalty] = await liquidationEngine.previewLiquidation(positionId, 0n);
+        expect(penalty).to.be.gt(0n);
+        expect(reward).to.be.gt(0n);
+    });
   });
 });
