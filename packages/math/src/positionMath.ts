@@ -18,6 +18,12 @@ function mulDiv(a: bigint, b: bigint, c: bigint): bigint {
     return (a * b) / c;
 }
 
+function mulDivCeil(a: bigint, b: bigint, c: bigint): bigint {
+    const prod = a * b;
+    if (prod === 0n) return 0n;
+    return (prod + c - 1n) / c;
+}
+
 function abs(x: bigint): bigint {
     return x >= 0n ? x : -x;
 }
@@ -245,18 +251,10 @@ function _calculateTotalValue(
     collateral: bigint,
     pnl: bigint,
     fundingAccrued: bigint,
-    size: bigint
+    _size: bigint
 ): bigint {
-    // Clamp funding to economic bounds to prevent attacks
-    let fundingClamped = fundingAccrued;
-    
-    if (fundingAccrued > size) {
-        fundingClamped = size;
-    } else if (fundingAccrued < -size) {
-        fundingClamped = -size;
-    }
-    
-    return collateral + pnl - fundingClamped;
+    // Unclamped cumulative funding model matching Solidity PositionMath._calculateTotalValue
+    return collateral + pnl - fundingAccrued;
 }
 
 /**
@@ -297,9 +295,9 @@ export function calculateHealthFactor(
         return 0n;
     }
     
-    // Calculate maintenance margin in quote units
+    // Calculate maintenance margin in quote units (CEIL rounding matching Solidity)
     const notionalValue = mulDiv(params.size, validateAndNormalizePrice(currentPrice), DECIMALS);
-    const maintenanceMargin = mulDiv(notionalValue, riskParams.maintenanceMarginBps, 10000n);
+    const maintenanceMargin = mulDivCeil(notionalValue, riskParams.maintenanceMarginBps, 10000n);
     
     // Prevent division by zero (should never happen with validation)
     if (maintenanceMargin === 0n) {

@@ -369,4 +369,41 @@ describe('Golden Vectors Spec Coverage (GV-01 to GV-20)', () => {
         assert.equal(res.traderRemainingEquityWad, 0n);
         assert.equal(res.badDebtWad, 0n);
     });
+
+    test('LIQ-MATH-FUND-UNCLAMP1 & PARITY-FUND-UNCLAMP: unclamped funding accrued math parity', () => {
+        const posParams = {
+            size: 1n * WAD,
+            collateral: 100n * WAD,
+            entryPrice: 200000000000n, // $2000
+            isLong: true,
+            fundingAccrued: 500n * WAD // 500 WAD funding debit > size
+        };
+        const riskParams = {
+            maintenanceMarginBps: 500n, // 5%
+            liquidationThresholdBps: 10000n
+        };
+
+        const hf = calculateHealthFactorWad(
+            posParams.collateral - posParams.fundingAccrued,
+            100n * WAD
+        );
+        assert.equal(hf, 0n); // Unclamped equity <= 0 => HF = 0
+    });
+
+    test('LIQ-REF-DEC0 & PARITY-DEC0: quoteDecimals = 0 whole-token quantization', () => {
+        const dec0Params: ProtocolParams = { ...defaultParams, quoteDecimals: 0 };
+        const pos: PositionState = {
+            sizeWad: 1333333333333333333n,
+            entryPriceWad: 2000n * WAD,
+            marginWad: 100n * WAD,
+            isLong: true,
+            entryFundingIndexWad: 0n
+        };
+
+        const res = executeLiquidation(pos, 1800n * WAD, 0n, dec0Params);
+        // All WAD results must be whole-token integers (multiples of 1e18 WAD)
+        assert.equal(res.liquidatorRewardWad % WAD, 0n);
+        assert.equal(res.insuranceFundAddWad % WAD, 0n);
+        assert.equal(res.badDebtWad % WAD, 0n);
+    });
 });

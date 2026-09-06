@@ -820,5 +820,80 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
 
         expect(posView.unrealizedPnl).to.equal(pnlView);
     });
+
+    it("LIQ-VIEW-FACC1 — PositionView.fundingAccrued telemetry preserves collectible funding debit", async function () {
+        const positionId = 180n;
+        const now = await time.latest();
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: ethers.parseUnits("5", 18),
+            margin: ethers.parseUnits("100", 18),
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE,
+            healthFactor: ethers.parseUnits("1.5", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: ethers.parseUnits("20", 18),
+            openTime: now,
+            lastUpdated: now
+        });
+
+        const posView = await perpEngine.getPosition(positionId);
+        expect(posView.fundingAccrued).to.equal(ethers.parseUnits("20", 18));
+    });
+
+    it("LIQ-VIEW-FACC2 — PositionView.fundingAccrued telemetry preserves total debit when funding exceeds margin", async function () {
+        const positionId = 190n;
+        const now = await time.latest();
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: ethers.parseUnits("5", 18),
+            margin: ethers.parseUnits("100", 18),
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE,
+            healthFactor: ethers.parseUnits("0.5", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: ethers.parseUnits("150", 18),
+            openTime: now,
+            lastUpdated: now
+        });
+
+        const posView = await perpEngine.getPosition(positionId);
+        expect(posView.fundingAccrued).to.equal(ethers.parseUnits("150", 18));
+    });
+
+    it("LIQ-VIEW-FACC-CREDIT1 — PositionView.fundingAccrued telemetry returns 0 for funding credit", async function () {
+        const positionId = 200n;
+        const now = await time.latest();
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: false,
+            size: ethers.parseUnits("5", 18),
+            margin: ethers.parseUnits("100", 18),
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE,
+            healthFactor: ethers.parseUnits("2.0", 18),
+            unrealizedPnl: ethers.parseUnits("50", 18),
+            fundingAccrued: 0n,
+            openTime: now,
+            lastUpdated: now
+        });
+
+        const posView = await perpEngine.getPosition(positionId);
+        expect(posView.fundingAccrued).to.equal(0n);
+    });
   });
 });

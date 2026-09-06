@@ -281,6 +281,13 @@ contract PerpEngineViewer is IPerpEngineViewer {
         int256 rawPricePnl = PositionMath.calculatePnL(position.entryPrice, currentPrice, position.size, position.isLong);
         int256 effectivePnl = rawPricePnl + int256(previewMargin) - int256(position.margin) - int256(unpaidFundingDebt);
 
+        uint256 effectiveFundingDebit = 0;
+        if (position.margin > previewMargin) {
+            effectiveFundingDebit = (position.margin - previewMargin) + unpaidFundingDebt;
+        } else if (unpaidFundingDebt > 0) {
+            effectiveFundingDebit = unpaidFundingDebt;
+        }
+
         return IPositionViewer.PositionView({
             positionId: positionId,
             trader: position.trader,
@@ -293,7 +300,7 @@ contract PerpEngineViewer is IPerpEngineViewer {
             liquidationPrice: liqResult.liquidationPrice,
             healthFactor: healthFactor,
             unrealizedPnl: effectivePnl,
-            fundingAccrued: unpaidFundingDebt,
+            fundingAccrued: effectiveFundingDebit,
             openTime: position.openTime,
             lastUpdated: position.lastUpdated
         });

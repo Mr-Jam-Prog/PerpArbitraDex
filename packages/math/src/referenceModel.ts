@@ -387,7 +387,10 @@ export function executeLiquidation(
     currentFundingIndexWad: bigint,
     params: ProtocolParams
 ): LiquidationExecutionResult {
-    const dec = params.quoteDecimals || 18;
+    const dec = params.quoteDecimals ?? 18;
+    if (dec > 18) {
+        throw new Error("quoteDecimals > 18 not supported");
+    }
 
     const rawPricePnl = calculateUnrealizedPnlWad(
         position.sizeWad,

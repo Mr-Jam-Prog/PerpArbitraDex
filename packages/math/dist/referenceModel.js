@@ -263,7 +263,10 @@ export function decreaseOrClosePosition(position, closedSizeWad, execPriceWad, c
  * Execute Liquidation according to Solvency Rules (Prompt 07B Full Liquidation) with Native Quote Quantization
  */
 export function executeLiquidation(position, currentPriceWad, currentFundingIndexWad, params) {
-    const dec = params.quoteDecimals || 18;
+    const dec = params.quoteDecimals ?? 18;
+    if (dec > 18) {
+        throw new Error("quoteDecimals > 18 not supported");
+    }
     const rawPricePnl = calculateUnrealizedPnlWad(position.sizeWad, position.entryPriceWad, currentPriceWad, position.isLong);
     const fundingPaymentRaw = calculateFundingPaymentWad(position.sizeWad, position.entryFundingIndexWad, currentFundingIndexWad, position.isLong);
     // 4A. Settle funding first

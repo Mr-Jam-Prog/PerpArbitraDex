@@ -21,7 +21,7 @@ interface IPositionViewer {
         uint256 liquidationPrice;
         uint256 healthFactor;
         int256 unrealizedPnl;
-        uint256 fundingAccrued;
+        uint256 fundingAccrued; // Effective pending funding debit in WAD (0 for credit-side funding; telemetry only)
         uint256 openTime;
         uint256 lastUpdated;
     }

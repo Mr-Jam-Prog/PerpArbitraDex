@@ -14,6 +14,12 @@ const MAX_HEALTH_FACTOR = 100n * DECIMALS; // 100x
 function mulDiv(a, b, c) {
     return (a * b) / c;
 }
+function mulDivCeil(a, b, c) {
+    const prod = a * b;
+    if (prod === 0n)
+        return 0n;
+    return (prod + c - 1n) / c;
+}
 function abs(x) {
     return x >= 0n ? x : -x;
 }
@@ -171,16 +177,9 @@ function _validateHealthFactorInputs(params, currentPrice, riskParams) {
         throw new Error(`InvalidMaintenanceMargin: ${riskParams.maintenanceMarginBps}`);
     }
 }
-function _calculateTotalValue(collateral, pnl, fundingAccrued, size) {
-    // Clamp funding to economic bounds to prevent attacks
-    let fundingClamped = fundingAccrued;
-    if (fundingAccrued > size) {
-        fundingClamped = size;
-    }
-    else if (fundingAccrued < -size) {
-        fundingClamped = -size;
-    }
-    return collateral + pnl - fundingClamped;
+function _calculateTotalValue(collateral, pnl, fundingAccrued, _size) {
+    // Unclamped cumulative funding model matching Solidity PositionMath._calculateTotalValue
+    return collateral + pnl - fundingAccrued;
 }
 /**
  * @dev Calculate health factor with economic bounds enforcement
@@ -202,9 +201,9 @@ export function calculateHealthFactor(params, currentPrice, riskParams) {
     if (totalValue <= 0n) {
         return 0n;
     }
-    // Calculate maintenance margin in quote units
+    // Calculate maintenance margin in quote units (CEIL rounding matching Solidity)
     const notionalValue = mulDiv(params.size, validateAndNormalizePrice(currentPrice), DECIMALS);
-    const maintenanceMargin = mulDiv(notionalValue, riskParams.maintenanceMarginBps, 10000n);
+    const maintenanceMargin = mulDivCeil(notionalValue, riskParams.maintenanceMarginBps, 10000n);
     // Prevent division by zero (should never happen with validation)
     if (maintenanceMargin === 0n) {
         return MAX_HEALTH_FACTOR;
