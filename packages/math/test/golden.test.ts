@@ -335,4 +335,38 @@ describe('Golden Vectors Spec Coverage (GV-01 to GV-20)', () => {
 
         assert.equal(res.liquidatorRewardWad, nominalReward);
     });
+
+    test('LIQ-REF-PEN6D1: 6d penalty quantization branch boundary parity', () => {
+        const usdcParams: ProtocolParams = { ...defaultParams, quoteDecimals: 6 };
+        const pos: PositionState = {
+            sizeWad: 1333333333333333333n,
+            entryPriceWad: 2000n * WAD,
+            marginWad: 50n * WAD,
+            isLong: true,
+            entryFundingIndexWad: 0n
+        };
+
+        const res = executeLiquidation(pos, 1800n * WAD, 0n, usdcParams);
+        assert.equal(res.liquidatorRewardWad % 10n**12n, 0n);
+        assert.equal(res.insuranceFundAddWad % 10n**12n, 0n);
+        assert.equal(res.badDebtWad % 10n**12n, 0n);
+    });
+
+    test('LIQ-REF-NET6D1: 6d rounding-order destruction vector exact parity', () => {
+        const usdcParams: ProtocolParams = { ...defaultParams, quoteDecimals: 6 };
+        const pos: PositionState = {
+            sizeWad: 1n * WAD,
+            entryPriceWad: 1000n * WAD,
+            marginWad: 10n**12n, // 1 micro-USDC
+            isLong: true,
+            entryFundingIndexWad: 0n
+        };
+
+        const currentPrice = 1000n * WAD + 750000000000n;
+        const currentFundingIndex = 1500000000000n;
+
+        const res = executeLiquidation(pos, currentPrice, currentFundingIndex, usdcParams);
+        assert.equal(res.traderRemainingEquityWad, 0n);
+        assert.equal(res.badDebtWad, 0n);
+    });
 });

@@ -258,22 +258,17 @@ contract PerpEngineViewer is IPerpEngineViewer {
         if (!position.isActive) return viewData;
 
         (uint256 currentPrice, ) = _getMarketPrice(engine, position.marketId);
-
-        int256 fundingPayment = IAMMPool(pe.ammPool()).calculateFundingPayment(
-            position.marketId,
-            position.size,
-            position.isLong,
-            position.lastFundingIndex
-        );
+        uint8 vaultDec = ILiquidityVault(pe.liquidityVault()).decimals();
+        (uint256 previewMargin, uint256 unpaidFundingDebt) = _previewPostFundingMargin(engine, position, vaultDec);
 
         IPerpEngine.Market memory market = pe.getMarket(position.marketId);
 
         PositionMath.PositionParams memory posParams = PositionMath.PositionParams({
             size: position.size,
-            collateral: position.margin,
+            collateral: previewMargin,
             entryPrice: position.entryPrice,
             isLong: position.isLong,
-            fundingAccrued: fundingPayment
+            fundingAccrued: int256(unpaidFundingDebt)
         });
         PositionMath.PositionRiskParams memory riskParams = PositionMath.PositionRiskParams({
             maintenanceMarginBps: market.minMarginRatio / (PRECISION / 10000),
@@ -282,7 +277,9 @@ contract PerpEngineViewer is IPerpEngineViewer {
 
         PositionMath.LiquidationResult memory liqResult = PositionMath.calculateLiquidationPriceSafe(posParams, riskParams);
         uint256 healthFactor = PositionMath.calculateHealthFactor(posParams, currentPrice, riskParams);
-        int256 pnl = PositionMath.calculatePnL(position.entryPrice, currentPrice, position.size, position.isLong) - fundingPayment;
+
+        int256 rawPricePnl = PositionMath.calculatePnL(position.entryPrice, currentPrice, position.size, position.isLong);
+        int256 effectivePnl = rawPricePnl + int256(previewMargin) - int256(position.margin) - int256(unpaidFundingDebt);
 
         return IPositionViewer.PositionView({
             positionId: positionId,
@@ -295,8 +292,8 @@ contract PerpEngineViewer is IPerpEngineViewer {
             leverage: position.leverage,
             liquidationPrice: liqResult.liquidationPrice,
             healthFactor: healthFactor,
-            unrealizedPnl: pnl,
-            fundingAccrued: uint256(fundingPayment > 0 ? fundingPayment : int256(0)),
+            unrealizedPnl: effectivePnl,
+            fundingAccrued: unpaidFundingDebt,
             openTime: position.openTime,
             lastUpdated: position.lastUpdated
         });
@@ -371,7 +368,7 @@ contract PerpEngineViewer is IPerpEngineViewer {
         IPerpEngine.Position memory position = pe.getPositionInternal(positionId);
         require(position.isActive, "PerpEngine: position inactive");
 
-        pnl = PositionMath.calculatePnL(
+        int256 rawPricePnl = PositionMath.calculatePnL(
             position.entryPrice,
             currentPrice,
             position.size,
@@ -379,9 +376,9 @@ contract PerpEngineViewer is IPerpEngineViewer {
         );
 
         uint8 vaultDec = ILiquidityVault(pe.liquidityVault()).decimals();
-        (, uint256 unpaidFundingDebt) = _previewPostFundingMargin(engine, position, vaultDec);
+        (uint256 previewMargin, uint256 unpaidFundingDebt) = _previewPostFundingMargin(engine, position, vaultDec);
 
-        pnl -= int256(unpaidFundingDebt);
+        pnl = rawPricePnl + int256(previewMargin) - int256(position.margin) - int256(unpaidFundingDebt);
     }
 
     function _isPositionLiquidatable(address engine, uint256 positionId, uint256 currentPrice)

@@ -735,5 +735,90 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
         expect(penalty).to.be.gt(0n);
         expect(reward).to.be.gt(0n);
     });
+
+    it("LIQ-VIEW-PNL1 & LIQ-VIEW-AGG1 — getUnrealizedPnl and getPosition parity for collectible funding debit", async function () {
+        const positionId = 150n;
+        const now = await time.latest();
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: ethers.parseUnits("5", 18),
+            margin: COLLATERAL_AMOUNT,
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE,
+            healthFactor: ethers.parseUnits("1.5", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: 0n,
+            openTime: now,
+            lastUpdated: now
+        });
+
+        const posView = await perpEngine.getPosition(positionId);
+        const pnlView = await perpEngine.getUnrealizedPnl(positionId, INITIAL_PRICE);
+        const hfView = await perpEngine.getHealthFactor(positionId);
+        const liqPriceView = await perpEngine.getLiquidationPrice(positionId);
+
+        expect(posView.unrealizedPnl).to.equal(pnlView);
+        expect(posView.healthFactor).to.equal(hfView);
+        expect(posView.liquidationPrice).to.equal(liqPriceView);
+    });
+
+    it("LIQ-VIEW-PNL2 & LIQ-VIEW-AGG2 — getUnrealizedPnl and getPosition parity for funding credit", async function () {
+        const positionId = 160n;
+        const now = await time.latest();
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: false,
+            size: ethers.parseUnits("5", 18),
+            margin: COLLATERAL_AMOUNT,
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE,
+            healthFactor: ethers.parseUnits("2.0", 18),
+            unrealizedPnl: ethers.parseUnits("100", 18),
+            fundingAccrued: 0n,
+            openTime: now,
+            lastUpdated: now
+        });
+
+        const posView = await perpEngine.getPosition(positionId);
+        const pnlView = await perpEngine.getUnrealizedPnl(positionId, INITIAL_PRICE);
+
+        expect(posView.unrealizedPnl).to.equal(pnlView);
+    });
+
+    it("LIQ-VIEW-PNL3 & LIQ-VIEW-AGG6D — M0 + EffectiveUnrealizedPnl == M1 + RawPricePnL - U invariant", async function () {
+        const positionId = 170n;
+        const now = await time.latest();
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: ethers.parseUnits("5", 18),
+            margin: ethers.parseUnits("100", 18),
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE,
+            healthFactor: ethers.parseUnits("0.8", 18),
+            unrealizedPnl: ethers.parseUnits("50", 18),
+            fundingAccrued: ethers.parseUnits("150", 18),
+            openTime: now,
+            lastUpdated: now
+        });
+
+        const posView = await perpEngine.getPosition(positionId);
+        const pnlView = await perpEngine.getUnrealizedPnl(positionId, INITIAL_PRICE);
+
+        expect(posView.unrealizedPnl).to.equal(pnlView);
+    });
   });
 });
