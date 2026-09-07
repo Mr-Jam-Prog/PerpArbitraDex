@@ -23,6 +23,7 @@ interface ILiquidationEngine {
         uint256 positionId;
         address liquidator;
         uint256 liquidationPrice;
+        /// @notice Canonical nominal WAD liquidation penalty (PnomWad) before quote-token native CEIL settlement quantization
         uint256 penalty;
         uint256 reward;
         uint256 remainingSize;
@@ -50,6 +51,7 @@ interface ILiquidationEngine {
         uint256 indexed positionId,
         address indexed liquidator,
         uint256 reward,
+        /// @dev penalty: canonical nominal WAD liquidation penalty before quote-token native CEIL settlement quantization
         uint256 penalty,
         bool fullyLiquidated
     );

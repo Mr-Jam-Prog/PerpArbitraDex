@@ -352,6 +352,9 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
         await liquidationEngine.connect(perpSigner).queueLiquidation(positionId, ethers.parseUnits("0.8", 18));
 
         await time.increase(2000);
+        await oracle1.getFunction("setPrice")(customPrice);
+        await oracle2.getFunction("setPrice")(customPrice);
+        await oracleAggregator.updatePrice(FEED_ID);
 
         // Preview liquidation
         const [reward, penalty] = await liquidationEngine.previewLiquidation(positionId, customPrice);
@@ -894,6 +897,155 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
 
         const posView = await perpEngine.getPosition(positionId);
         expect(posView.fundingAccrued).to.equal(0n);
+    });
+
+    it("LIQ-PEN-REPORT-NATIVE1 — 6-decimal non-exact native penalty reports PnomWad in result and events", async function () {
+        const MockERC20 = await ethers.getContractFactory("MockERC20");
+        const quoteToken6 = await MockERC20.deploy("USDC", "USDC", 6);
+        await quoteToken6.waitForDeployment();
+
+        const deployerAddr = owner.address;
+        const nonce = await ethers.provider.getTransactionCount(deployerAddr);
+        const liquidationEngine6Addr = ethers.getCreateAddress({ from: deployerAddr, nonce: nonce + 3 });
+
+        const LiquidationQueue = await ethers.getContractFactory("LiquidationQueue");
+        const liquidationQueue6 = await LiquidationQueue.deploy(liquidationEngine6Addr);
+        await liquidationQueue6.waitForDeployment();
+
+        const LiquidationEngine = await ethers.getContractFactory("LiquidationEngine");
+        const liquidationEngine6 = await LiquidationEngine.deploy(
+            perpEngine.target,
+            configRegistry.target,
+            oracleAggregator.target,
+            quoteToken6.target,
+            liquidationQueue6.target,
+            incentiveDistributor.target
+        );
+        await liquidationEngine6.waitForDeployment();
+
+        const perpSigner = await ethers.getImpersonatedSigner(perpEngine.target);
+        await liquidationEngine6.connect(perpSigner).setMarketFeedId(MARKET_ID, FEED_ID);
+        await perpEngine.setMock6Decimals(true);
+
+        const positionId = 210n;
+        const now = await time.latest();
+        const nonRepSize = ethers.parseUnits("1.333333333333333333", 18);
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: nonRepSize,
+            margin: COLLATERAL_AMOUNT,
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE,
+            healthFactor: ethers.parseUnits("0.8", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: 0n,
+            openTime: now,
+            lastUpdated: now
+        });
+
+        const notionalWad = (nonRepSize * INITIAL_PRICE * 10n**10n) / 10n**18n; // Notional WAD
+        const marketFeeRatio = ethers.parseUnits("0.01", 18); // 1%
+        const pnomWad = (notionalWad * marketFeeRatio + 10n**18n - 1n) / 10n**18n; // Nominal penalty WAD
+        const penaltyNative = (pnomWad + 10n**12n - 1n) / 10n**12n; // Native CEIL
+        const effectivePenaltyWad = penaltyNative * 10n**12n;
+
+        expect(effectivePenaltyWad).to.be.gte(pnomWad);
+
+        const [, previewPenalty] = await liquidationEngine6.previewLiquidation(positionId, 0n);
+        expect(previewPenalty).to.equal(pnomWad);
+
+        const res = await liquidationEngine6.connect(liquidator1).executeLiquidation.staticCall(positionId, 0n);
+        expect(res.penalty).to.equal(pnomWad);
+
+        const tx = await liquidationEngine6.connect(liquidator1).executeLiquidation(positionId, 0n);
+        await expect(tx)
+            .to.emit(liquidationEngine6, "LiquidationExecuted")
+            .withArgs(positionId, liquidator1.address, res.reward, pnomWad, true);
+
+        await perpEngine.setMock6Decimals(false);
+    });
+
+    it("LIQ-EST-FULL1 — estimateReward enforces full position size and reverts on partial or oversize inputs", async function () {
+        const positionId = 220n;
+        const now = await time.latest();
+        const size = ethers.parseUnits("5", 18);
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: size,
+            margin: COLLATERAL_AMOUNT,
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE,
+            healthFactor: ethers.parseUnits("0.8", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: 0n,
+            openTime: now,
+            lastUpdated: now
+        });
+
+        const est0 = await liquidationEngine.estimateReward(positionId, 0n, 0n);
+        const estFull = await liquidationEngine.estimateReward(positionId, size, 0n);
+        const [expectedReward] = await liquidationEngine.previewLiquidation(positionId, 0n);
+
+        expect(est0).to.equal(expectedReward);
+        expect(estFull).to.equal(expectedReward);
+
+        await expect(
+            liquidationEngine.estimateReward(positionId, size / 2n, 0n)
+        ).to.be.revertedWith("LiquidationEngine: full liquidation only");
+
+        await expect(
+            liquidationEngine.estimateReward(positionId, size + 1n, 0n)
+        ).to.be.revertedWith("LiquidationEngine: full liquidation only");
+    });
+
+    it("LIQ-PREVIEW-PRICE1 & LIQ-EST-PRICE1 — previewLiquidation and estimateReward use canonical oracle price strictly", async function () {
+        const positionId = 230n;
+        const now = await time.latest();
+        const size = ethers.parseUnits("5", 18);
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: size,
+            margin: COLLATERAL_AMOUNT,
+            entryPrice: INITIAL_PRICE,
+            leverage: 10n**19n,
+            liquidationPrice: INITIAL_PRICE,
+            healthFactor: ethers.parseUnits("0.8", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: 0n,
+            openTime: now,
+            lastUpdated: now
+        });
+
+        const [canonicalReward, canonicalPenalty] = await liquidationEngine.previewLiquidation(positionId, INITIAL_PRICE);
+
+        // Caller price inputs are ignored
+        const [prevHalfReward, prevHalfPenalty] = await liquidationEngine.previewLiquidation(positionId, INITIAL_PRICE / 2n);
+        const [prevDoubleReward, prevDoublePenalty] = await liquidationEngine.previewLiquidation(positionId, INITIAL_PRICE * 2n);
+
+        expect(prevHalfReward).to.equal(canonicalReward);
+        expect(prevHalfPenalty).to.equal(canonicalPenalty);
+        expect(prevDoubleReward).to.equal(canonicalReward);
+        expect(prevDoublePenalty).to.equal(canonicalPenalty);
+
+        const estHalf = await liquidationEngine.estimateReward(positionId, size, INITIAL_PRICE / 2n);
+        const estDouble = await liquidationEngine.estimateReward(positionId, size, INITIAL_PRICE * 2n);
+
+        expect(estHalf).to.equal(canonicalReward);
+        expect(estDouble).to.equal(canonicalReward);
     });
   });
 });

@@ -143,6 +143,7 @@ interface IPerpEngine is IPositionViewer {
         uint256 indexed positionId,
         address indexed liquidator,
         uint256 liquidationPrice,
+        /// @dev penalty: canonical nominal WAD liquidation penalty before quote-token native CEIL settlement quantization
         uint256 penalty,
         uint256 reward
     );

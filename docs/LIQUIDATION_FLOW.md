@@ -16,9 +16,16 @@
 ## 4. Economic Formulas & Rounding
 - **Canonical Signed Equity:**
   $$\text{Equity} = \text{Margin} + \text{Signed PnL} - \text{Pending Funding}$$
-- **Canonical Market Penalty:**
-  $$\text{Penalty} = \left\lceil \frac{\text{Notional} \times \text{market.liquidationFeeRatio}}{10^{18}} \right\rceil$$
+- **Canonical Market Penalty & Native Settlement Quantization:**
+  $$\text{PnomWad} = \left\lceil \frac{\text{Notional} \times \text{market.liquidationFeeRatio}}{10^{18}} \right\rceil$$
   where $\text{Notional} = \frac{\text{PositionSize} \times \text{Price}}{10^8}$.
+
+  `PnomWad` is the canonical nominal WAD liquidation penalty reported in `LiquidationResult.penalty`, `LiquidationExecuted.penalty`, and `PositionLiquidated.penalty`.
+
+  Physical Vault settlement converts `PnomWad` to native quote units using native CEIL:
+  $$\text{penaltyNative} = \text{CEIL\_CONVERT\_WAD\_TO\_NATIVE}(\text{PnomWad})$$
+  $$\text{effectivePenaltyWad} = \text{CONVERT\_NATIVE\_TO\_WAD}(\text{penaltyNative})$$
+  For quote decimals $< 18$, $\text{effectivePenaltyWad} \ge \text{PnomWad}$.
 - **Canonical Liquidator Reward & Payable Quantization:**
   $$\text{NominalReward} = \left\lfloor \frac{\text{Penalty} \times 5000}{10000} \right\rfloor \quad (\text{50\% Reward Share})$$
   $$\text{rewardNative} = \text{FLOOR\_CONVERT\_WAD\_TO\_NATIVE}(\text{NominalReward})$$

@@ -292,16 +292,18 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
     /**
      * @inheritdoc ILiquidationEngine
      */
-    function previewLiquidation(uint256 positionId, uint256 currentPrice)
+    function previewLiquidation(uint256 positionId, uint256 /* currentPrice */)
         public
         view
         override
         returns (uint256 reward, uint256 penalty, uint256 newHealthFactor)
     {
+        IPerpEngine.PositionView memory position = perpEngine.getPosition(positionId);
+        uint256 canonicalPrice = _getValidatedPrice(position.marketId);
         uint256 healthFactor = perpEngine.getHealthFactor(positionId);
         require(healthFactor < HEALTH_FACTOR_SCALE, "Position healthy");
         
-        (reward, penalty, newHealthFactor, ) = _calculateLiquidation(positionId, currentPrice, healthFactor);
+        (reward, penalty, newHealthFactor, ) = _calculateLiquidation(positionId, canonicalPrice, healthFactor);
     }
 
     /**
@@ -310,20 +312,14 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
     function estimateReward(
         uint256 positionId,
         uint256 liquidatedSize,
-        uint256 liquidationPrice
+        uint256 /* liquidationPrice */
     ) public view override returns (uint256 reward) {
         IPerpEngine.PositionView memory position = perpEngine.getPosition(positionId);
-        if (liquidationPrice == 0) {
-            liquidationPrice = _getValidatedPrice(position.marketId);
+        if (liquidatedSize != 0 && liquidatedSize != position.size) {
+            revert("LiquidationEngine: full liquidation only");
         }
-        if (liquidatedSize == 0) {
-            liquidatedSize = position.size;
-        }
-        IPerpEngine.Market memory market = perpEngine.getMarket(position.marketId);
-        uint256 liquidatedNotional = (liquidatedSize * liquidationPrice * 10**10) / HEALTH_FACTOR_SCALE;
-        uint256 penalty = (liquidatedNotional * market.liquidationFeeRatio + HEALTH_FACTOR_SCALE - 1) / HEALTH_FACTOR_SCALE;
-        uint256 nominalReward = (penalty * 5000) / 10000;
-        reward = _quantizeToNativeWad(nominalReward);
+        uint256 canonicalPrice = _getValidatedPrice(position.marketId);
+        (reward, , , ) = _calculateLiquidation(positionId, canonicalPrice, 0);
     }
 
     /**
@@ -366,17 +362,15 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
      */
     function _calculateLiquidation(
         uint256 positionId,
-        uint256 currentPrice,
+        uint256 /* currentPrice */,
         uint256 /* healthFactor */
     ) internal view returns (uint256 reward, uint256 penalty, uint256 newHealthFactor, uint256 liquidatedSize) {
         IPerpEngine.PositionView memory position = perpEngine.getPosition(positionId);
-        if (currentPrice == 0) {
-            currentPrice = _getValidatedPrice(position.marketId);
-        }
+        uint256 canonicalPrice = _getValidatedPrice(position.marketId);
         IPerpEngine.Market memory market = perpEngine.getMarket(position.marketId);
 
         liquidatedSize = position.size;
-        uint256 liquidatedNotional = (liquidatedSize * currentPrice * 10**10) / HEALTH_FACTOR_SCALE;
+        uint256 liquidatedNotional = (liquidatedSize * canonicalPrice * 10**10) / HEALTH_FACTOR_SCALE;
 
         // Penalty CEIL rounding
         penalty = (liquidatedNotional * market.liquidationFeeRatio + HEALTH_FACTOR_SCALE - 1) / HEALTH_FACTOR_SCALE;
