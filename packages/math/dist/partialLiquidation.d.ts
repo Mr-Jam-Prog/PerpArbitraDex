@@ -1,6 +1,6 @@
 /**
- * Partial Liquidation Math & Feasibility Prototype (Prompt 07C-A)
- * Formally defined according to docs/ECONOMIC_SPEC.md & PROMPT 07C-A gate requirements.
+ * Partial Liquidation Math & Feasibility Prototype (Prompt 07C-A-R1)
+ * Formally defined according to docs/ECONOMIC_SPEC.md & PROMPT 07C-A-R1 requirements.
  */
 export declare enum CollateralPolicy {
     POLICY_A = "POLICY_A",// Voluntary-decrease style proportional margin withdrawal
@@ -19,6 +19,7 @@ export interface PartialLiquidationParams {
     policy: CollateralPolicy;
     liqFeeRatioBps: bigint;
     maintenanceMarginBps: bigint;
+    minMarginRatioBps?: bigint;
     quoteDecimals: number;
     minPositionSizeWad: bigint;
 }
@@ -43,12 +44,19 @@ export interface PartialLiquidationResult {
     nominalRewardWad: bigint;
     rewardNative: bigint;
     effectiveRewardWad: bigint;
-    mPostWad: bigint;
+    pnlClosedWad: bigint;
     pnlRemainingWad: bigint;
+    pnlRoundingResidualWad: bigint;
+    unpaidFundingBeforeWad: bigint;
+    unpaidFundingAfterWad: bigint;
+    mPostWad: bigint;
     equityPostWad: bigint;
     mmRemainingWad: bigint;
+    minMarginRequiredWad: bigint;
     hfPostWad: bigint;
     traderPayoutWad: bigint;
+    residualBadDebtWad: bigint;
+    externalBadDebtRequired: boolean;
     isSafe: boolean;
     fallbackReason?: string;
 }
@@ -60,3 +68,12 @@ export declare function evaluateBasePosition(s0Wad: bigint, m0Wad: bigint, entry
  * Simulates partial liquidation for given size and policy.
  */
 export declare function simulatePartialLiquidation(params: PartialLiquidationParams): PartialLiquidationResult;
+/**
+ * Finds the minimum safe partial liquidation size using continuous analytical seed + tight discrete verification.
+ */
+export declare function findMinimumSafePartialSize(params: Omit<PartialLiquidationParams, "deltaSWad">): {
+    recommendedDeltaSWad: bigint;
+    willFullyLiquidate: boolean;
+    result: PartialLiquidationResult;
+    fallbackReason?: string;
+};
