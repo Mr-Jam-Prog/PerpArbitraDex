@@ -1,6 +1,6 @@
 /**
- * Partial Liquidation Math & Feasibility Prototype (Prompt 07C-A-R1)
- * Formally defined according to docs/ECONOMIC_SPEC.md & PROMPT 07C-A-R1 requirements.
+ * Partial Liquidation Math & Feasibility Prototype (Prompt 07C-A-R2)
+ * Formally defined according to docs/ECONOMIC_SPEC.md & PROMPT 07C-A-R2 requirements.
  */
 
 import {
@@ -22,6 +22,12 @@ export enum CollateralPolicy {
     POLICY_A = "POLICY_A", // Voluntary-decrease style proportional margin withdrawal
     POLICY_B = "POLICY_B", // Pure retain collateral / pure deleveraging
     POLICY_C_C = "POLICY_C_C" // Hybrid attribution: retain required collateral for target HF, return safe surplus
+}
+
+export enum SizingMode {
+    NONE = "NONE",
+    PARTIAL = "PARTIAL",
+    FULL_FALLBACK = "FULL_FALLBACK"
 }
 
 export interface PartialLiquidationParams {
@@ -80,6 +86,15 @@ export interface PartialLiquidationResult {
     fallbackReason?: string;
 }
 
+export interface PartialSizingRecommendation {
+    recommendedDeltaSWad: bigint;
+    mode: SizingMode;
+    willFullyLiquidate: boolean;
+    partialResult?: PartialLiquidationResult;
+    fallbackReason?: string;
+    evaluationCount?: number;
+}
+
 /**
  * Evaluates pre-liquidation base position state after funding settlement on S0.
  */
@@ -135,6 +150,7 @@ export function evaluateBasePosition(
 
 /**
  * Simulates partial liquidation for given size and policy.
+ * Domain is strictly 0 < deltaSWad < s0Wad. Full liquidation (deltaSWad >= s0Wad) is rejected.
  */
 export function simulatePartialLiquidation(
     params: PartialLiquidationParams
@@ -167,7 +183,7 @@ export function simulatePartialLiquidation(
         quoteDecimals
     );
 
-    const remainingSizeWad = s0Wad - deltaSWad;
+    const remainingSizeWad = s0Wad > deltaSWad ? s0Wad - deltaSWad : 0n;
     const currentPriceWad = currentPrice8d * ORACLE_NORM_FACTOR;
     const entryPriceWad = entryPrice8d * ORACLE_NORM_FACTOR;
 
@@ -203,8 +219,8 @@ export function simulatePartialLiquidation(
         };
     }
 
-    // Domain bounds check
-    if (deltaSWad <= 0n || deltaSWad > s0Wad) {
+    // Domain bounds check: partial simulation must strictly be 0 < deltaSWad < s0Wad
+    if (deltaSWad <= 0n || deltaSWad >= s0Wad) {
         return {
             baseState,
             deltaSWad,
@@ -231,7 +247,9 @@ export function simulatePartialLiquidation(
             residualBadDebtWad: 0n,
             externalBadDebtRequired: false,
             isSafe: false,
-            fallbackReason: "Invalid deltaS domain"
+            fallbackReason: deltaSWad >= s0Wad
+                ? "Full liquidation required — outside partial model"
+                : "Invalid deltaS domain"
         };
     }
 
@@ -288,23 +306,23 @@ export function simulatePartialLiquidation(
         const mRetainedWad = m1Wad - effectiveReleasedWad;
 
         const netClosedWad = pnlClosedWad - uWad;
-        if (netClosedWad >= 0n) {
-            const payoutWad = effectiveReleasedWad + netClosedWad - effectivePenaltyWad;
+        const closedAvailableWad = effectiveReleasedWad + netClosedWad;
+
+        if (closedAvailableWad >= effectivePenaltyWad) {
+            const grossPayoutWad = closedAvailableWad - effectivePenaltyWad;
             mPostWad = mRetainedWad;
-            const payoutNative = wadToNativeQuote(payoutWad > 0n ? payoutWad : 0n, quoteDecimals);
+            const payoutNative = wadToNativeQuote(grossPayoutWad, quoteDecimals);
             traderPayoutWad = nativeQuoteToWad(payoutNative, quoteDecimals);
         } else {
-            const deficitWad = abs(netClosedWad);
-            const totalChargeWad = deficitWad + effectivePenaltyWad;
-            if (effectiveReleasedWad >= totalChargeWad) {
-                const payoutWad = effectiveReleasedWad - totalChargeWad;
-                mPostWad = mRetainedWad;
-                const payoutNative = wadToNativeQuote(payoutWad, quoteDecimals);
-                traderPayoutWad = nativeQuoteToWad(payoutNative, quoteDecimals);
+            const penaltyShortfallWad = effectivePenaltyWad - closedAvailableWad;
+            traderPayoutWad = 0n;
+            if (mRetainedWad >= penaltyShortfallWad) {
+                mPostWad = mRetainedWad - penaltyShortfallWad;
             } else {
-                traderPayoutWad = 0n;
-                const extraWad = totalChargeWad - effectiveReleasedWad;
-                mPostWad = mRetainedWad >= extraWad ? mRetainedWad - extraWad : 0n;
+                mPostWad = 0n;
+                const unfundedPenaltyWad = penaltyShortfallWad - mRetainedWad;
+                residualBadDebtWad += unfundedPenaltyWad;
+                externalBadDebtRequired = true;
             }
         }
         equityPostWad = mPostWad + pnlRemainingWad;
@@ -404,16 +422,11 @@ export function simulatePartialLiquidation(
 }
 
 /**
- * Finds the minimum safe partial liquidation size using continuous analytical seed + tight discrete verification.
+ * Canonical minimum safe size solver for Policy B using exact O(log S0) BigInt binary search.
  */
-export function findMinimumSafePartialSize(
-    params: Omit<PartialLiquidationParams, "deltaSWad">
-): {
-    recommendedDeltaSWad: bigint;
-    willFullyLiquidate: boolean;
-    result: PartialLiquidationResult;
-    fallbackReason?: string;
-} {
+export function findMinimumSafePolicyBSize(
+    params: Omit<PartialLiquidationParams, "deltaSWad" | "policy">
+): PartialSizingRecommendation {
     const baseState = evaluateBasePosition(
         params.s0Wad,
         params.m0Wad,
@@ -425,75 +438,78 @@ export function findMinimumSafePartialSize(
         params.quoteDecimals
     );
 
+    // 1. Healthy position check -> NO liquidation recommendation
     if (!baseState.isLiquidatable) {
-        const fullRes = simulatePartialLiquidation({ ...params, deltaSWad: params.s0Wad });
+        return {
+            recommendedDeltaSWad: 0n,
+            mode: SizingMode.NONE,
+            willFullyLiquidate: false,
+            fallbackReason: "Position not liquidatable",
+            evaluationCount: 0
+        };
+    }
+
+    // 2. Frozen partial domain: lo = 1 wei, hi = S0 - minPositionSize
+    const lo = 1n;
+    const hi = params.minPositionSizeWad > 0n && params.s0Wad > params.minPositionSizeWad
+        ? params.s0Wad - params.minPositionSizeWad
+        : params.s0Wad - 1n;
+
+    if (hi < lo) {
         return {
             recommendedDeltaSWad: params.s0Wad,
+            mode: SizingMode.FULL_FALLBACK,
             willFullyLiquidate: true,
-            result: fullRes,
-            fallbackReason: "Position not liquidatable"
+            fallbackReason: "Surviving size domain empty / full fallback required",
+            evaluationCount: 0
         };
     }
 
-    // Continuous analytical seed bound under Policy B:
-    // x* = (HF_target * MMR * P * S - E) / (P * (HF_target * MMR - liqFeeRatio))
-    const currentPriceWad = params.currentPrice8d * ORACLE_NORM_FACTOR;
-    const mmrWad = mulDivFloor(WAD, params.maintenanceMarginBps, 10000n);
-    const liqFeeWad = mulDivFloor(WAD, params.liqFeeRatioBps, 10000n);
-    const targetMmRatioWad = mulDivFloor(params.targetHfWad, mmrWad, WAD);
+    // 3. Exact O(log S0) BigInt binary search finding minimal safe integer x*
+    let bestX: bigint | null = null;
+    let bestRes: PartialLiquidationResult | undefined = undefined;
+    let low = lo;
+    let high = hi;
+    let evalCount = 0;
 
-    const targetMmQuoteWad = mulDivFloor(baseState.mm0Wad, params.targetHfWad, WAD);
-    const numWad = targetMmQuoteWad - baseState.equity0Wad;
-    const denRateWad = targetMmRatioWad - liqFeeWad; // MMR * HF_target - liqFeeRatio
-    const denWad = mulDivFloor(currentPriceWad, denRateWad, WAD);
-
-    let seedDeltaSWad = params.s0Wad;
-    if (numWad > 0n && denWad > 0n) {
-        seedDeltaSWad = mulDivCeil(numWad, WAD, denWad);
+    while (low <= high) {
+        evalCount++;
+        const mid = low + (high - low) / 2n;
+        const res = simulatePartialLiquidation({ ...params, deltaSWad: mid, policy: CollateralPolicy.POLICY_B });
+        if (res.isSafe) {
+            bestX = mid;
+            bestRes = res;
+            high = mid - 1n; // Search lower for smaller safe x
+        } else {
+            low = mid + 1n; // Search higher
+        }
     }
 
-    const quantum = 10n ** 14n; // Base size step quantum (0.0001 WAD base size)
-    let stepDeltaS = seedDeltaSWad > 0n ? seedDeltaSWad : quantum;
-    if (stepDeltaS > params.s0Wad) stepDeltaS = params.s0Wad;
-
-    let res = simulatePartialLiquidation({ ...params, deltaSWad: stepDeltaS });
-
-    // Step up if seed was slightly under due to rounding
-    while (!res.isSafe && stepDeltaS < params.s0Wad) {
-        stepDeltaS += quantum;
-        if (stepDeltaS >= params.s0Wad) {
-            stepDeltaS = params.s0Wad;
-            res = simulatePartialLiquidation({ ...params, deltaSWad: stepDeltaS });
-            break;
-        }
-        res = simulatePartialLiquidation({ ...params, deltaSWad: stepDeltaS });
-    }
-
-    // Step down to find tightest minimal x* such that x* is safe and x* - quantum is unsafe
-    if (res.isSafe && stepDeltaS < params.s0Wad) {
-        while (stepDeltaS > quantum) {
-            const prevDeltaS = stepDeltaS - quantum;
-            const prevRes = simulatePartialLiquidation({ ...params, deltaSWad: prevDeltaS });
-            if (prevRes.isSafe) {
-                stepDeltaS = prevDeltaS;
-                res = prevRes;
-            } else {
-                break;
-            }
-        }
+    if (bestX !== null && bestRes) {
         return {
-            recommendedDeltaSWad: stepDeltaS,
+            recommendedDeltaSWad: bestX,
+            mode: SizingMode.PARTIAL,
             willFullyLiquidate: false,
-            result: res
+            partialResult: bestRes,
+            evaluationCount: evalCount
         };
     }
 
-    // Fallback to FULL liquidation
-    const fullRes = simulatePartialLiquidation({ ...params, deltaSWad: params.s0Wad });
+    // 4. Full liquidation fallback routing
     return {
         recommendedDeltaSWad: params.s0Wad,
+        mode: SizingMode.FULL_FALLBACK,
         willFullyLiquidate: true,
-        result: fullRes,
-        fallbackReason: res.fallbackReason || "Full liquidation fallback required"
+        fallbackReason: "Full liquidation fallback required",
+        evaluationCount: evalCount
     };
+}
+
+/**
+ * Backward compatibility alias for findMinimumSafePolicyBSize.
+ */
+export function findMinimumSafePartialSize(
+    params: Omit<PartialLiquidationParams, "deltaSWad">
+): PartialSizingRecommendation {
+    return findMinimumSafePolicyBSize(params);
 }
