@@ -6,6 +6,7 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {IPerpEngine} from "../interfaces/IPerpEngine.sol";
 import {ILiquidationEngine} from "../interfaces/ILiquidationEngine.sol";
@@ -370,10 +371,15 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         IPerpEngine.Market memory market = perpEngine.getMarket(position.marketId);
 
         liquidatedSize = position.size;
-        uint256 liquidatedNotional = (liquidatedSize * canonicalPrice * 10**10) / HEALTH_FACTOR_SCALE;
+        uint256 liquidatedNotional = Math.mulDiv(liquidatedSize, canonicalPrice, 1e8);
 
-        // Penalty CEIL rounding
-        penalty = (liquidatedNotional * market.liquidationFeeRatio + HEALTH_FACTOR_SCALE - 1) / HEALTH_FACTOR_SCALE;
+        // Penalty CEIL rounding using full-precision Math.mulDiv
+        penalty = Math.mulDiv(
+            liquidatedNotional,
+            market.liquidationFeeRatio,
+            HEALTH_FACTOR_SCALE,
+            Math.Rounding.Up
+        );
 
         // Nominal Reward FLOOR rounding (50% reward share)
         uint256 nominalReward = (penalty * 5000) / 10000;

@@ -1047,5 +1047,50 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
         expect(estHalf).to.equal(canonicalReward);
         expect(estDouble).to.equal(canonicalReward);
     });
+
+    it("LIQ-MULDIV1 — full-precision Math.mulDiv prevents uint256 overflow during large position liquidation calculation", async function () {
+        const positionId = 240n;
+        const now = await time.latest();
+
+        // Size & price such that size * price * 1e10 > 2^256 (overflows old uint256 multiplication)
+        // size = 1e54 WAD, price = 1e14 (8 decimals, max valid price in OracleSanityChecker)
+        // In old code: 1e54 * 1e14 * 1e10 = 1e78 > 1.1579e77 (2^256 - 1) -> OVERFLOW!
+        // In Math.mulDiv: Math.mulDiv(1e54, 1e14, 1e8) = 1e60 < 2^256 - 1 -> NO OVERFLOW!
+        const largeSize = 10n**54n;
+        const largePrice = 10n**14n; // $1,000,000 max oracle price
+
+        await oracle1.getFunction("setPrice")(largePrice);
+        await oracle2.getFunction("setPrice")(largePrice);
+        await oracleAggregator.updatePrice(FEED_ID);
+
+        await perpEngine.setPositionView(positionId, {
+            positionId: positionId,
+            trader: user.address,
+            marketId: MARKET_ID,
+            isLong: true,
+            size: largeSize,
+            margin: COLLATERAL_AMOUNT,
+            entryPrice: largePrice,
+            leverage: 10n**19n,
+            liquidationPrice: largePrice,
+            healthFactor: ethers.parseUnits("0.8", 18),
+            unrealizedPnl: 0n,
+            fundingAccrued: 0n,
+            openTime: now,
+            lastUpdated: now
+        });
+
+        const expectedNotional = (largeSize * largePrice) / 10n**8n;
+        const marketFeeRatio = ethers.parseUnits("0.01", 18); // 1%
+        const expectedPenalty = (expectedNotional * marketFeeRatio + 10n**18n - 1n) / 10n**18n;
+        const expectedReward = (expectedPenalty * 5000n) / 10000n;
+
+        const [reward, penalty] = await liquidationEngine.previewLiquidation(positionId, 0n);
+        expect(penalty).to.equal(expectedPenalty);
+        expect(reward).to.equal(expectedReward);
+
+        const estReward = await liquidationEngine.estimateReward(positionId, largeSize, 0n);
+        expect(estReward).to.equal(expectedReward);
+    });
   });
 });
