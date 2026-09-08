@@ -208,7 +208,8 @@ describe("🚀 PerpEngine - Unit Tests", function () {
                 trader: user1.address,
                 marketId: MARKET_ID,
                 sizeToLiquidate: ethers.parseUnits("1", 18),
-                minReward: 0
+                minReward: 0,
+                liquidator: liquidator.address
             })
         ).to.emit(perpEngine, "PositionLiquidated");
     });

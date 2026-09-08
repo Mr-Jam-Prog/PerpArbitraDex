@@ -5,6 +5,7 @@
 export declare const WAD: bigint;
 export declare const ORACLE_PRICE_DECIMALS = 8n;
 export declare const ORACLE_NORM_FACTOR: bigint;
+export declare const CANONICAL_LIQUIDATOR_REWARD_SHARE_BPS = 5000n;
 export interface ProtocolParams {
     maxLeverageBps: bigint;
     initialMarginBps: bigint;
@@ -47,6 +48,10 @@ export declare function normalizeOraclePrice(rawPrice8Decimals: bigint): bigint;
  * Converts 18-decimal quote WAD amount to native ERC20 quote token units (floor rounding)
  */
 export declare function wadToNativeQuote(wadAmount: bigint, quoteDecimals: number): bigint;
+/**
+ * Converts 18-decimal quote WAD amount to native ERC20 quote token units (ceil rounding)
+ */
+export declare function wadToNativeQuoteCeil(wadAmount: bigint, quoteDecimals: number): bigint;
 /**
  * Converts native ERC20 quote token units to 18-decimal quote WAD amount
  */
@@ -118,6 +123,6 @@ export declare function openOrIncreasePosition(position: PositionState | null, a
  */
 export declare function decreaseOrClosePosition(position: PositionState, closedSizeWad: bigint, execPriceWad: bigint, currentFundingIndexWad: bigint, params: ProtocolParams): TradeResult;
 /**
- * Execute Liquidation according to Solvency Rules
+ * Execute Liquidation according to Solvency Rules (Prompt 07B Full Liquidation) with Native Quote Quantization
  */
 export declare function executeLiquidation(position: PositionState, currentPriceWad: bigint, currentFundingIndexWad: bigint, params: ProtocolParams): LiquidationExecutionResult;

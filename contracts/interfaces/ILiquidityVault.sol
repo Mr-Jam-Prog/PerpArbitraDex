@@ -99,6 +99,13 @@ interface ILiquidityVault is IERC20 {
         uint256 totalDeficit
     ) external returns (uint256 coveredByIF, uint256 coveredByLP, uint256 residualBadDebt);
 
+    function settleLiquidation(
+        address trader,
+        uint256 marginAvailable,
+        int256 netPnl,
+        uint256 nominalPenalty
+    ) external;
+
     function collectProtocolFees(uint256 feeAmount) external;
     function fundInsuranceFund(uint256 amount) external;
     function payLiquidationReward(address liquidator, uint256 amount) external;

@@ -23,6 +23,7 @@ interface ILiquidationEngine {
         uint256 positionId;
         address liquidator;
         uint256 liquidationPrice;
+        /// @notice Canonical nominal WAD liquidation penalty (PnomWad) before quote-token native CEIL settlement quantization
         uint256 penalty;
         uint256 reward;
         uint256 remainingSize;
@@ -30,10 +31,10 @@ interface ILiquidationEngine {
     }
 
     struct LiquidatorConfig {
-        uint256 minReward; // Minimum reward to incentivize
-        uint256 maxReward; // Maximum reward cap
-        uint256 penaltyRatio; // Penalty as % of position
-        uint256 gracePeriod; // Time before liquidation
+        uint256 minReward; // Minimum acceptable reward (caller slippage / keeper floor)
+        uint256 maxReward; // Legacy compatibility parameter (canonical 07B uses 50% reward share)
+        uint256 penaltyRatio; // Legacy compatibility parameter (canonical 07B uses market.liquidationFeeRatio)
+        uint256 gracePeriod; // Time before queued liquidation execution
         uint256 batchSize; // Max positions per batch
     }
 
@@ -50,6 +51,7 @@ interface ILiquidationEngine {
         uint256 indexed positionId,
         address indexed liquidator,
         uint256 reward,
+        /// @dev penalty: canonical nominal WAD liquidation penalty before quote-token native CEIL settlement quantization
         uint256 penalty,
         bool fullyLiquidated
     );

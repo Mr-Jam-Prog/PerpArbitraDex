@@ -44,7 +44,7 @@ contract DeployCore is Script {
         OracleSecurity security = new OracleSecurity(deployer, addrs[3], addrs[2]);
         PositionManager posMgr = new PositionManager(addrs[12]);
         AMMPool amm = new AMMPool(addrs[12], addrs[3]);
-        LiquidationQueue liqQueue = new LiquidationQueue(addrs[10]);
+        LiquidationQueue liqQueue = new LiquidationQueue(addrs[9]);
         
         IncentiveDistributor incentive = new IncentiveDistributor(
             address(quoteToken),
@@ -72,7 +72,7 @@ contract DeployCore is Script {
             addrs[5],
             addrs[6],
             addrs[3],
-            addrs[10],
+            addrs[9],
             addrs[11],
             addrs[0],
             address(vault),

@@ -227,7 +227,8 @@ contract AdversarialTests is Test {
                 trader: trader,
                 marketId: 1,
                 sizeToLiquidate: size,
-                minReward: 0
+                minReward: 0,
+                liquidator: address(this)
             }));
         }
 
@@ -266,7 +267,8 @@ contract AdversarialTests is Test {
             trader: trader,
             marketId: 1,
             sizeToLiquidate: size,
-            minReward: 0
+            minReward: 0,
+            liquidator: address(this)
         }));
 
         // Verify system state

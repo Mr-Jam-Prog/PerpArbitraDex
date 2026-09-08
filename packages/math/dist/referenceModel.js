@@ -5,6 +5,7 @@
 export const WAD = 10n ** 18n;
 export const ORACLE_PRICE_DECIMALS = 8n;
 export const ORACLE_NORM_FACTOR = 10n ** 10n; // Convert 8 decimals -> 18 decimals WAD
+export const CANONICAL_LIQUIDATOR_REWARD_SHARE_BPS = 5000n;
 // ============ UTILITY MATH FUNCTIONS ============
 /**
  * Floor division: floor(a * b / c)
@@ -39,8 +40,31 @@ export function normalizeOraclePrice(rawPrice8Decimals) {
 export function wadToNativeQuote(wadAmount, quoteDecimals) {
     if (quoteDecimals === 18)
         return wadAmount;
-    const scale = 10n ** BigInt(18 - quoteDecimals);
-    return wadAmount / scale;
+    if (quoteDecimals < 18) {
+        const scale = 10n ** BigInt(18 - quoteDecimals);
+        return wadAmount / scale;
+    }
+    else {
+        const scale = 10n ** BigInt(quoteDecimals - 18);
+        return wadAmount * scale;
+    }
+}
+/**
+ * Converts 18-decimal quote WAD amount to native ERC20 quote token units (ceil rounding)
+ */
+export function wadToNativeQuoteCeil(wadAmount, quoteDecimals) {
+    if (quoteDecimals === 18)
+        return wadAmount;
+    if (wadAmount === 0n)
+        return 0n;
+    if (quoteDecimals < 18) {
+        const scale = 10n ** BigInt(18 - quoteDecimals);
+        return (wadAmount + scale - 1n) / scale;
+    }
+    else {
+        const scale = 10n ** BigInt(quoteDecimals - 18);
+        return wadAmount * scale;
+    }
 }
 /**
  * Converts native ERC20 quote token units to 18-decimal quote WAD amount
@@ -48,8 +72,14 @@ export function wadToNativeQuote(wadAmount, quoteDecimals) {
 export function nativeQuoteToWad(nativeAmount, quoteDecimals) {
     if (quoteDecimals === 18)
         return nativeAmount;
-    const scale = 10n ** BigInt(18 - quoteDecimals);
-    return nativeAmount * scale;
+    if (quoteDecimals < 18) {
+        const scale = 10n ** BigInt(18 - quoteDecimals);
+        return nativeAmount * scale;
+    }
+    else {
+        const scale = 10n ** BigInt(quoteDecimals - 18);
+        return nativeAmount / scale;
+    }
 }
 // ============ CORE CALCULATIONS ============
 /**
@@ -249,48 +279,96 @@ export function decreaseOrClosePosition(position, closedSizeWad, execPriceWad, c
     };
 }
 /**
- * Execute Liquidation according to Solvency Rules
+ * Execute Liquidation according to Solvency Rules (Prompt 07B Full Liquidation) with Native Quote Quantization
  */
 export function executeLiquidation(position, currentPriceWad, currentFundingIndexWad, params) {
-    const unrealizedPnl = calculateUnrealizedPnlWad(position.sizeWad, position.entryPriceWad, currentPriceWad, position.isLong);
-    const fundingPayment = calculateFundingPaymentWad(position.sizeWad, position.entryFundingIndexWad, currentFundingIndexWad, position.isLong);
-    const equity = calculateEquityWad(position.marginWad, unrealizedPnl, fundingPayment);
-    const notional = calculateNotionalQuoteWad(position.sizeWad, currentPriceWad);
-    // Penalty = ceil(notional * liquidationPenaltyBps / 10000)
-    const penalty = mulDivCeil(notional, params.liquidationPenaltyBps, 10000n);
-    const reward = mulDivFloor(penalty, params.liquidatorRewardShareBps, 10000n);
-    if (equity <= 0n) {
-        // Bad Debt scenario
-        const badDebtWad = abs(equity);
-        return {
-            liquidatedSizeWad: position.sizeWad,
-            liquidatorRewardWad: reward,
-            insuranceFundAddWad: 0n,
-            badDebtWad,
-            traderRemainingEquityWad: 0n
-        };
+    const dec = params.quoteDecimals ?? 18;
+    if (dec < 0) {
+        throw new Error("Invalid quoteDecimals");
+    }
+    if (params.liquidatorRewardShareBps !== CANONICAL_LIQUIDATOR_REWARD_SHARE_BPS) {
+        throw new Error("non-canonical liquidatorRewardShareBps");
+    }
+    const rawPricePnl = calculateUnrealizedPnlWad(position.sizeWad, position.entryPriceWad, currentPriceWad, position.isLong);
+    const fundingPaymentRaw = calculateFundingPaymentWad(position.sizeWad, position.entryFundingIndexWad, currentFundingIndexWad, position.isLong);
+    // 4A. Settle funding first
+    let m1Wad = position.marginWad;
+    let unpaidFundingWad = 0n;
+    if (fundingPaymentRaw > 0n) {
+        const fundingDebtNative = wadToNativeQuoteCeil(fundingPaymentRaw, dec);
+        const chargedFundingWad = nativeQuoteToWad(fundingDebtNative, dec);
+        if (m1Wad >= chargedFundingWad) {
+            m1Wad -= chargedFundingWad;
+            unpaidFundingWad = 0n;
+        }
+        else {
+            const marginNative = wadToNativeQuote(m1Wad, dec);
+            const marginForfeitedWad = nativeQuoteToWad(marginNative, dec);
+            m1Wad -= marginForfeitedWad;
+            unpaidFundingWad = fundingPaymentRaw > marginForfeitedWad ? fundingPaymentRaw - marginForfeitedWad : 0n;
+        }
+    }
+    else if (fundingPaymentRaw < 0n) {
+        const creditNative = wadToNativeQuote(abs(fundingPaymentRaw), dec);
+        const creditedWad = nativeQuoteToWad(creditNative, dec);
+        m1Wad += creditedWad;
+        unpaidFundingWad = 0n;
+    }
+    // 4B. Net RAW price PnL against unpaid funding
+    const rawNetPnlWad = rawPricePnl - unpaidFundingWad;
+    // 4C. Quantize SIGNED NET PNL exactly once for Vault
+    let netPnlNative = 0n;
+    if (rawNetPnlWad >= 0n) {
+        netPnlNative = wadToNativeQuote(rawNetPnlWad, dec);
     }
     else {
-        // Equity > 0
-        if (equity >= penalty) {
-            const rem = equity - penalty;
+        netPnlNative = -wadToNativeQuoteCeil(abs(rawNetPnlWad), dec);
+    }
+    // 4D. Position Margin & Native Equity for Vault
+    const marginNative = wadToNativeQuote(m1Wad, dec);
+    const equityNative = marginNative + netPnlNative;
+    // 4E. Penalty & Reward
+    const notional = calculateNotionalQuoteWad(position.sizeWad, currentPriceWad);
+    const nominalPenaltyWad = mulDivCeil(notional, params.liquidationPenaltyBps, 10000n);
+    const penaltyNative = wadToNativeQuoteCeil(nominalPenaltyWad, dec);
+    const effectivePenaltyWad = nativeQuoteToWad(penaltyNative, dec);
+    const nominalRewardWad = mulDivFloor(nominalPenaltyWad, CANONICAL_LIQUIDATOR_REWARD_SHARE_BPS, 10000n);
+    const rewardNative = wadToNativeQuote(nominalRewardWad, dec);
+    const effectiveRewardWad = nativeQuoteToWad(rewardNative, dec);
+    // 4F. Branch Selection on Native Quantities
+    if (equityNative > 0n) {
+        if (equityNative >= penaltyNative) {
+            // Branch A
+            const remNative = equityNative - penaltyNative;
             return {
                 liquidatedSizeWad: position.sizeWad,
-                liquidatorRewardWad: reward,
-                insuranceFundAddWad: penalty - reward,
+                liquidatorRewardWad: effectiveRewardWad,
+                insuranceFundAddWad: effectivePenaltyWad - effectiveRewardWad,
                 badDebtWad: 0n,
-                traderRemainingEquityWad: rem
+                traderRemainingEquityWad: nativeQuoteToWad(remNative, dec)
             };
         }
         else {
-            // Partial equity left, less than penalty
+            // Branch B (0 < Equity < Penalty)
+            const ifAddNative = equityNative > rewardNative ? equityNative - rewardNative : 0n;
             return {
                 liquidatedSizeWad: position.sizeWad,
-                liquidatorRewardWad: reward,
-                insuranceFundAddWad: equity > reward ? equity - reward : 0n,
+                liquidatorRewardWad: effectiveRewardWad,
+                insuranceFundAddWad: nativeQuoteToWad(ifAddNative, dec),
                 badDebtWad: 0n,
                 traderRemainingEquityWad: 0n
             };
         }
+    }
+    else {
+        // Branch C / Exact Zero Equity (Equity <= 0)
+        const badDebtNative = abs(equityNative);
+        return {
+            liquidatedSizeWad: position.sizeWad,
+            liquidatorRewardWad: effectiveRewardWad,
+            insuranceFundAddWad: 0n,
+            badDebtWad: nativeQuoteToWad(badDebtNative, dec),
+            traderRemainingEquityWad: 0n
+        };
     }
 }

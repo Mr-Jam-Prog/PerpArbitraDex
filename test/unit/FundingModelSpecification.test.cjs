@@ -520,7 +520,8 @@ describe("📐 Funding Model Specification & Invariants", function () {
         trader: traderLong.address,
         marketId: MARKET_ID,
         sizeToLiquidate: size,
-        minReward: 0
+        minReward: 0n,
+        liquidator: owner.address
       };
 
       await expect(perpEngine.connect(owner).liquidatePosition(liqParams))
@@ -554,7 +555,8 @@ describe("📐 Funding Model Specification & Invariants", function () {
         trader: traderLong.address,
         marketId: MARKET_ID,
         sizeToLiquidate: size,
-        minReward: 0
+        minReward: 0n,
+        liquidator: owner.address
       });
 
       const pos = await perpEngine.getPositionInternal(posId);

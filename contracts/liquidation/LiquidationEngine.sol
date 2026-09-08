@@ -2,9 +2,11 @@
 pragma solidity 0.8.19;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {IPerpEngine} from "../interfaces/IPerpEngine.sol";
 import {ILiquidationEngine} from "../interfaces/ILiquidationEngine.sol";
@@ -54,7 +56,6 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
 
     modifier onlyValidPosition(uint256 positionId) {
         require(!isPositionLiquidated[positionId], "Position already liquidated");
-        require(perpEngine.getHealthFactor(positionId) > 0, "Invalid position");
         _;
     }
 
@@ -125,44 +126,47 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
         uint256 minReward,
         address liquidator
     ) internal returns (LiquidationResult memory result) {
-        // Check position is in queue and grace period passed
-        require(liquidationQueue.isQueued(positionId), "Not in queue");
-        require(
-            block.timestamp >= liquidationQueue.getQueueTime(positionId) + liquidatorConfig.gracePeriod,
-            "Grace period not passed"
+        IPerpEngine.PositionView memory position = perpEngine.getPosition(positionId);
+        uint256 currentPrice = _getValidatedPrice(position.marketId);
+
+        if (liquidationQueue.isQueued(positionId)) {
+            require(
+                block.timestamp >= liquidationQueue.getQueueTime(positionId) + liquidatorConfig.gracePeriod,
+                "Grace period not passed"
+            );
+        }
+
+        uint256 positionSizeBefore = position.size;
+
+        // Strict liquidatability check before calling PerpEngine
+        require(perpEngine.isPositionLiquidatable(positionId, currentPrice), "Position not liquidatable");
+
+        // Calculate canonical penalty and reward before position state mutation
+        (, uint256 penalty, , ) = _calculateLiquidation(positionId, currentPrice, 0);
+
+        // Execute full liquidation via PerpEngine
+        uint256 reward = perpEngine.liquidatePosition(
+            IPerpEngine.LiquidateParams({
+                positionId: positionId,
+                trader: position.trader,
+                marketId: position.marketId,
+                sizeToLiquidate: positionSizeBefore,
+                minReward: minReward,
+                liquidator: liquidator
+            })
         );
 
-        // Get current price and health factor
-        uint256 marketId = perpEngine.getPosition(positionId).marketId;
-        uint256 currentPrice = _getValidatedPrice(marketId);
-        uint256 healthFactor = perpEngine.getHealthFactor(positionId);
-        
-        // Strict liquidatability check
-        require(healthFactor > 0 && healthFactor < HEALTH_FACTOR_SCALE, "Position not liquidatable");
-
-        // Calculate liquidation details
-        (uint256 reward, uint256 penalty, uint256 newHealthFactor, uint256 liquidatedSize) = _calculateLiquidation(
-            positionId,
-            currentPrice,
-            healthFactor
-        );
-        
-        require(reward >= minReward, "Reward below minimum");
-        require(reward <= liquidatorConfig.maxReward, "Reward exceeds maximum");
-        
-        // Execute liquidation via PerpEngine
-        uint256 positionSizeBefore = perpEngine.getPosition(positionId).size;
-        uint256 remainingSize = _executePerpLiquidation(positionId, currentPrice, penalty, liquidatedSize);
-        
         // Update state
-        isPositionLiquidated[positionId] = remainingSize == 0;
+        isPositionLiquidated[positionId] = true;
         lastLiquidationTime[positionId] = block.timestamp;
         totalLiquidations++;
-        totalLiquidationVolume += positionSizeBefore - remainingSize;
-        
-        // Distribute rewards
-        _distributeLiquidationRewards(positionId, reward, penalty, liquidator);
-        
+        totalLiquidationVolume += positionSizeBefore;
+
+        // Reward was physically paid directly by LiquidityVault via PerpEngine
+        if (reward > 0) {
+            liquidatorRewards[liquidator] += reward;
+        }
+
         // Prepare result
         result = LiquidationResult({
             positionId: positionId,
@@ -170,16 +174,16 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
             liquidationPrice: currentPrice,
             penalty: penalty,
             reward: reward,
-            remainingSize: remainingSize,
-            fullyLiquidated: remainingSize == 0
+            remainingSize: 0,
+            fullyLiquidated: true
         });
-        
-        // Remove from queue if fully liquidated
-        if (remainingSize == 0) {
+
+        // Remove from queue if queued
+        if (liquidationQueue.isQueued(positionId)) {
             liquidationQueue.remove(positionId);
         }
-        
-        emit LiquidationExecuted(positionId, liquidator, reward, penalty, remainingSize == 0);
+
+        emit LiquidationExecuted(positionId, liquidator, reward, penalty, true);
     }
 
     /**
@@ -264,14 +268,14 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
                 continue;
             }
 
-            // Remove healthy or invalid positions from queue
-            uint256 hf = perpEngine.getHealthFactor(nextPositionId);
-            if (hf == 0 || hf >= HEALTH_FACTOR_SCALE) {
+            // Check liquidatability
+            IPerpEngine.PositionView memory pos = perpEngine.getPosition(nextPositionId);
+            if (!perpEngine.isPositionLiquidatable(nextPositionId, _getValidatedPrice(pos.marketId))) {
                 liquidationQueue.remove(nextPositionId);
                 continue;
             }
             
-            try this._executeFromQueue(nextPositionId, liquidatorConfig.minReward, msg.sender) {
+            try this._executeFromQueue(nextPositionId, 0, msg.sender) {
                 numProcessed++;
             } catch {
                 // Skip and continue
@@ -289,16 +293,18 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
     /**
      * @inheritdoc ILiquidationEngine
      */
-    function previewLiquidation(uint256 positionId, uint256 currentPrice)
+    function previewLiquidation(uint256 positionId, uint256 /* currentPrice */)
         public
         view
         override
         returns (uint256 reward, uint256 penalty, uint256 newHealthFactor)
     {
+        IPerpEngine.PositionView memory position = perpEngine.getPosition(positionId);
+        uint256 canonicalPrice = _getValidatedPrice(position.marketId);
         uint256 healthFactor = perpEngine.getHealthFactor(positionId);
         require(healthFactor < HEALTH_FACTOR_SCALE, "Position healthy");
         
-        (reward, penalty, newHealthFactor, ) = _calculateLiquidation(positionId, currentPrice, healthFactor);
+        (reward, penalty, newHealthFactor, ) = _calculateLiquidation(positionId, canonicalPrice, healthFactor);
     }
 
     /**
@@ -307,23 +313,14 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
     function estimateReward(
         uint256 positionId,
         uint256 liquidatedSize,
-        uint256 liquidationPrice
+        uint256 /* liquidationPrice */
     ) public view override returns (uint256 reward) {
-        // Calculate penalty based on liquidated size notionnel in quote token units
-        uint256 notionalLiquidated = (liquidatedSize * liquidationPrice) / 1e8;
-        uint256 penalty = (notionalLiquidated * liquidatorConfig.penaltyRatio) / HEALTH_FACTOR_SCALE;
-        
-        // Calculate reward (penalty + incentive)
-        uint256 baseReward = penalty;
-        uint256 incentive = (baseReward * _getIncentiveMultiplier()) / HEALTH_FACTOR_SCALE;
-        
-        reward = baseReward + incentive;
-        
-        // Apply caps
-        reward = reward > liquidatorConfig.maxReward ? liquidatorConfig.maxReward : reward;
-        reward = reward < liquidatorConfig.minReward ? liquidatorConfig.minReward : reward;
-        
-        return reward;
+        IPerpEngine.PositionView memory position = perpEngine.getPosition(positionId);
+        if (liquidatedSize != 0 && liquidatedSize != position.size) {
+            revert("LiquidationEngine: full liquidation only");
+        }
+        uint256 canonicalPrice = _getValidatedPrice(position.marketId);
+        (reward, , , ) = _calculateLiquidation(positionId, canonicalPrice, 0);
     }
 
     /**
@@ -362,75 +359,51 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
     // ============ INTERNAL FUNCTIONS ============
 
     /**
-     * @dev Calculate liquidation details
+     * @dev Calculate canonical full liquidation details (07B) with native quote quantization
      */
     function _calculateLiquidation(
         uint256 positionId,
-        uint256 currentPrice,
-        uint256 healthFactor
+        uint256 /* currentPrice */,
+        uint256 /* healthFactor */
     ) internal view returns (uint256 reward, uint256 penalty, uint256 newHealthFactor, uint256 liquidatedSize) {
         IPerpEngine.PositionView memory position = perpEngine.getPosition(positionId);
-        
-        // Calculate how much to liquidate to bring health factor to MIN_HEALTH_FACTOR
-        uint256 targetHealthFactor = MIN_HEALTH_FACTOR;
-        uint256 liquidationRatio = (HEALTH_FACTOR_SCALE - healthFactor) * HEALTH_FACTOR_SCALE / 
-                                  (HEALTH_FACTOR_SCALE - targetHealthFactor);
-        
-        // Cap at 100%
-        liquidationRatio = liquidationRatio > HEALTH_FACTOR_SCALE ? HEALTH_FACTOR_SCALE : liquidationRatio;
-        
-        liquidatedSize = (position.size * liquidationRatio) / HEALTH_FACTOR_SCALE;
-        
-        // Calculate penalty based on liquidated size notionnel in quote token units
-        uint256 notionalLiquidated = (liquidatedSize * currentPrice) / 1e8;
-        penalty = (notionalLiquidated * liquidatorConfig.penaltyRatio) / HEALTH_FACTOR_SCALE;
-        
-        // Calculate reward
-        reward = estimateReward(positionId, liquidatedSize, currentPrice);
-        
-        /// @dev WARNING: newHealthFactor is an approximation only.
-        /// The formula (remainingMargin / remainingSize * 2) has no
-        /// mathematical basis. Do not use this value for on-chain
-        /// liquidation decisions. It is for UI estimation only.
-        if (liquidatedSize < position.size) {
-            uint256 remainingSize = position.size - liquidatedSize;
-            uint256 remainingMargin = position.margin - (position.margin * liquidationRatio) / HEALTH_FACTOR_SCALE;
-            
-            // Simplified health factor calculation
-            uint256 remainingLiqPrice = (remainingMargin * HEALTH_FACTOR_SCALE) / (remainingSize * 2); // Approximation
-            newHealthFactor = (currentPrice * HEALTH_FACTOR_SCALE) / remainingLiqPrice;
-        } else {
-            newHealthFactor = HEALTH_FACTOR_SCALE; // Fully liquidated
-        }
+        uint256 canonicalPrice = _getValidatedPrice(position.marketId);
+        IPerpEngine.Market memory market = perpEngine.getMarket(position.marketId);
+
+        liquidatedSize = position.size;
+        uint256 liquidatedNotional = Math.mulDiv(liquidatedSize, canonicalPrice, 1e8);
+
+        // Penalty CEIL rounding using full-precision Math.mulDiv
+        penalty = Math.mulDiv(
+            liquidatedNotional,
+            market.liquidationFeeRatio,
+            HEALTH_FACTOR_SCALE,
+            Math.Rounding.Up
+        );
+
+        // Nominal Reward FLOOR rounding (50% reward share)
+        uint256 nominalReward = (penalty * 5000) / 10000;
+        reward = _quantizeToNativeWad(nominalReward);
+        newHealthFactor = HEALTH_FACTOR_SCALE; // Fully liquidated
     }
 
     /**
-     * @dev Execute liquidation through PerpEngine
+     * @dev Quantize WAD reward to native quote unit boundary and back to WAD
      */
-    function _executePerpLiquidation(
-        uint256 positionId,
-        uint256 liquidationPrice,
-        uint256 penalty,
-        uint256 sizeToLiquidate
-    ) internal returns (uint256 remainingSize) {
-        // Get position before liquidation
-        IPerpEngine.PositionView memory positionBefore = perpEngine.getPosition(positionId);
-        
-        // Call PerpEngine to liquidate
-        perpEngine.liquidatePosition(
-            IPerpEngine.LiquidateParams({
-                positionId: positionId,
-                trader: positionBefore.trader,
-                marketId: positionBefore.marketId,
-                sizeToLiquidate: sizeToLiquidate,
-                minReward: 0
-            })
-        );
-        
-        // Get position after liquidation
-        IPerpEngine.PositionView memory positionAfter = perpEngine.getPosition(positionId);
-        
-        return positionAfter.size;
+    function _quantizeToNativeWad(uint256 amountWad) internal view returns (uint256) {
+        if (amountWad == 0) return 0;
+        uint8 decimals = 18;
+        try IERC20Metadata(address(quoteToken)).decimals() returns (uint8 d) {
+            decimals = d;
+        } catch {}
+
+        if (decimals >= 18) {
+            return amountWad;
+        } else {
+            uint256 factor = 10**(18 - decimals);
+            uint256 nativeUnits = amountWad / factor;
+            return nativeUnits * factor;
+        }
     }
 
     /**
@@ -463,17 +436,14 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
     }
 
     function _getValidatedPrice(uint256 marketId) internal view returns (uint256) {
-        bytes32 feedId = marketFeedIds[marketId];
+        IPerpEngine.Market memory m = perpEngine.getMarket(marketId);
+        bytes32 feedId = m.oracleFeedId;
         require(feedId != bytes32(0), "LiquidationEngine: feedId not configured");
         
         // Get price with validation
         uint256 price = oracleAggregator.getPrice(feedId);
         require(price > 0, "Invalid price");
         require(!oracleAggregator.isPriceStale(feedId), "Price stale");
-        
-        // Additional validation
-        IOracleAggregator.PriceData memory priceData = oracleAggregator.getPriceData(feedId);
-        require(priceData.status == IOracleAggregator.PriceStatus.ACTIVE, "Price not active");
         
         return price;
     }
@@ -482,19 +452,10 @@ contract LiquidationEngine is ILiquidationEngine, ReentrancyGuard, Pausable {
      * @dev Estimate liquidation reward for queuing
      */
     function _estimateLiquidationReward(uint256 positionId, uint256 healthFactor) internal view returns (uint256) {
-        // Get current price for estimation
         uint256 marketId = perpEngine.getPosition(positionId).marketId;
-        bytes32 feedId = marketFeedIds[marketId];
-        require(feedId != bytes32(0), "LiquidationEngine: feedId not configured");
-        uint256 currentPrice = oracleAggregator.getPrice(feedId);
-        
-        (, uint256 estimatedPenalty, , ) = _calculateLiquidation(positionId, currentPrice, healthFactor);
-        
-        // Base reward is penalty plus incentive
-        uint256 baseReward = estimatedPenalty;
-        uint256 incentive = (baseReward * _getIncentiveMultiplier()) / HEALTH_FACTOR_SCALE;
-        
-        return baseReward + incentive;
+        uint256 currentPrice = _getValidatedPrice(marketId);
+        (uint256 reward, , , ) = _calculateLiquidation(positionId, currentPrice, healthFactor);
+        return reward;
     }
 
     /**

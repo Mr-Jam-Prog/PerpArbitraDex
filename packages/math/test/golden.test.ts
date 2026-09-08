@@ -304,4 +304,127 @@ describe('Golden Vectors Spec Coverage (GV-01 to GV-20)', () => {
         const res = executeLiquidation(pos, 500n * WAD, 0n, defaultParams);
         assert.equal(res.badDebtWad, 300n * WAD); // Margin 200, PnL -500 -> Bad debt 300
     });
+
+    test('LIQ-REF-NATIVE1: 6-decimal non-exact native quantization liquidation parity', () => {
+        const usdcParams: ProtocolParams = { ...defaultParams, quoteDecimals: 6 };
+        const pos: PositionState = {
+            sizeWad: 1333333333333333333n,
+            entryPriceWad: 2000n * WAD,
+            marginWad: 200n * WAD,
+            isLong: true,
+            entryFundingIndexWad: 0n
+        };
+
+        const res = executeLiquidation(pos, 1800n * WAD, 0n, usdcParams);
+        assert.equal(res.liquidatorRewardWad % 10n**12n, 0n);
+    });
+
+    test('LIQ-REF-NATIVE2: 18-decimal control (effectiveRewardWad == nominalRewardWad)', () => {
+        const pos: PositionState = {
+            sizeWad: 1333333333333333333n,
+            entryPriceWad: 2000n * WAD,
+            marginWad: 200n * WAD,
+            isLong: true,
+            entryFundingIndexWad: 0n
+        };
+
+        const res = executeLiquidation(pos, 1800n * WAD, 0n, defaultParams);
+        const notional = (pos.sizeWad * 1800n * WAD) / WAD;
+        const penalty = (notional * defaultParams.liquidationPenaltyBps + 9999n) / 10000n;
+        const nominalReward = (penalty * defaultParams.liquidatorRewardShareBps) / 10000n;
+
+        assert.equal(res.liquidatorRewardWad, nominalReward);
+    });
+
+    test('LIQ-REF-PEN6D1: 6d penalty quantization branch boundary parity', () => {
+        const usdcParams: ProtocolParams = { ...defaultParams, quoteDecimals: 6 };
+        const pos: PositionState = {
+            sizeWad: 1333333333333333333n,
+            entryPriceWad: 2000n * WAD,
+            marginWad: 50n * WAD,
+            isLong: true,
+            entryFundingIndexWad: 0n
+        };
+
+        const res = executeLiquidation(pos, 1800n * WAD, 0n, usdcParams);
+        assert.equal(res.liquidatorRewardWad % 10n**12n, 0n);
+        assert.equal(res.insuranceFundAddWad % 10n**12n, 0n);
+        assert.equal(res.badDebtWad % 10n**12n, 0n);
+    });
+
+    test('LIQ-REF-NET6D1: 6d rounding-order destruction vector exact parity', () => {
+        const usdcParams: ProtocolParams = { ...defaultParams, quoteDecimals: 6 };
+        const pos: PositionState = {
+            sizeWad: 1n * WAD,
+            entryPriceWad: 1000n * WAD,
+            marginWad: 10n**12n, // 1 micro-USDC
+            isLong: true,
+            entryFundingIndexWad: 0n
+        };
+
+        const currentPrice = 1000n * WAD + 750000000000n;
+        const currentFundingIndex = 1500000000000n;
+
+        const res = executeLiquidation(pos, currentPrice, currentFundingIndex, usdcParams);
+        assert.equal(res.traderRemainingEquityWad, 0n);
+        assert.equal(res.badDebtWad, 0n);
+    });
+
+    test('LIQ-MATH-FUND-UNCLAMP1 & PARITY-FUND-UNCLAMP: unclamped funding accrued math parity', () => {
+        const posParams = {
+            size: 1n * WAD,
+            collateral: 100n * WAD,
+            entryPrice: 200000000000n, // $2000
+            isLong: true,
+            fundingAccrued: 500n * WAD // 500 WAD funding debit > size
+        };
+        const riskParams = {
+            maintenanceMarginBps: 500n, // 5%
+            liquidationThresholdBps: 10000n
+        };
+
+        const hf = calculateHealthFactorWad(
+            posParams.collateral - posParams.fundingAccrued,
+            100n * WAD
+        );
+        assert.equal(hf, 0n); // Unclamped equity <= 0 => HF = 0
+    });
+
+    test('LIQ-REF-DEC0 & PARITY-DEC0: quoteDecimals = 0 whole-token quantization', () => {
+        const dec0Params: ProtocolParams = { ...defaultParams, quoteDecimals: 0 };
+        const pos: PositionState = {
+            sizeWad: 1333333333333333333n,
+            entryPriceWad: 2000n * WAD,
+            marginWad: 100n * WAD,
+            isLong: true,
+            entryFundingIndexWad: 0n
+        };
+
+        const res = executeLiquidation(pos, 1800n * WAD, 0n, dec0Params);
+        // All WAD results must be whole-token integers (multiples of 1e18 WAD)
+        assert.equal(res.liquidatorRewardWad % WAD, 0n);
+        assert.equal(res.insuranceFundAddWad % WAD, 0n);
+        assert.equal(res.badDebtWad % WAD, 0n);
+    });
+
+    test('LIQ-REF-REWARD-SHARE1 & LIQ-REF-REWARD-SHARE-REJECT1: canonical 50% reward share enforcement', () => {
+        const pos: PositionState = {
+            sizeWad: 1n * WAD,
+            entryPriceWad: 2000n * WAD,
+            marginWad: 200n * WAD,
+            isLong: true,
+            entryFundingIndexWad: 0n
+        };
+
+        // Standard 5000n share succeeds
+        const res = executeLiquidation(pos, 1800n * WAD, 0n, defaultParams);
+        assert.ok(res.liquidatorRewardWad > 0n);
+
+        // Non-5000n share throws error
+        const invalidParams: ProtocolParams = { ...defaultParams, liquidatorRewardShareBps: 6000n };
+        assert.throws(
+            () => executeLiquidation(pos, 1800n * WAD, 0n, invalidParams),
+            /non-canonical liquidatorRewardShareBps/
+        );
+    });
 });

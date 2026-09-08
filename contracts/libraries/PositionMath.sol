@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "./SafeDecimalMath.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /**
  * @title PositionMath - Ultimate Production Grade
@@ -211,9 +212,9 @@ library PositionMath {
             return 0;
         }
         
-        // Calculate maintenance margin in quote units
+        // Calculate maintenance margin in quote units (CEIL rounding)
         uint256 notionalValue = params.size.mulDiv(validateAndNormalizePrice(currentPrice), DECIMALS);
-        uint256 maintenanceMargin = notionalValue.mulDiv(riskParams.maintenanceMarginBps, 10000);
+        uint256 maintenanceMargin = Math.mulDiv(notionalValue, riskParams.maintenanceMarginBps, 10000, Math.Rounding.Up);
         
         // Prevent division by zero (should never happen with validation)
         if (maintenanceMargin == 0) {
@@ -523,18 +524,10 @@ library PositionMath {
         uint256 collateral,
         int256 pnl,
         int256 fundingAccrued,
-        uint256 size
+        uint256 /* size */
     ) private pure returns (int256) {
-        // Clamp funding to economic bounds to prevent attacks
-        int256 fundingClamped = fundingAccrued;
-        
-        if (fundingAccrued > int256(size)) {
-            fundingClamped = int256(size);
-        } else if (fundingAccrued < -int256(size)) {
-            fundingClamped = -int256(size);
-        }
-        
-        return int256(collateral) + pnl - fundingClamped;
+        // Unclamped cumulative funding per unit size model
+        return int256(collateral) + pnl - fundingAccrued;
     }
     
     // ============ VALIDATION FUNCTIONS ============
