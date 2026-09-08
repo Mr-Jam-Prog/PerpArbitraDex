@@ -1,6 +1,6 @@
 /**
- * Partial Liquidation Math & Feasibility Prototype (Prompt 07C-A-R2)
- * Formally defined according to docs/ECONOMIC_SPEC.md & PROMPT 07C-A-R2 requirements.
+ * Partial Liquidation Math & Feasibility Prototype (Prompt 07C-A-R3)
+ * Formally defined according to docs/ECONOMIC_SPEC.md & PROMPT 07C-A-R3 requirements.
  */
 export declare enum CollateralPolicy {
     POLICY_A = "POLICY_A",// Voluntary-decrease style proportional margin withdrawal
@@ -9,7 +9,7 @@ export declare enum CollateralPolicy {
 }
 export declare enum SizingMode {
     NONE = "NONE",
-    PARTIAL = "PARTIAL",
+    PARTIAL_CONSERVATIVE = "PARTIAL_CONSERVATIVE",
     FULL_FALLBACK = "FULL_FALLBACK"
 }
 export interface PartialLiquidationParams {
@@ -70,6 +70,7 @@ export interface PartialSizingRecommendation {
     mode: SizingMode;
     willFullyLiquidate: boolean;
     partialResult?: PartialLiquidationResult;
+    roundingBufferAppliedWad?: bigint;
     fallbackReason?: string;
     evaluationCount?: number;
 }
@@ -83,7 +84,13 @@ export declare function evaluateBasePosition(s0Wad: bigint, m0Wad: bigint, entry
  */
 export declare function simulatePartialLiquidation(params: PartialLiquidationParams): PartialLiquidationResult;
 /**
- * Canonical minimum safe size solver for Policy B using exact O(log S0) BigInt binary search.
+ * Conservative Upper-Bound Predicate for Policy B (`ConservativeSafeB`).
+ * Evaluates whether deltaSWad satisfies Policy B under worst-case rounding bounds,
+ * ensuring strict monotonicity over integer WAD units.
+ */
+export declare function isConservativeSafePolicyB(params: PartialLiquidationParams): boolean;
+/**
+ * Canonical minimum safe size solver for Policy B using exact O(log S0) BigInt binary search over ConservativeSafeB.
  */
 export declare function findMinimumSafePolicyBSize(params: Omit<PartialLiquidationParams, "deltaSWad" | "policy">): PartialSizingRecommendation;
 /**

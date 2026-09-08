@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
     WAD,
     simulatePartialLiquidation,
+    isConservativeSafePolicyB,
     findMinimumSafePolicyBSize,
     findMinimumSafePartialSize,
     evaluateBasePosition,
@@ -341,14 +342,14 @@ describe("Partial Liquidation Feasibility Suite (Prompt 07C-A-R2 Vectors A - P +
 
         const minResult = findMinimumSafePolicyBSize(params6dBase);
         assert.equal(minResult.willFullyLiquidate, false);
-        assert.equal(minResult.mode, SizingMode.PARTIAL);
+        assert.equal(minResult.mode, SizingMode.PARTIAL_CONSERVATIVE);
         const xStar = minResult.recommendedDeltaSWad;
 
-        const resStar = simulatePartialLiquidation({ ...params6dBase, deltaSWad: xStar, policy: CollateralPolicy.POLICY_B });
-        assert.equal(resStar.isSafe, true);
+        const isSafeAtXStar = isConservativeSafePolicyB({ ...params6dBase, deltaSWad: xStar, policy: CollateralPolicy.POLICY_B });
+        assert.equal(isSafeAtXStar, true);
 
-        const resBelow = simulatePartialLiquidation({ ...params6dBase, deltaSWad: xStar - 1n, policy: CollateralPolicy.POLICY_B });
-        assert.equal(resBelow.isSafe, false);
+        const isSafeBelow = isConservativeSafePolicyB({ ...params6dBase, deltaSWad: xStar - 1n, policy: CollateralPolicy.POLICY_B });
+        assert.equal(isSafeBelow, false);
     });
 
     test("Vector O: Dust fallback due to surviving size below minPositionSize", () => {
@@ -419,12 +420,12 @@ describe("Partial Liquidation Feasibility Suite (Prompt 07C-A-R2 Vectors A - P +
         // closedAvailable = M_rel(50) + closedPnL(50) = 100 WAD.
         // effectivePenalty = 251.25 WAD > 100 WAD => shortfall = 151.25 WAD.
         // mRetained = 50 WAD < 151.25 WAD => mPost = 0 WAD.
-        // Unfunded penalty = 151.25 - 50 = 101.25 WAD => residualBadDebtWad > 0!
+        // Unfunded penalty = 151.25 - 50 = 101.25 WAD => residualBadDebtWad = 101.25 WAD!
         const res = simulatePartialLiquidation(params);
         assert.equal(res.traderPayoutWad, 0n);
         assert.equal(res.mPostWad, 0n);
         assert.equal(res.externalBadDebtRequired, true);
-        assert.ok(res.residualBadDebtWad > 0n);
+        assert.equal(res.residualBadDebtWad, 101250000000000000000n); // Exact 101.25 WAD
         assert.equal(res.isSafe, false);
     });
 
@@ -542,6 +543,38 @@ describe("Partial Liquidation Feasibility Suite (Prompt 07C-A-R2 Vectors A - P +
         assert.ok(transitionedToSafe);
     });
 
+    test("LIQ-PART-NONMONO-0D1: Freeze Codex 0d native penalty non-monotonicity counterexample", () => {
+        const codexParams = {
+            s0Wad: 11n * WAD,
+            m0Wad: 388n * WAD,
+            entryPrice8d: 523_00000000n,
+            currentPrice8d: 567_00000000n,
+            isLong: true,
+            fundingPaymentWad: 331n * WAD,
+            targetHfWad: 1170000000000000000n, // 1.17
+            policy: CollateralPolicy.POLICY_B,
+            liqFeeRatioBps: 421n, // 4.21%
+            maintenanceMarginBps: 1010n, // 10.10%
+            minMarginRatioBps: 1960n, // 19.60%
+            quoteDecimals: 0,
+            minPositionSizeWad: 1n * WAD
+        };
+
+        const x1 = 8_881000000000000000n;
+        const res1 = simulatePartialLiquidation({ ...codexParams, deltaSWad: x1 });
+
+        const x2 = 8_882000000000000000n;
+        const res2 = simulatePartialLiquidation({ ...codexParams, deltaSWad: x2 });
+
+        const x3 = 8_886000000000000000n;
+        const res3 = simulatePartialLiquidation({ ...codexParams, deltaSWad: x3 });
+
+        // Demonstrates true -> false -> true exact discrete non-monotonicity!
+        assert.equal(res1.isSafe, true);
+        assert.equal(res2.isSafe, false); // native penalty step increases charge from 212 to 213 tokens!
+        assert.equal(res3.isSafe, true);  // larger close reduces required minMargin, restoring safety!
+    });
+
     test("LIQ-PART-REF-MIN1: Minimum safe size 1-wei minimality test", () => {
         const paramsBase = {
             s0Wad: 10n * WAD,
@@ -561,11 +594,11 @@ describe("Partial Liquidation Feasibility Suite (Prompt 07C-A-R2 Vectors A - P +
         assert.equal(minResult.willFullyLiquidate, false);
         const xStar = minResult.recommendedDeltaSWad;
 
-        const resStar = simulatePartialLiquidation({ ...paramsBase, deltaSWad: xStar, policy: CollateralPolicy.POLICY_B });
-        assert.equal(resStar.isSafe, true);
+        const isSafeAtXStar = isConservativeSafePolicyB({ ...paramsBase, deltaSWad: xStar, policy: CollateralPolicy.POLICY_B });
+        assert.equal(isSafeAtXStar, true);
 
-        const resBelow = simulatePartialLiquidation({ ...paramsBase, deltaSWad: xStar - 1n, policy: CollateralPolicy.POLICY_B });
-        assert.equal(resBelow.isSafe, false);
+        const isSafeBelow = isConservativeSafePolicyB({ ...paramsBase, deltaSWad: xStar - 1n, policy: CollateralPolicy.POLICY_B });
+        assert.equal(isSafeBelow, false);
     });
 
     // ============ EXTRA PARITY & DESTRUCTION VECTORS ============

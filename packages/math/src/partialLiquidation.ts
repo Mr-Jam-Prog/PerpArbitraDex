@@ -1,6 +1,6 @@
 /**
- * Partial Liquidation Math & Feasibility Prototype (Prompt 07C-A-R2)
- * Formally defined according to docs/ECONOMIC_SPEC.md & PROMPT 07C-A-R2 requirements.
+ * Partial Liquidation Math & Feasibility Prototype (Prompt 07C-A-R3)
+ * Formally defined according to docs/ECONOMIC_SPEC.md & PROMPT 07C-A-R3 requirements.
  */
 
 import {
@@ -26,7 +26,7 @@ export enum CollateralPolicy {
 
 export enum SizingMode {
     NONE = "NONE",
-    PARTIAL = "PARTIAL",
+    PARTIAL_CONSERVATIVE = "PARTIAL_CONSERVATIVE",
     FULL_FALLBACK = "FULL_FALLBACK"
 }
 
@@ -91,6 +91,7 @@ export interface PartialSizingRecommendation {
     mode: SizingMode;
     willFullyLiquidate: boolean;
     partialResult?: PartialLiquidationResult;
+    roundingBufferAppliedWad?: bigint;
     fallbackReason?: string;
     evaluationCount?: number;
 }
@@ -321,7 +322,10 @@ export function simulatePartialLiquidation(
             } else {
                 mPostWad = 0n;
                 const unfundedPenaltyWad = penaltyShortfallWad - mRetainedWad;
-                residualBadDebtWad += unfundedPenaltyWad;
+                // Single-source bad debt accounting identity
+                residualBadDebtWad = totalClosedObligationsWad > (m1Wad + (pnlClosedWad > 0n ? pnlClosedWad : 0n))
+                    ? totalClosedObligationsWad - (m1Wad + (pnlClosedWad > 0n ? pnlClosedWad : 0n))
+                    : unfundedPenaltyWad;
                 externalBadDebtRequired = true;
             }
         }
@@ -422,7 +426,100 @@ export function simulatePartialLiquidation(
 }
 
 /**
- * Canonical minimum safe size solver for Policy B using exact O(log S0) BigInt binary search.
+ * Conservative Upper-Bound Predicate for Policy B (`ConservativeSafeB`).
+ * Evaluates whether deltaSWad satisfies Policy B under worst-case rounding bounds,
+ * ensuring strict monotonicity over integer WAD units.
+ */
+export function isConservativeSafePolicyB(
+    params: PartialLiquidationParams
+): boolean {
+    const {
+        s0Wad,
+        m0Wad,
+        deltaSWad,
+        entryPrice8d,
+        currentPrice8d,
+        isLong,
+        fundingPaymentWad,
+        targetHfWad,
+        liqFeeRatioBps,
+        maintenanceMarginBps,
+        minMarginRatioBps = maintenanceMarginBps,
+        quoteDecimals,
+        minPositionSizeWad
+    } = params;
+
+    const remainingSizeWad = s0Wad > deltaSWad ? s0Wad - deltaSWad : 0n;
+    if (deltaSWad <= 0n || deltaSWad >= s0Wad) return false;
+
+    const baseState = evaluateBasePosition(
+        s0Wad,
+        m0Wad,
+        entryPrice8d,
+        currentPrice8d,
+        isLong,
+        fundingPaymentWad,
+        maintenanceMarginBps,
+        quoteDecimals
+    );
+
+    if (!baseState.isLiquidatable) return false;
+
+    const currentPriceWad = currentPrice8d * ORACLE_NORM_FACTOR;
+    const nativeQuantumWad = quoteDecimals < 18 ? 10n ** BigInt(18 - quoteDecimals) : 1n;
+
+    // 1. Conservative Penalty Upper Bound (+ native quantum + 1 wei)
+    const notionalClosedWad = calculateNotionalQuoteWad(deltaSWad, currentPriceWad);
+    const penaltyUpperWad = mulDivCeil(notionalClosedWad, liqFeeRatioBps, 10000n) + nativeQuantumWad + 1n;
+
+    // 2. Conservative Closed Loss Upper Bound
+    const entryPriceWad = entryPrice8d * ORACLE_NORM_FACTOR;
+    const pnlClosedWad = calculateUnrealizedPnlWad(deltaSWad, entryPriceWad, currentPriceWad, isLong);
+    const lossClosedUpperWad = pnlClosedWad < 0n ? abs(pnlClosedWad) + 1n : 0n;
+
+    // 3. Conservative Total Obligations Upper Bound
+    const uWad = baseState.unpaidFundingWad;
+    const totalObligationsUpperWad = lossClosedUpperWad + uWad + penaltyUpperWad;
+
+    // Unpaid funding cure check
+    const m1Wad = baseState.m1Wad;
+    const realizedProfitClosedWad = pnlClosedWad > 0n ? pnlClosedWad : 0n;
+    if (uWad > (m1Wad + realizedProfitClosedWad)) return false;
+
+    // Realized obligations breach check
+    if (totalObligationsUpperWad > (m1Wad + realizedProfitClosedWad)) return false;
+
+    // 4. Conservative Surviving Stored Margin Lower Bound
+    let mPostLowerWad = 0n;
+    if (pnlClosedWad > 0n) {
+        mPostLowerWad = (m1Wad + pnlClosedWad) >= (uWad + penaltyUpperWad)
+            ? (m1Wad + pnlClosedWad - uWad - penaltyUpperWad)
+            : 0n;
+    } else {
+        mPostLowerWad = m1Wad >= totalObligationsUpperWad ? m1Wad - totalObligationsUpperWad : 0n;
+    }
+
+    // 5. Conservative Surviving Maintenance & Min Margin Requirements Upper Bounds
+    const remainingNotionalWad = calculateNotionalQuoteWad(remainingSizeWad, currentPriceWad);
+    const mmRemainingUpperWad = mulDivCeil(remainingNotionalWad, maintenanceMarginBps, 10000n) + 1n;
+    const minMarginRequiredUpperWad = mulDivCeil(remainingNotionalWad, minMarginRatioBps, 10000n) + 1n;
+
+    if (mPostLowerWad < minMarginRequiredUpperWad) return false;
+    if (remainingSizeWad < minPositionSizeWad) return false;
+
+    // 6. Conservative Surviving Equity Lower Bound
+    const pnlRemainingWad = calculateUnrealizedPnlWad(remainingSizeWad, entryPriceWad, currentPriceWad, isLong);
+    const equityLowerWad = mPostLowerWad + pnlRemainingWad - 1n;
+
+    if (equityLowerWad <= 0n) return false;
+
+    // 7. Conservative Health Factor Lower Bound
+    const hfConsWad = calculateHealthFactorWad(equityLowerWad, mmRemainingUpperWad);
+    return hfConsWad >= targetHfWad;
+}
+
+/**
+ * Canonical minimum safe size solver for Policy B using exact O(log S0) BigInt binary search over ConservativeSafeB.
  */
 export function findMinimumSafePolicyBSize(
     params: Omit<PartialLiquidationParams, "deltaSWad" | "policy">
@@ -465,9 +562,8 @@ export function findMinimumSafePolicyBSize(
         };
     }
 
-    // 3. Exact O(log S0) BigInt binary search finding minimal safe integer x*
+    // 3. Exact O(log S0) BigInt binary search over ConservativeSafeB
     let bestX: bigint | null = null;
-    let bestRes: PartialLiquidationResult | undefined = undefined;
     let low = lo;
     let high = hi;
     let evalCount = 0;
@@ -475,22 +571,28 @@ export function findMinimumSafePolicyBSize(
     while (low <= high) {
         evalCount++;
         const mid = low + (high - low) / 2n;
-        const res = simulatePartialLiquidation({ ...params, deltaSWad: mid, policy: CollateralPolicy.POLICY_B });
-        if (res.isSafe) {
+        const fullParams: PartialLiquidationParams = { ...params, deltaSWad: mid, policy: CollateralPolicy.POLICY_B };
+        const isConsSafe = isConservativeSafePolicyB(fullParams);
+
+        if (isConsSafe) {
             bestX = mid;
-            bestRes = res;
             high = mid - 1n; // Search lower for smaller safe x
         } else {
             low = mid + 1n; // Search higher
         }
     }
 
-    if (bestX !== null && bestRes) {
+    if (bestX !== null) {
+        const exactSim = simulatePartialLiquidation({ ...params, deltaSWad: bestX, policy: CollateralPolicy.POLICY_B });
+        const unbufferedSim = simulatePartialLiquidation({ ...params, deltaSWad: lo, policy: CollateralPolicy.POLICY_B });
+        const roundingBufferAppliedWad = bestX > lo ? bestX - lo : 0n;
+
         return {
             recommendedDeltaSWad: bestX,
-            mode: SizingMode.PARTIAL,
+            mode: SizingMode.PARTIAL_CONSERVATIVE,
             willFullyLiquidate: false,
-            partialResult: bestRes,
+            partialResult: exactSim,
+            roundingBufferAppliedWad,
             evaluationCount: evalCount
         };
     }
