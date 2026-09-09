@@ -1,6 +1,6 @@
 /**
- * Partial Liquidation Math & Feasibility Prototype (Prompt 07C-A-R3)
- * Formally defined according to docs/ECONOMIC_SPEC.md & PROMPT 07C-A-R3 requirements.
+ * Partial Liquidation Math & Feasibility Prototype (Prompt 07C-A-R4)
+ * Formally defined according to docs/ECONOMIC_SPEC.md & PROMPT 07C-A-R4 requirements.
  */
 import { WAD, ORACLE_NORM_FACTOR, mulDivFloor, mulDivCeil, abs, wadToNativeQuote, wadToNativeQuoteCeil, nativeQuoteToWad, calculateNotionalQuoteWad, calculateUnrealizedPnlWad, calculateMaintenanceMarginWad, calculateHealthFactorWad } from "./referenceModel.js";
 export var CollateralPolicy;
@@ -82,6 +82,9 @@ export function simulatePartialLiquidation(params) {
             rewardNative: 0n,
             effectiveRewardWad: 0n,
             pnlClosedWad: 0n,
+            nominalClosedLossWad: 0n,
+            closedLossNative: 0n,
+            effectiveClosedLossWad: 0n,
             pnlRemainingWad: 0n,
             pnlRoundingResidualWad: 0n,
             unpaidFundingBeforeWad: baseState.unpaidFundingWad,
@@ -113,6 +116,9 @@ export function simulatePartialLiquidation(params) {
             rewardNative: 0n,
             effectiveRewardWad: 0n,
             pnlClosedWad: 0n,
+            nominalClosedLossWad: 0n,
+            closedLossNative: 0n,
+            effectiveClosedLossWad: 0n,
             pnlRemainingWad: 0n,
             pnlRoundingResidualWad: 0n,
             unpaidFundingBeforeWad: baseState.unpaidFundingWad,
@@ -140,10 +146,18 @@ export function simulatePartialLiquidation(params) {
     const nominalRewardWad = mulDivFloor(nominalPenaltyWad, 5000n, 10000n);
     const rewardNative = wadToNativeQuote(nominalRewardWad, quoteDecimals);
     const effectiveRewardWad = nativeQuoteToWad(rewardNative, quoteDecimals);
-    // 3. Direct PnL calculations (canonical rule)
+    // 3. Direct PnL & Canonical Native Closed Loss Quantization
     const pnlClosedWad = calculateUnrealizedPnlWad(deltaSWad, entryPriceWad, currentPriceWad, isLong);
     const pnlRemainingWad = calculateUnrealizedPnlWad(remainingSizeWad, entryPriceWad, currentPriceWad, isLong);
     const pnlRoundingResidualWad = baseState.pnl0Wad - (pnlClosedWad + pnlRemainingWad);
+    let nominalClosedLossWad = 0n;
+    let closedLossNative = 0n;
+    let effectiveClosedLossWad = 0n;
+    if (pnlClosedWad < 0n) {
+        nominalClosedLossWad = abs(pnlClosedWad);
+        closedLossNative = wadToNativeQuoteCeil(nominalClosedLossWad, quoteDecimals);
+        effectiveClosedLossWad = nativeQuoteToWad(closedLossNative, quoteDecimals);
+    }
     const mmRemainingWad = calculateMaintenanceMarginWad(remainingSizeWad, currentPriceWad, maintenanceMarginBps);
     const remainingNotionalWad = calculateNotionalQuoteWad(remainingSizeWad, currentPriceWad);
     const minMarginRequiredWad = mulDivCeil(remainingNotionalWad, minMarginRatioBps, 10000n);
@@ -156,9 +170,8 @@ export function simulatePartialLiquidation(params) {
     const realizedProfitClosedWad = pnlClosedWad > 0n ? pnlClosedWad : 0n;
     const availableToCureWad = m1Wad + realizedProfitClosedWad;
     const unpaidFundingAfterWad = uWad > availableToCureWad ? uWad - availableToCureWad : 0n;
-    // Closed-slice obligation vs realized resources
-    const lossClosedWad = pnlClosedWad < 0n ? abs(pnlClosedWad) : 0n;
-    const totalClosedObligationsWad = lossClosedWad + uWad + effectivePenaltyWad;
+    // Canonical Closed Obligations using effective native charges
+    const totalClosedObligationsWad = effectiveClosedLossWad + uWad + effectivePenaltyWad;
     const availableRealizedResourcesWad = m1Wad + realizedProfitClosedWad;
     let residualBadDebtWad = 0n;
     let externalBadDebtRequired = false;
@@ -188,11 +201,9 @@ export function simulatePartialLiquidation(params) {
             }
             else {
                 mPostWad = 0n;
-                const unfundedPenaltyWad = penaltyShortfallWad - mRetainedWad;
-                // Single-source bad debt accounting identity
-                residualBadDebtWad = totalClosedObligationsWad > (m1Wad + (pnlClosedWad > 0n ? pnlClosedWad : 0n))
-                    ? totalClosedObligationsWad - (m1Wad + (pnlClosedWad > 0n ? pnlClosedWad : 0n))
-                    : unfundedPenaltyWad;
+                residualBadDebtWad = totalClosedObligationsWad > availableRealizedResourcesWad
+                    ? totalClosedObligationsWad - availableRealizedResourcesWad
+                    : 0n;
                 externalBadDebtRequired = true;
             }
         }
@@ -274,6 +285,9 @@ export function simulatePartialLiquidation(params) {
         rewardNative,
         effectiveRewardWad,
         pnlClosedWad,
+        nominalClosedLossWad,
+        closedLossNative,
+        effectiveClosedLossWad,
         pnlRemainingWad,
         pnlRoundingResidualWad,
         unpaidFundingBeforeWad: baseState.unpaidFundingWad,
@@ -293,7 +307,7 @@ export function simulatePartialLiquidation(params) {
 /**
  * Conservative Upper-Bound Predicate for Policy B (`ConservativeSafeB`).
  * Evaluates whether deltaSWad satisfies Policy B under worst-case rounding bounds,
- * ensuring strict monotonicity over integer WAD units.
+ * ensuring strict monotonicity over integer WAD units for all quote token decimals.
  */
 export function isConservativeSafePolicyB(params) {
     const { s0Wad, m0Wad, deltaSWad, entryPrice8d, currentPrice8d, isLong, fundingPaymentWad, targetHfWad, liqFeeRatioBps, maintenanceMarginBps, minMarginRatioBps = maintenanceMarginBps, quoteDecimals, minPositionSizeWad } = params;
@@ -304,36 +318,41 @@ export function isConservativeSafePolicyB(params) {
     if (!baseState.isLiquidatable)
         return false;
     const currentPriceWad = currentPrice8d * ORACLE_NORM_FACTOR;
-    const nativeQuantumWad = quoteDecimals < 18 ? 10n ** BigInt(18 - quoteDecimals) : 1n;
-    // 1. Conservative Penalty Upper Bound (+ native quantum + 1 wei)
-    const notionalClosedWad = calculateNotionalQuoteWad(deltaSWad, currentPriceWad);
-    const penaltyUpperWad = mulDivCeil(notionalClosedWad, liqFeeRatioBps, 10000n) + nativeQuantumWad + 1n;
-    // 2. Conservative Closed Loss Upper Bound
     const entryPriceWad = entryPrice8d * ORACLE_NORM_FACTOR;
+    // Exact effective native charges
+    const notionalClosedWad = calculateNotionalQuoteWad(deltaSWad, currentPriceWad);
+    const nominalPenaltyWad = mulDivCeil(notionalClosedWad, liqFeeRatioBps, 10000n);
+    const penaltyNative = wadToNativeQuoteCeil(nominalPenaltyWad, quoteDecimals);
+    const effectivePenaltyWad = nativeQuoteToWad(penaltyNative, quoteDecimals);
     const pnlClosedWad = calculateUnrealizedPnlWad(deltaSWad, entryPriceWad, currentPriceWad, isLong);
-    const lossClosedUpperWad = pnlClosedWad < 0n ? abs(pnlClosedWad) + 1n : 0n;
-    // 3. Conservative Total Obligations Upper Bound
+    let effectiveClosedLossWad = 0n;
+    if (pnlClosedWad < 0n) {
+        const nominalClosedLossWad = abs(pnlClosedWad);
+        const closedLossNative = wadToNativeQuoteCeil(nominalClosedLossWad, quoteDecimals);
+        effectiveClosedLossWad = nativeQuoteToWad(closedLossNative, quoteDecimals);
+    }
     const uWad = baseState.unpaidFundingWad;
-    const totalObligationsUpperWad = lossClosedUpperWad + uWad + penaltyUpperWad;
-    // Unpaid funding cure check
     const m1Wad = baseState.m1Wad;
     const realizedProfitClosedWad = pnlClosedWad > 0n ? pnlClosedWad : 0n;
+    // Conservative Upper Bound on Closed Obligations (+1 wei for division domination)
+    const totalObligationsUpperWad = effectiveClosedLossWad + uWad + effectivePenaltyWad + 1n;
+    // Unpaid funding cure check
     if (uWad > (m1Wad + realizedProfitClosedWad))
         return false;
     // Realized obligations breach check
     if (totalObligationsUpperWad > (m1Wad + realizedProfitClosedWad))
         return false;
-    // 4. Conservative Surviving Stored Margin Lower Bound
+    // Conservative Surviving Stored Margin Lower Bound
     let mPostLowerWad = 0n;
     if (pnlClosedWad > 0n) {
-        mPostLowerWad = (m1Wad + pnlClosedWad) >= (uWad + penaltyUpperWad)
-            ? (m1Wad + pnlClosedWad - uWad - penaltyUpperWad)
+        mPostLowerWad = (m1Wad + pnlClosedWad) >= (uWad + effectivePenaltyWad + 1n)
+            ? (m1Wad + pnlClosedWad - uWad - effectivePenaltyWad - 1n)
             : 0n;
     }
     else {
         mPostLowerWad = m1Wad >= totalObligationsUpperWad ? m1Wad - totalObligationsUpperWad : 0n;
     }
-    // 5. Conservative Surviving Maintenance & Min Margin Requirements Upper Bounds
+    // Conservative Requirements Upper Bounds
     const remainingNotionalWad = calculateNotionalQuoteWad(remainingSizeWad, currentPriceWad);
     const mmRemainingUpperWad = mulDivCeil(remainingNotionalWad, maintenanceMarginBps, 10000n) + 1n;
     const minMarginRequiredUpperWad = mulDivCeil(remainingNotionalWad, minMarginRatioBps, 10000n) + 1n;
@@ -341,12 +360,12 @@ export function isConservativeSafePolicyB(params) {
         return false;
     if (remainingSizeWad < minPositionSizeWad)
         return false;
-    // 6. Conservative Surviving Equity Lower Bound
+    // Conservative Surviving Equity Lower Bound
     const pnlRemainingWad = calculateUnrealizedPnlWad(remainingSizeWad, entryPriceWad, currentPriceWad, isLong);
     const equityLowerWad = mPostLowerWad + pnlRemainingWad - 1n;
     if (equityLowerWad <= 0n)
         return false;
-    // 7. Conservative Health Factor Lower Bound
+    // Conservative Health Factor Lower Bound
     const hfConsWad = calculateHealthFactorWad(equityLowerWad, mmRemainingUpperWad);
     return hfConsWad >= targetHfWad;
 }
@@ -399,14 +418,11 @@ export function findMinimumSafePolicyBSize(params) {
     }
     if (bestX !== null) {
         const exactSim = simulatePartialLiquidation({ ...params, deltaSWad: bestX, policy: CollateralPolicy.POLICY_B });
-        const unbufferedSim = simulatePartialLiquidation({ ...params, deltaSWad: lo, policy: CollateralPolicy.POLICY_B });
-        const roundingBufferAppliedWad = bestX > lo ? bestX - lo : 0n;
         return {
             recommendedDeltaSWad: bestX,
             mode: SizingMode.PARTIAL_CONSERVATIVE,
             willFullyLiquidate: false,
             partialResult: exactSim,
-            roundingBufferAppliedWad,
             evaluationCount: evalCount
         };
     }

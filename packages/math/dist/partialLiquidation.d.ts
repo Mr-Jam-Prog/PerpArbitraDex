@@ -1,6 +1,6 @@
 /**
- * Partial Liquidation Math & Feasibility Prototype (Prompt 07C-A-R3)
- * Formally defined according to docs/ECONOMIC_SPEC.md & PROMPT 07C-A-R3 requirements.
+ * Partial Liquidation Math & Feasibility Prototype (Prompt 07C-A-R4)
+ * Formally defined according to docs/ECONOMIC_SPEC.md & PROMPT 07C-A-R4 requirements.
  */
 export declare enum CollateralPolicy {
     POLICY_A = "POLICY_A",// Voluntary-decrease style proportional margin withdrawal
@@ -50,6 +50,9 @@ export interface PartialLiquidationResult {
     rewardNative: bigint;
     effectiveRewardWad: bigint;
     pnlClosedWad: bigint;
+    nominalClosedLossWad: bigint;
+    closedLossNative: bigint;
+    effectiveClosedLossWad: bigint;
     pnlRemainingWad: bigint;
     pnlRoundingResidualWad: bigint;
     unpaidFundingBeforeWad: bigint;
@@ -70,7 +73,6 @@ export interface PartialSizingRecommendation {
     mode: SizingMode;
     willFullyLiquidate: boolean;
     partialResult?: PartialLiquidationResult;
-    roundingBufferAppliedWad?: bigint;
     fallbackReason?: string;
     evaluationCount?: number;
 }
@@ -86,7 +88,7 @@ export declare function simulatePartialLiquidation(params: PartialLiquidationPar
 /**
  * Conservative Upper-Bound Predicate for Policy B (`ConservativeSafeB`).
  * Evaluates whether deltaSWad satisfies Policy B under worst-case rounding bounds,
- * ensuring strict monotonicity over integer WAD units.
+ * ensuring strict monotonicity over integer WAD units for all quote token decimals.
  */
 export declare function isConservativeSafePolicyB(params: PartialLiquidationParams): boolean;
 /**

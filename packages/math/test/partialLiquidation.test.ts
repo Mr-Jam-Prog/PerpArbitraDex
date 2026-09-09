@@ -575,6 +575,116 @@ describe("Partial Liquidation Feasibility Suite (Prompt 07C-A-R2 Vectors A - P +
         assert.equal(res3.isSafe, true);  // larger close reduces required minMargin, restoring safety!
     });
 
+    test("LIQ-PART-LOSS-NATIVE-CEIL1: Freeze Codex P1 0d native closed-loss quantization counterexample", () => {
+        const codexLossParams = {
+            s0Wad: 33n * WAD,
+            m0Wad: 6653n * WAD,
+            entryPrice8d: 517_00000000n,
+            currentPrice8d: 334_00000000n,
+            isLong: true,
+            fundingPaymentWad: 0n,
+            targetHfWad: 1200000000000000000n, // 1.20
+            policy: CollateralPolicy.POLICY_B,
+            liqFeeRatioBps: 253n,
+            maintenanceMarginBps: 745n,
+            minMarginRatioBps: 745n,
+            quoteDecimals: 0,
+            minPositionSizeWad: 1n * WAD
+        };
+
+        const deltaS = 17_400000000000000000n; // 17.4 WAD
+        const res = simulatePartialLiquidation({ ...codexLossParams, deltaSWad: deltaS });
+
+        // Nominal closed loss = 17.4 * (517 - 334) = 3184.2 WAD
+        assert.equal(res.nominalClosedLossWad, 3184200000000000000000n);
+        // Canonical native CEIL charge = 3185 whole tokens
+        assert.equal(res.closedLossNative, 3185n);
+        assert.equal(res.effectiveClosedLossWad, 3185n * WAD);
+
+        // Under raw-WAD loss model: HF would be ~1.20049 (passing)
+        // Under canonical native-loss model: HF is ~1.19843 < 1.20 => isSafe == false!
+        assert.equal(res.isSafe, false);
+        assert.equal(res.fallbackReason, "Post HF below target");
+    });
+
+    test("LIQ-PART-CONS-IMPLIES-EXACT1: Property test verifying ConservativeSafeB => ExactSafeB across all decimal domains", () => {
+        const decimalsList = [0, 6, 18, 24];
+
+        for (const quoteDecimals of decimalsList) {
+            const paramsBase = {
+                s0Wad: 10n * WAD,
+                m0Wad: 2000n * WAD,
+                entryPrice8d: 2000_00000000n,
+                currentPrice8d: 1850_00000000n,
+                isLong: true,
+                fundingPaymentWad: 0n,
+                targetHfWad: 1200000000000000000n,
+                liqFeeRatioBps: 250n,
+                maintenanceMarginBps: 500n,
+                quoteDecimals,
+                minPositionSizeWad: 1n * (WAD / 10n)
+            };
+
+            for (let step = 1n; step <= 99n; step++) {
+                const x = step * (WAD / 10n);
+                const fullParams: PartialLiquidationParams = { ...paramsBase, deltaSWad: x, policy: CollateralPolicy.POLICY_B };
+
+                const isConsSafe = isConservativeSafePolicyB(fullParams);
+                const exactRes = simulatePartialLiquidation(fullParams);
+
+                if (isConsSafe) {
+                    // Core Implication Proof Assertion: ConservativeSafeB => ExactSafeB MUST hold 100%!
+                    assert.equal(exactRes.isSafe, true, `Implication breached at quoteDecimals=${quoteDecimals}, x=${x}`);
+                }
+            }
+        }
+    });
+
+    test("LIQ-PART-OVERLIQ1: Measured over-liquidation statistics across 0d, 6d, 18d, 24d domains", () => {
+        const decimalsList = [0, 6, 18, 24];
+
+        for (const quoteDecimals of decimalsList) {
+            const paramsBase = {
+                s0Wad: 10n * WAD,
+                m0Wad: 2000n * WAD,
+                entryPrice8d: 2000_00000000n,
+                currentPrice8d: 1850_00000000n,
+                isLong: true,
+                fundingPaymentWad: 0n,
+                targetHfWad: 1200000000000000000n,
+                liqFeeRatioBps: 250n,
+                maintenanceMarginBps: 500n,
+                quoteDecimals,
+                minPositionSizeWad: 1n * (WAD / 10n)
+            };
+
+            const rec = findMinimumSafePolicyBSize(paramsBase);
+            assert.equal(rec.mode, SizingMode.PARTIAL_CONSERVATIVE);
+            const xCons = rec.recommendedDeltaSWad;
+
+            // Find first exact safe x_exact at fine 1-wei binary search resolution
+            let low = 1n;
+            let high = paramsBase.s0Wad - paramsBase.minPositionSizeWad;
+            let xExact = paramsBase.s0Wad;
+
+            while (low <= high) {
+                const mid = low + (high - low) / 2n;
+                const res = simulatePartialLiquidation({ ...paramsBase, deltaSWad: mid, policy: CollateralPolicy.POLICY_B });
+                if (res.isSafe) {
+                    xExact = mid;
+                    high = mid - 1n;
+                } else {
+                    low = mid + 1n;
+                }
+            }
+
+            assert.ok(xCons >= xExact, `xCons (${xCons}) must be >= xExact (${xExact}) for quoteDecimals=${quoteDecimals}`);
+            const overLiqWad = xCons - xExact;
+            // Measured over-liquidation is negligible (< 1% of S0)
+            assert.ok(overLiqWad <= WAD / 10n);
+        }
+    });
+
     test("LIQ-PART-REF-MIN1: Minimum safe size 1-wei minimality test", () => {
         const paramsBase = {
             s0Wad: 10n * WAD,
