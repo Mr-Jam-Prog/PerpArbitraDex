@@ -108,6 +108,15 @@ export interface PartialSizingRecommendation {
 }
 
 /**
+ * Validates that targetHfWad meets the minimum protocol liquidation threshold floor (WAD = 1e18).
+ */
+export function validateTargetHfWad(targetHfWad: bigint): void {
+    if (targetHfWad < WAD) {
+        throw new RangeError("targetHfWad must be >= WAD");
+    }
+}
+
+/**
  * Evaluates pre-liquidation base position state after funding settlement on S0.
  */
 export function evaluateBasePosition(
@@ -183,6 +192,8 @@ export function simulatePartialLiquidation(
         quoteDecimals,
         minPositionSizeWad
     } = params;
+
+    validateTargetHfWad(targetHfWad);
 
     const baseState = evaluateBasePosition(
         s0Wad,
@@ -446,7 +457,7 @@ export function simulatePartialLiquidation(
     } else if (equityPostWad <= 0n) {
         isSafe = false;
         fallbackReason = "Post equity non-positive / insolvent";
-    } else if (hfPostWad < targetHfWad) {
+    } else if (hfPostWad < WAD || hfPostWad < targetHfWad) {
         isSafe = false;
         fallbackReason = "Post HF below target";
     } else if (remainingSizeWad > 0n && remainingSizeWad < minPositionSizeWad) {
@@ -522,6 +533,8 @@ export function isConservativeSafePolicyB(
         minPositionSizeWad
     } = params;
 
+    validateTargetHfWad(targetHfWad);
+
     const remainingSizeWad = s0Wad > deltaSWad ? s0Wad - deltaSWad : 0n;
     if (deltaSWad <= 0n || deltaSWad >= s0Wad) return false;
 
@@ -587,7 +600,7 @@ export function isConservativeSafePolicyB(
     if (equityLowerWad <= 0n) return false;
 
     const hfConsWad = calculateHealthFactorWad(equityLowerWad, mmRemainingUpperWad);
-    return hfConsWad >= targetHfWad;
+    return hfConsWad >= WAD && hfConsWad >= targetHfWad;
 }
 
 /**
@@ -602,6 +615,7 @@ export function findMinimumSafePolicyBSizeExhaustive(
     if (stepWad <= 0n) {
         throw new Error("Invalid search stepWad: must be > 0");
     }
+    validateTargetHfWad(params.targetHfWad);
 
     const baseState = evaluateBasePosition(
         params.s0Wad,
@@ -659,6 +673,8 @@ export function findMinimumSafePolicyBSizeExhaustive(
 export function findMinimumSafePolicyBSize(
     params: Omit<PartialLiquidationParams, "deltaSWad" | "policy">
 ): PartialSizingRecommendation {
+    validateTargetHfWad(params.targetHfWad);
+
     const baseState = evaluateBasePosition(
         params.s0Wad,
         params.m0Wad,

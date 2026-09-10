@@ -86,6 +86,10 @@ export interface PartialSizingRecommendation {
     evaluationCount?: number;
 }
 /**
+ * Validates that targetHfWad meets the minimum protocol liquidation threshold floor (WAD = 1e18).
+ */
+export declare function validateTargetHfWad(targetHfWad: bigint): void;
+/**
  * Evaluates pre-liquidation base position state after funding settlement on S0.
  */
 export declare function evaluateBasePosition(s0Wad: bigint, m0Wad: bigint, entryPrice8d: bigint, currentPrice8d: bigint, isLong: boolean, fundingPaymentWad: bigint, maintenanceMarginBps: bigint, quoteDecimals: number): BasePositionStateResult;

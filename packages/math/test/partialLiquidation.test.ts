@@ -526,6 +526,83 @@ describe("Partial Liquidation Feasibility Suite (Prompt 07C-A-R2 Vectors A - P +
         assert.equal(res.effectiveClosedNetDeficitWad, 3n * WAD);
     });
 
+    test("LIQ-PART-TARGET-HF-FLOOR1: Freeze Codex P2 R7 targetHfWad < WAD invalid target RangeError counterexample", () => {
+        const codexParams: PartialLiquidationParams = {
+            s0Wad: 10n * WAD,
+            m0Wad: 2000n * WAD,
+            deltaSWad: 8n * WAD,
+            entryPrice8d: 2000_00000000n,
+            currentPrice8d: 1850_00000000n,
+            isLong: true,
+            fundingPaymentWad: 0n,
+            targetHfWad: 600000000000000000n, // Invalid target 0.60 < 1.0 (WAD)
+            policy: CollateralPolicy.POLICY_B,
+            liqFeeRatioBps: 250n,
+            maintenanceMarginBps: 500n,
+            quoteDecimals: 18,
+            minPositionSizeWad: 1n * (WAD / 10n)
+        };
+
+        assert.throws(
+            () => simulatePartialLiquidation(codexParams),
+            /RangeError: targetHfWad must be >= WAD/
+        );
+
+        assert.throws(
+            () => isConservativeSafePolicyB(codexParams),
+            /RangeError: targetHfWad must be >= WAD/
+        );
+
+        assert.throws(
+            () => findMinimumSafePolicyBSizeExhaustive(codexParams, WAD / 10n),
+            /RangeError: targetHfWad must be >= WAD/
+        );
+
+        assert.throws(
+            () => findMinimumSafePolicyBSize(codexParams),
+            /RangeError: targetHfWad must be >= WAD/
+        );
+    });
+
+    test("LIQ-PART-TARGET-HF-BOUNDARY1: Boundary tests verifying targetHfWad validation across entry points", () => {
+        const paramsBase = {
+            s0Wad: 10n * WAD,
+            m0Wad: 2000n * WAD,
+            deltaSWad: 95n * (WAD / 10n),
+            entryPrice8d: 2000_00000000n,
+            currentPrice8d: 1850_00000000n,
+            isLong: true,
+            fundingPaymentWad: 0n,
+            policy: CollateralPolicy.POLICY_B,
+            liqFeeRatioBps: 250n,
+            maintenanceMarginBps: 500n,
+            quoteDecimals: 18,
+            minPositionSizeWad: 1n * (WAD / 10n)
+        };
+
+        // 1. targetHfWad = WAD - 1 -> REJECT
+        const paramsBelow = { ...paramsBase, targetHfWad: WAD - 1n };
+        assert.throws(() => simulatePartialLiquidation(paramsBelow), /RangeError: targetHfWad must be >= WAD/);
+        assert.throws(() => isConservativeSafePolicyB(paramsBelow), /RangeError: targetHfWad must be >= WAD/);
+        assert.throws(() => findMinimumSafePolicyBSizeExhaustive(paramsBelow, WAD / 10n), /RangeError: targetHfWad must be >= WAD/);
+
+        // 2. targetHfWad = WAD -> ACCEPTED
+        const paramsWad = { ...paramsBase, targetHfWad: WAD };
+        assert.ok(simulatePartialLiquidation(paramsWad).isSafe);
+        assert.ok(isConservativeSafePolicyB(paramsWad));
+        assert.equal(findMinimumSafePolicyBSizeExhaustive(paramsWad, WAD / 10n).mode, SizingMode.PARTIAL_EXACT_RESEARCH);
+
+        // 3. targetHfWad = WAD + 1 -> ACCEPTED
+        const paramsAbove = { ...paramsBase, targetHfWad: WAD + 1n };
+        assert.ok(simulatePartialLiquidation(paramsAbove).isSafe);
+        assert.ok(isConservativeSafePolicyB(paramsAbove));
+
+        // 4. targetHfWad = 1.20e18 -> ACCEPTED
+        const params120 = { ...paramsBase, targetHfWad: 1200000000000000000n };
+        assert.ok(simulatePartialLiquidation(params120).isSafe);
+        assert.ok(isConservativeSafePolicyB(params120));
+    });
+
     test("LIQ-PART-RESEARCH-STEP1: Exhaustive research solver validates stepWad > 0", () => {
         const paramsBase = {
             s0Wad: 10n * WAD,

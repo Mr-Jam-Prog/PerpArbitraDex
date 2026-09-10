@@ -17,6 +17,14 @@ export var SizingMode;
     SizingMode["FULL_FALLBACK"] = "FULL_FALLBACK";
 })(SizingMode || (SizingMode = {}));
 /**
+ * Validates that targetHfWad meets the minimum protocol liquidation threshold floor (WAD = 1e18).
+ */
+export function validateTargetHfWad(targetHfWad) {
+    if (targetHfWad < WAD) {
+        throw new RangeError("targetHfWad must be >= WAD");
+    }
+}
+/**
  * Evaluates pre-liquidation base position state after funding settlement on S0.
  */
 export function evaluateBasePosition(s0Wad, m0Wad, entryPrice8d, currentPrice8d, isLong, fundingPaymentWad, maintenanceMarginBps, quoteDecimals) {
@@ -64,6 +72,7 @@ export function evaluateBasePosition(s0Wad, m0Wad, entryPrice8d, currentPrice8d,
  */
 export function simulatePartialLiquidation(params) {
     const { s0Wad, m0Wad, deltaSWad, entryPrice8d, currentPrice8d, isLong, fundingPaymentWad, targetHfWad, policy, liqFeeRatioBps, maintenanceMarginBps, minMarginRatioBps = maintenanceMarginBps, quoteDecimals, minPositionSizeWad } = params;
+    validateTargetHfWad(targetHfWad);
     const baseState = evaluateBasePosition(s0Wad, m0Wad, entryPrice8d, currentPrice8d, isLong, fundingPaymentWad, maintenanceMarginBps, quoteDecimals);
     const remainingSizeWad = s0Wad > deltaSWad ? s0Wad - deltaSWad : 0n;
     const currentPriceWad = currentPrice8d * ORACLE_NORM_FACTOR;
@@ -296,7 +305,7 @@ export function simulatePartialLiquidation(params) {
         isSafe = false;
         fallbackReason = "Post equity non-positive / insolvent";
     }
-    else if (hfPostWad < targetHfWad) {
+    else if (hfPostWad < WAD || hfPostWad < targetHfWad) {
         isSafe = false;
         fallbackReason = "Post HF below target";
     }
@@ -355,6 +364,7 @@ export function simulatePartialLiquidation(params) {
  */
 export function isConservativeSafePolicyB(params) {
     const { s0Wad, m0Wad, deltaSWad, entryPrice8d, currentPrice8d, isLong, fundingPaymentWad, targetHfWad, liqFeeRatioBps, maintenanceMarginBps, minMarginRatioBps = maintenanceMarginBps, quoteDecimals, minPositionSizeWad } = params;
+    validateTargetHfWad(targetHfWad);
     const remainingSizeWad = s0Wad > deltaSWad ? s0Wad - deltaSWad : 0n;
     if (deltaSWad <= 0n || deltaSWad >= s0Wad)
         return false;
@@ -403,7 +413,7 @@ export function isConservativeSafePolicyB(params) {
     if (equityLowerWad <= 0n)
         return false;
     const hfConsWad = calculateHealthFactorWad(equityLowerWad, mmRemainingUpperWad);
-    return hfConsWad >= targetHfWad;
+    return hfConsWad >= WAD && hfConsWad >= targetHfWad;
 }
 /**
  * Exhaustive Minimum Safe Size Solver over small integer domains (TEST / RESEARCH ONLY).
@@ -414,6 +424,7 @@ export function findMinimumSafePolicyBSizeExhaustive(params, stepWad = WAD) {
     if (stepWad <= 0n) {
         throw new Error("Invalid search stepWad: must be > 0");
     }
+    validateTargetHfWad(params.targetHfWad);
     const baseState = evaluateBasePosition(params.s0Wad, params.m0Wad, params.entryPrice8d, params.currentPrice8d, params.isLong, params.fundingPaymentWad, params.maintenanceMarginBps, params.quoteDecimals);
     if (!baseState.isLiquidatable) {
         return {
@@ -454,6 +465,7 @@ export function findMinimumSafePolicyBSizeExhaustive(params, stepWad = WAD) {
  * non-monotonicity of exact/conservative safety predicates.
  */
 export function findMinimumSafePolicyBSize(params) {
+    validateTargetHfWad(params.targetHfWad);
     const baseState = evaluateBasePosition(params.s0Wad, params.m0Wad, params.entryPrice8d, params.currentPrice8d, params.isLong, params.fundingPaymentWad, params.maintenanceMarginBps, params.quoteDecimals);
     if (!baseState.isLiquidatable) {
         return {
