@@ -53,6 +53,9 @@ export interface PartialLiquidationResult {
     nominalClosedLossWad: bigint;
     closedLossNative: bigint;
     effectiveClosedLossWad: bigint;
+    nominalClosedProfitWad: bigint;
+    closedProfitNative: bigint;
+    effectiveClosedProfitWad: bigint;
     pnlRemainingWad: bigint;
     pnlRoundingResidualWad: bigint;
     unpaidFundingBeforeWad: bigint;
@@ -92,7 +95,14 @@ export declare function simulatePartialLiquidation(params: PartialLiquidationPar
  */
 export declare function isConservativeSafePolicyB(params: PartialLiquidationParams): boolean;
 /**
- * Canonical minimum safe size solver for Policy B using exact O(log S0) BigInt binary search over ConservativeSafeB.
+ * Exhaustive Minimum Safe Size Solver over small integer domains (TEST / RESEARCH ONLY).
+ * Iterates sequentially through all integer step units to find the exact minimum safe size
+ * without relying on binary search over non-monotonic predicates.
+ */
+export declare function findMinimumSafePolicyBSizeExhaustive(params: Omit<PartialLiquidationParams, "deltaSWad" | "policy">, stepWad?: bigint): PartialSizingRecommendation;
+/**
+ * Quarantined/retired binary search solver. Returns FULL_FALLBACK by default to reflect
+ * non-monotonicity of exact/conservative safety predicates.
  */
 export declare function findMinimumSafePolicyBSize(params: Omit<PartialLiquidationParams, "deltaSWad" | "policy">): PartialSizingRecommendation;
 /**
