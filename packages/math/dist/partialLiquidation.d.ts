@@ -10,6 +10,7 @@ export declare enum CollateralPolicy {
 export declare enum SizingMode {
     NONE = "NONE",
     PARTIAL_CONSERVATIVE = "PARTIAL_CONSERVATIVE",
+    PARTIAL_EXACT_RESEARCH = "PARTIAL_EXACT_RESEARCH",
     FULL_FALLBACK = "FULL_FALLBACK"
 }
 export interface PartialLiquidationParams {
@@ -56,6 +57,11 @@ export interface PartialLiquidationResult {
     nominalClosedProfitWad: bigint;
     closedProfitNative: bigint;
     effectiveClosedProfitWad: bigint;
+    nominalClosedNetPnlWad: bigint;
+    closedNetProfitNative: bigint;
+    effectiveClosedNetProfitWad: bigint;
+    closedNetDeficitNative: bigint;
+    effectiveClosedNetDeficitWad: bigint;
     pnlRemainingWad: bigint;
     pnlRoundingResidualWad: bigint;
     unpaidFundingBeforeWad: bigint;
@@ -89,9 +95,9 @@ export declare function evaluateBasePosition(s0Wad: bigint, m0Wad: bigint, entry
  */
 export declare function simulatePartialLiquidation(params: PartialLiquidationParams): PartialLiquidationResult;
 /**
- * Conservative Upper-Bound Predicate for Policy B (`ConservativeSafeB`).
- * Evaluates whether deltaSWad satisfies Policy B under worst-case rounding bounds,
- * ensuring strict monotonicity over integer WAD units for all quote token decimals.
+ * Research-only Conservative Upper-Bound Predicate for Policy B (`ConservativeSafeB`).
+ * Evaluates whether deltaSWad satisfies Policy B under worst-case rounding bounds.
+ * Note: Non-monotonic due to discrete native quantization boundaries; NOT suitable for binary search.
  */
 export declare function isConservativeSafePolicyB(params: PartialLiquidationParams): boolean;
 /**

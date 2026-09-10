@@ -100,9 +100,9 @@ describe("Partial Liquidation Feasibility Suite (Prompt 07C-A-R2 Vectors A - P +
             m0Wad: 100n * WAD,
             deltaSWad: 2n * WAD,
             entryPrice8d: 2000_00000000n,
-            currentPrice8d: 2010_00000000n, // PnL = +100
+            currentPrice8d: 2010_00000000n, // PnL_closed = +20 WAD
             isLong: true,
-            fundingPaymentWad: 1000n * WAD, // Funding payment = 1000, M0 = 100 => U = 900
+            fundingPaymentWad: 1000n * WAD, // Funding payment = 1000, M0 = 100 => M1 = 0, U = 900 WAD
             targetHfWad: 1200000000000000000n,
             policy: CollateralPolicy.POLICY_B,
             liqFeeRatioBps: 250n,
@@ -111,10 +111,13 @@ describe("Partial Liquidation Feasibility Suite (Prompt 07C-A-R2 Vectors A - P +
             minPositionSizeWad: 1n * WAD
         };
 
+        // nominalClosedNetPnl = +20 - 900 = -880 WAD (net deficit)
+        // M1 = 0, effectiveClosedNetDeficit = 880 WAD => totalClosedObligations = 880 + penalty > M1 => external bad debt required!
         const res = simulatePartialLiquidation(params);
         assert.equal(res.isSafe, false);
-        assert.ok(res.unpaidFundingAfterWad > 0n);
-        assert.equal(res.fallbackReason, "Residual unpaid funding uncured");
+        assert.equal(res.nominalClosedNetPnlWad, -880n * WAD);
+        assert.equal(res.externalBadDebtRequired, true);
+        assert.equal(res.fallbackReason, "External bad debt required / closed obligations breach collateral");
     });
 
     test("Vector E: Penalty makes naïve size insufficient", () => {
@@ -343,7 +346,7 @@ describe("Partial Liquidation Feasibility Suite (Prompt 07C-A-R2 Vectors A - P +
 
         const minResult = findMinimumSafePolicyBSizeExhaustive(params6dBase, WAD / 10n);
         assert.equal(minResult.willFullyLiquidate, false);
-        assert.equal(minResult.mode, SizingMode.PARTIAL_CONSERVATIVE);
+        assert.equal(minResult.mode, SizingMode.PARTIAL_EXACT_RESEARCH);
         const xStar = minResult.recommendedDeltaSWad;
 
         const simAtXStar = simulatePartialLiquidation({ ...params6dBase, deltaSWad: xStar, policy: CollateralPolicy.POLICY_B });
@@ -452,6 +455,135 @@ describe("Partial Liquidation Feasibility Suite (Prompt 07C-A-R2 Vectors A - P +
         assert.equal(res.nominalClosedProfitWad, 1750000000000000000n); // 1.75 WAD
         assert.equal(res.closedProfitNative, 1n); // Floor quantized to 1 native token
         assert.equal(res.effectiveClosedProfitWad, 1n * WAD); // 1 WAD physically realizable stored profit
+        assert.equal(res.nominalClosedNetPnlWad, 1750000000000000000n);
+        assert.equal(res.closedNetProfitNative, 1n);
+        assert.equal(res.effectiveClosedNetProfitWad, 1n * WAD);
+    });
+
+    test("LIQ-PART-NET-FUNDING-NATIVE1: Freeze Codex P1 R6 0d signed net PnL funding counterexample", () => {
+        const params: PartialLiquidationParams = {
+            s0Wad: 3n * WAD,
+            m0Wad: 1n * WAD,
+            deltaSWad: 2n * WAD,
+            entryPrice8d: 60_00000000n,
+            currentPrice8d: 62_00000000n, // Long price PnL_closed = 2 * (62 - 60) = +4 WAD
+            isLong: true,
+            fundingPaymentWad: 11n * (WAD / 10n), // Funding debt requested = 1.1 WAD
+            targetHfWad: 1200000000000000000n,
+            policy: CollateralPolicy.POLICY_B,
+            liqFeeRatioBps: 0n,
+            maintenanceMarginBps: 500n,
+            minMarginRatioBps: 500n,
+            quoteDecimals: 0,
+            minPositionSizeWad: 1n * WAD
+        };
+
+        // 1. Funding settlement: m0 = 1 WAD, debt = 1.1 WAD => 1 native token margin forfeited => m1 = 0, U = 0.1 WAD
+        // 2. Closed PnL = +4 WAD
+        // 3. Authoritative signed net: nominalClosedNetPnl = +4 - 0.1 = +3.9 WAD
+        // 4. Native FLOOR conversion: FLOOR(3.9) = 3 native tokens => effectiveClosedNetProfitWad = 3 WAD
+        // 5. mPost = m1(0) + 3 WAD = 3 WAD
+        // 6. Remaining size = 1 WAD @ 62 price => notional = 62 WAD => minMargin @ 5% = 3.1 WAD
+        // 7. mPost (3 WAD) < minMargin (3.1 WAD) => isSafe == false!
+        const res = simulatePartialLiquidation(params);
+
+        assert.equal(res.baseState.m1Wad, 0n);
+        assert.equal(res.baseState.unpaidFundingWad, 100000000000000000n); // 0.1 WAD
+        assert.equal(res.pnlClosedWad, 4n * WAD);
+        assert.equal(res.nominalClosedNetPnlWad, 3900000000000000000n); // 3.9 WAD
+        assert.equal(res.closedNetProfitNative, 3n); // 3 native tokens
+        assert.equal(res.effectiveClosedNetProfitWad, 3n * WAD);
+        assert.equal(res.mPostWad, 3n * WAD);
+        assert.equal(res.minMarginRequiredWad, 3100000000000000000n); // 3.1 WAD
+        assert.equal(res.isSafe, false);
+        assert.equal(res.fallbackReason, "Surviving margin below minMarginRatio requirement");
+    });
+
+    test("LIQ-PART-NET-DEFICIT-NATIVE1: 0d negative closed PnL + unpaid funding signed deficit CEIL quantization", () => {
+        const params: PartialLiquidationParams = {
+            s0Wad: 10n * WAD,
+            m0Wad: 100n * WAD,
+            deltaSWad: 5n * WAD,
+            entryPrice8d: 100_00000000n,
+            currentPrice8d: 99_50000000n, // Loss = -2.5 WAD
+            isLong: true,
+            fundingPaymentWad: 100n * WAD + 200000000000000000n, // M1 = 0, U = 0.2 WAD
+            targetHfWad: 1200000000000000000n,
+            policy: CollateralPolicy.POLICY_B,
+            liqFeeRatioBps: 0n,
+            maintenanceMarginBps: 500n,
+            quoteDecimals: 0,
+            minPositionSizeWad: 1n * WAD
+        };
+
+        // pnlClosed = -2.5 WAD, U = 0.2 WAD
+        // nominalClosedNetPnl = -2.5 - 0.2 = -2.7 WAD
+        // CEIL(2.7) = 3 native tokens => effectiveClosedNetDeficitWad = 3 WAD
+        const res = simulatePartialLiquidation(params);
+
+        assert.equal(res.nominalClosedNetPnlWad, -2700000000000000000n);
+        assert.equal(res.closedNetDeficitNative, 3n);
+        assert.equal(res.effectiveClosedNetDeficitWad, 3n * WAD);
+    });
+
+    test("LIQ-PART-RESEARCH-STEP1: Exhaustive research solver validates stepWad > 0", () => {
+        const paramsBase = {
+            s0Wad: 10n * WAD,
+            m0Wad: 2000n * WAD,
+            entryPrice8d: 2000_00000000n,
+            currentPrice8d: 1850_00000000n,
+            isLong: true,
+            fundingPaymentWad: 0n,
+            targetHfWad: 1200000000000000000n,
+            liqFeeRatioBps: 250n,
+            maintenanceMarginBps: 500n,
+            quoteDecimals: 18,
+            minPositionSizeWad: 1n * (WAD / 10n)
+        };
+
+        assert.throws(
+            () => findMinimumSafePolicyBSizeExhaustive(paramsBase, 0n),
+            /Invalid search stepWad: must be > 0/
+        );
+
+        assert.throws(
+            () => findMinimumSafePolicyBSizeExhaustive(paramsBase, -1n),
+            /Invalid search stepWad: must be > 0/
+        );
+    });
+
+    test("LIQ-PART-NET-PARITY1: Property test verifying signed net physical margin quantum alignment across 0d, 6d, 18d, 24d", () => {
+        const decimalsList = [0, 6, 18, 24];
+
+        for (const quoteDecimals of decimalsList) {
+            const paramsBase = {
+                s0Wad: 10n * WAD,
+                m0Wad: 2000n * WAD,
+                entryPrice8d: 2000_00000000n,
+                currentPrice8d: 1850_00000000n,
+                isLong: true,
+                fundingPaymentWad: 0n,
+                targetHfWad: 1200000000000000000n,
+                liqFeeRatioBps: 250n,
+                maintenanceMarginBps: 500n,
+                quoteDecimals,
+                minPositionSizeWad: 1n * (WAD / 10n)
+            };
+
+            for (let step = 1n; step <= 9n; step++) {
+                const x = step * WAD;
+                const sim = simulatePartialLiquidation({ ...paramsBase, deltaSWad: x, policy: CollateralPolicy.POLICY_B });
+
+                if (quoteDecimals < 18) {
+                    const quantumWad = 10n ** BigInt(18 - quoteDecimals);
+                    assert.equal(
+                        sim.mPostWad % quantumWad,
+                        0n,
+                        `mPostWad quantum misalignment at quoteDecimals=${quoteDecimals}, x=${x}`
+                    );
+                }
+            }
+        }
     });
 
     test("LIQ-PART-HEALTHY-REC1: Healthy position returns no liquidation recommendation", () => {
@@ -648,7 +780,7 @@ describe("Partial Liquidation Feasibility Suite (Prompt 07C-A-R2 Vectors A - P +
             };
 
             const recExhaustive = findMinimumSafePolicyBSizeExhaustive(paramsBase, WAD / 10n);
-            assert.equal(recExhaustive.mode, SizingMode.PARTIAL_CONSERVATIVE);
+            assert.equal(recExhaustive.mode, SizingMode.PARTIAL_EXACT_RESEARCH);
             const xCandidate = recExhaustive.recommendedDeltaSWad;
 
             // Exhaustive linear scan for xExact over step units

@@ -13,6 +13,7 @@ export var SizingMode;
 (function (SizingMode) {
     SizingMode["NONE"] = "NONE";
     SizingMode["PARTIAL_CONSERVATIVE"] = "PARTIAL_CONSERVATIVE";
+    SizingMode["PARTIAL_EXACT_RESEARCH"] = "PARTIAL_EXACT_RESEARCH";
     SizingMode["FULL_FALLBACK"] = "FULL_FALLBACK";
 })(SizingMode || (SizingMode = {}));
 /**
@@ -88,6 +89,11 @@ export function simulatePartialLiquidation(params) {
             nominalClosedProfitWad: 0n,
             closedProfitNative: 0n,
             effectiveClosedProfitWad: 0n,
+            nominalClosedNetPnlWad: 0n,
+            closedNetProfitNative: 0n,
+            effectiveClosedNetProfitWad: 0n,
+            closedNetDeficitNative: 0n,
+            effectiveClosedNetDeficitWad: 0n,
             pnlRemainingWad: 0n,
             pnlRoundingResidualWad: 0n,
             unpaidFundingBeforeWad: baseState.unpaidFundingWad,
@@ -125,6 +131,11 @@ export function simulatePartialLiquidation(params) {
             nominalClosedProfitWad: 0n,
             closedProfitNative: 0n,
             effectiveClosedProfitWad: 0n,
+            nominalClosedNetPnlWad: 0n,
+            closedNetProfitNative: 0n,
+            effectiveClosedNetProfitWad: 0n,
+            closedNetDeficitNative: 0n,
+            effectiveClosedNetDeficitWad: 0n,
             pnlRemainingWad: 0n,
             pnlRoundingResidualWad: 0n,
             unpaidFundingBeforeWad: baseState.unpaidFundingWad,
@@ -152,7 +163,7 @@ export function simulatePartialLiquidation(params) {
     const nominalRewardWad = mulDivFloor(nominalPenaltyWad, 5000n, 10000n);
     const rewardNative = wadToNativeQuote(nominalRewardWad, quoteDecimals);
     const effectiveRewardWad = nativeQuoteToWad(rewardNative, quoteDecimals);
-    // 3. Direct PnL & Native Quantization of Closed Loss (CEIL) / Profit (FLOOR)
+    // 3. Direct PnL & Diagnostic Standalone Loss/Profit Quantization
     const pnlClosedWad = calculateUnrealizedPnlWad(deltaSWad, entryPriceWad, currentPriceWad, isLong);
     const pnlRemainingWad = calculateUnrealizedPnlWad(remainingSizeWad, entryPriceWad, currentPriceWad, isLong);
     const pnlRoundingResidualWad = baseState.pnl0Wad - (pnlClosedWad + pnlRemainingWad);
@@ -172,20 +183,41 @@ export function simulatePartialLiquidation(params) {
         closedProfitNative = wadToNativeQuote(nominalClosedProfitWad, quoteDecimals);
         effectiveClosedProfitWad = nativeQuoteToWad(closedProfitNative, quoteDecimals);
     }
+    // 4. Authoritative Canonical Signed Net Closed PnL Settlement (Prompt 07B Order)
+    const m1Wad = baseState.m1Wad;
+    const uWad = baseState.unpaidFundingWad;
+    const nominalClosedNetPnlWad = pnlClosedWad - uWad;
+    let closedNetProfitNative = 0n;
+    let effectiveClosedNetProfitWad = 0n;
+    let closedNetDeficitNative = 0n;
+    let effectiveClosedNetDeficitWad = 0n;
+    if (nominalClosedNetPnlWad >= 0n) {
+        closedNetProfitNative = wadToNativeQuote(nominalClosedNetPnlWad, quoteDecimals);
+        effectiveClosedNetProfitWad = nativeQuoteToWad(closedNetProfitNative, quoteDecimals);
+    }
+    else {
+        closedNetDeficitNative = wadToNativeQuoteCeil(abs(nominalClosedNetPnlWad), quoteDecimals);
+        effectiveClosedNetDeficitWad = nativeQuoteToWad(closedNetDeficitNative, quoteDecimals);
+    }
+    // Unpaid funding debt is fully folded into the signed net closed slice settlement
+    const unpaidFundingAfterWad = 0n;
     const mmRemainingWad = calculateMaintenanceMarginWad(remainingSizeWad, currentPriceWad, maintenanceMarginBps);
     const remainingNotionalWad = calculateNotionalQuoteWad(remainingSizeWad, currentPriceWad);
     const minMarginRequiredWad = mulDivCeil(remainingNotionalWad, minMarginRatioBps, 10000n);
     let mPostWad = 0n;
     let traderPayoutWad = 0n;
     let equityPostWad = 0n;
-    const m1Wad = baseState.m1Wad;
-    const uWad = baseState.unpaidFundingWad;
-    // Unpaid funding cure calculation using effective native quantized profit
-    const availableToCureWad = m1Wad + effectiveClosedProfitWad;
-    const unpaidFundingAfterWad = uWad > availableToCureWad ? uWad - availableToCureWad : 0n;
-    // Canonical Closed Obligations using effective native charges and resources
-    const totalClosedObligationsWad = effectiveClosedLossWad + uWad + effectivePenaltyWad;
-    const availableRealizedResourcesWad = m1Wad + effectiveClosedProfitWad;
+    // Canonical Closed Obligations & Available Realized Resources using Signed Net
+    let availableRealizedResourcesWad = 0n;
+    let totalClosedObligationsWad = 0n;
+    if (nominalClosedNetPnlWad >= 0n) {
+        availableRealizedResourcesWad = m1Wad + effectiveClosedNetProfitWad;
+        totalClosedObligationsWad = effectivePenaltyWad;
+    }
+    else {
+        availableRealizedResourcesWad = m1Wad;
+        totalClosedObligationsWad = effectiveClosedNetDeficitWad + effectivePenaltyWad;
+    }
     let residualBadDebtWad = 0n;
     let externalBadDebtRequired = false;
     if (totalClosedObligationsWad > availableRealizedResourcesWad) {
@@ -198,8 +230,10 @@ export function simulatePartialLiquidation(params) {
         const releaseNative = wadToNativeQuote(rawRelWad, quoteDecimals);
         const effectiveReleasedWad = nativeQuoteToWad(releaseNative, quoteDecimals);
         const mRetainedWad = m1Wad - effectiveReleasedWad;
-        const netClosedWad = (pnlClosedWad > 0n ? effectiveClosedProfitWad : -effectiveClosedLossWad) - uWad;
-        const closedAvailableWad = effectiveReleasedWad + netClosedWad;
+        const effectiveNetClosedWad = nominalClosedNetPnlWad >= 0n
+            ? effectiveClosedNetProfitWad
+            : -effectiveClosedNetDeficitWad;
+        const closedAvailableWad = effectiveReleasedWad + effectiveNetClosedWad;
         if (closedAvailableWad >= effectivePenaltyWad) {
             const grossPayoutWad = closedAvailableWad - effectivePenaltyWad;
             mPostWad = mRetainedWad;
@@ -223,7 +257,7 @@ export function simulatePartialLiquidation(params) {
         equityPostWad = mPostWad + pnlRemainingWad;
     }
     else if (policy === CollateralPolicy.POLICY_B) {
-        // Pure Retain Collateral / Pure Deleveraging with native quantized profit
+        // Pure Retain Collateral / Pure Deleveraging with signed net PnL settlement
         traderPayoutWad = 0n;
         mPostWad = availableRealizedResourcesWad >= totalClosedObligationsWad
             ? availableRealizedResourcesWad - totalClosedObligationsWad
@@ -293,6 +327,11 @@ export function simulatePartialLiquidation(params) {
         nominalClosedProfitWad,
         closedProfitNative,
         effectiveClosedProfitWad,
+        nominalClosedNetPnlWad,
+        closedNetProfitNative,
+        effectiveClosedNetProfitWad,
+        closedNetDeficitNative,
+        effectiveClosedNetDeficitWad,
         pnlRemainingWad,
         pnlRoundingResidualWad,
         unpaidFundingBeforeWad: baseState.unpaidFundingWad,
@@ -310,9 +349,9 @@ export function simulatePartialLiquidation(params) {
     };
 }
 /**
- * Conservative Upper-Bound Predicate for Policy B (`ConservativeSafeB`).
- * Evaluates whether deltaSWad satisfies Policy B under worst-case rounding bounds,
- * ensuring strict monotonicity over integer WAD units for all quote token decimals.
+ * Research-only Conservative Upper-Bound Predicate for Policy B (`ConservativeSafeB`).
+ * Evaluates whether deltaSWad satisfies Policy B under worst-case rounding bounds.
+ * Note: Non-monotonic due to discrete native quantization boundaries; NOT suitable for binary search.
  */
 export function isConservativeSafePolicyB(params) {
     const { s0Wad, m0Wad, deltaSWad, entryPrice8d, currentPrice8d, isLong, fundingPaymentWad, targetHfWad, liqFeeRatioBps, maintenanceMarginBps, minMarginRatioBps = maintenanceMarginBps, quoteDecimals, minPositionSizeWad } = params;
@@ -330,39 +369,28 @@ export function isConservativeSafePolicyB(params) {
     const penaltyNative = wadToNativeQuoteCeil(nominalPenaltyWad, quoteDecimals);
     const effectivePenaltyWad = nativeQuoteToWad(penaltyNative, quoteDecimals);
     const pnlClosedWad = calculateUnrealizedPnlWad(deltaSWad, entryPriceWad, currentPriceWad, isLong);
-    let effectiveClosedLossWad = 0n;
-    let effectiveClosedProfitWad = 0n;
-    if (pnlClosedWad < 0n) {
-        const nominalClosedLossWad = abs(pnlClosedWad);
-        const closedLossNative = wadToNativeQuoteCeil(nominalClosedLossWad, quoteDecimals);
-        effectiveClosedLossWad = nativeQuoteToWad(closedLossNative, quoteDecimals);
-    }
-    else if (pnlClosedWad > 0n) {
-        const nominalClosedProfitWad = pnlClosedWad;
-        const closedProfitNative = wadToNativeQuote(nominalClosedProfitWad, quoteDecimals);
-        effectiveClosedProfitWad = nativeQuoteToWad(closedProfitNative, quoteDecimals);
-    }
     const uWad = baseState.unpaidFundingWad;
     const m1Wad = baseState.m1Wad;
-    // Conservative Upper Bound on Closed Obligations (+1 wei for division domination)
-    const totalObligationsUpperWad = effectiveClosedLossWad + uWad + effectivePenaltyWad + 1n;
-    // Unpaid funding cure check
-    if (uWad > (m1Wad + effectiveClosedProfitWad))
-        return false;
-    // Realized obligations breach check
-    if (totalObligationsUpperWad > (m1Wad + effectiveClosedProfitWad))
-        return false;
-    // Conservative Surviving Stored Margin Lower Bound
-    let mPostLowerWad = 0n;
-    if (pnlClosedWad > 0n) {
-        mPostLowerWad = (m1Wad + effectiveClosedProfitWad) >= totalObligationsUpperWad
-            ? (m1Wad + effectiveClosedProfitWad - totalObligationsUpperWad)
-            : 0n;
+    const nominalClosedNetPnlWad = pnlClosedWad - uWad;
+    let availableResourcesUpperWad = 0n;
+    let obligationsUpperWad = 0n;
+    if (nominalClosedNetPnlWad >= 0n) {
+        const profitNative = wadToNativeQuote(nominalClosedNetPnlWad, quoteDecimals);
+        const effectiveNetProfitWad = nativeQuoteToWad(profitNative, quoteDecimals);
+        availableResourcesUpperWad = m1Wad + effectiveNetProfitWad;
+        obligationsUpperWad = effectivePenaltyWad + 1n;
     }
     else {
-        mPostLowerWad = m1Wad >= totalObligationsUpperWad ? m1Wad - totalObligationsUpperWad : 0n;
+        const deficitNative = wadToNativeQuoteCeil(abs(nominalClosedNetPnlWad), quoteDecimals);
+        const effectiveNetDeficitWad = nativeQuoteToWad(deficitNative, quoteDecimals);
+        availableResourcesUpperWad = m1Wad;
+        obligationsUpperWad = effectiveNetDeficitWad + effectivePenaltyWad + 1n;
     }
-    // Conservative Requirements Upper Bounds
+    if (obligationsUpperWad > availableResourcesUpperWad)
+        return false;
+    const mPostLowerWad = availableResourcesUpperWad >= obligationsUpperWad
+        ? availableResourcesUpperWad - obligationsUpperWad
+        : 0n;
     const remainingNotionalWad = calculateNotionalQuoteWad(remainingSizeWad, currentPriceWad);
     const mmRemainingUpperWad = mulDivCeil(remainingNotionalWad, maintenanceMarginBps, 10000n) + 1n;
     const minMarginRequiredUpperWad = mulDivCeil(remainingNotionalWad, minMarginRatioBps, 10000n) + 1n;
@@ -370,12 +398,10 @@ export function isConservativeSafePolicyB(params) {
         return false;
     if (remainingSizeWad < minPositionSizeWad)
         return false;
-    // Conservative Surviving Equity Lower Bound
     const pnlRemainingWad = calculateUnrealizedPnlWad(remainingSizeWad, entryPriceWad, currentPriceWad, isLong);
     const equityLowerWad = mPostLowerWad + pnlRemainingWad - 1n;
     if (equityLowerWad <= 0n)
         return false;
-    // Conservative Health Factor Lower Bound
     const hfConsWad = calculateHealthFactorWad(equityLowerWad, mmRemainingUpperWad);
     return hfConsWad >= targetHfWad;
 }
@@ -385,6 +411,9 @@ export function isConservativeSafePolicyB(params) {
  * without relying on binary search over non-monotonic predicates.
  */
 export function findMinimumSafePolicyBSizeExhaustive(params, stepWad = WAD) {
+    if (stepWad <= 0n) {
+        throw new Error("Invalid search stepWad: must be > 0");
+    }
     const baseState = evaluateBasePosition(params.s0Wad, params.m0Wad, params.entryPrice8d, params.currentPrice8d, params.isLong, params.fundingPaymentWad, params.maintenanceMarginBps, params.quoteDecimals);
     if (!baseState.isLiquidatable) {
         return {
@@ -405,7 +434,7 @@ export function findMinimumSafePolicyBSizeExhaustive(params, stepWad = WAD) {
         if (sim.isSafe) {
             return {
                 recommendedDeltaSWad: x,
-                mode: SizingMode.PARTIAL_CONSERVATIVE,
+                mode: SizingMode.PARTIAL_EXACT_RESEARCH,
                 willFullyLiquidate: false,
                 partialResult: sim,
                 evaluationCount: evalCount
