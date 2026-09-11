@@ -11,6 +11,8 @@ export declare enum SizingMode {
     NONE = "NONE",
     PARTIAL_CONSERVATIVE = "PARTIAL_CONSERVATIVE",
     PARTIAL_EXACT_RESEARCH = "PARTIAL_EXACT_RESEARCH",
+    PARTIAL_GRID_RESEARCH = "PARTIAL_GRID_RESEARCH",
+    RESEARCH_INCONCLUSIVE = "RESEARCH_INCONCLUSIVE",
     FULL_FALLBACK = "FULL_FALLBACK"
 }
 export interface PartialLiquidationParams {
@@ -84,6 +86,9 @@ export interface PartialSizingRecommendation {
     partialResult?: PartialLiquidationResult;
     fallbackReason?: string;
     evaluationCount?: number;
+    researchStepWad?: bigint;
+    searchExhaustive?: boolean;
+    sampledMaxPartial?: boolean;
 }
 /**
  * Validates that targetHfWad meets the minimum protocol liquidation threshold floor (WAD = 1e18).
@@ -105,9 +110,21 @@ export declare function simulatePartialLiquidation(params: PartialLiquidationPar
  */
 export declare function isConservativeSafePolicyB(params: PartialLiquidationParams): boolean;
 /**
- * Exhaustive Minimum Safe Size Solver over small integer domains (TEST / RESEARCH ONLY).
- * Iterates sequentially through all integer step units to find the exact minimum safe size
- * without relying on binary search over non-monotonic predicates.
+ * Research-Only Resolution-Aware Grid Sizing Solver.
+ * Evaluates Policy B safety over a declared stepWad research grid.
+ *
+ * Semantics:
+ * - stepWad == 1: True integer-domain exhaustive search (searchExhaustive = true).
+ *   Returns PARTIAL_EXACT_RESEARCH or FULL_FALLBACK.
+ * - stepWad > 1: Resolution-limited grid sampling (searchExhaustive = false).
+ *   Returns PARTIAL_GRID_RESEARCH if a safe grid point is found, or RESEARCH_INCONCLUSIVE
+ *   if no safe point is found on the grid (never FULL_FALLBACK).
+ *
+ * NOTE: For research and test verification only; not suitable for production sizing.
+ */
+export declare function findSafePolicyBSizeResearch(params: Omit<PartialLiquidationParams, "deltaSWad" | "policy">, stepWad?: bigint): PartialSizingRecommendation;
+/**
+ * Backward compatibility alias for findSafePolicyBSizeResearch.
  */
 export declare function findMinimumSafePolicyBSizeExhaustive(params: Omit<PartialLiquidationParams, "deltaSWad" | "policy">, stepWad?: bigint): PartialSizingRecommendation;
 /**

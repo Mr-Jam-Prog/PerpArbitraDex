@@ -346,7 +346,7 @@ describe("Partial Liquidation Feasibility Suite (Prompt 07C-A-R2 Vectors A - P +
 
         const minResult = findMinimumSafePolicyBSizeExhaustive(params6dBase, WAD / 10n);
         assert.equal(minResult.willFullyLiquidate, false);
-        assert.equal(minResult.mode, SizingMode.PARTIAL_EXACT_RESEARCH);
+        assert.equal(minResult.mode, SizingMode.PARTIAL_GRID_RESEARCH);
         const xStar = minResult.recommendedDeltaSWad;
 
         const simAtXStar = simulatePartialLiquidation({ ...params6dBase, deltaSWad: xStar, policy: CollateralPolicy.POLICY_B });
@@ -526,6 +526,57 @@ describe("Partial Liquidation Feasibility Suite (Prompt 07C-A-R2 Vectors A - P +
         assert.equal(res.effectiveClosedNetDeficitWad, 3n * WAD);
     });
 
+    test("LIQ-PART-RESEARCH-TAIL1: Freeze Codex P2 R8 tail-sampling of unaligned maxPartial on coarse research grids", () => {
+        const paramsBase = {
+            s0Wad: 10n * WAD,
+            m0Wad: 2000n * WAD,
+            entryPrice8d: 2000_00000000n,
+            currentPrice8d: 1850_00000000n,
+            isLong: true,
+            fundingPaymentWad: 0n,
+            targetHfWad: 1200000000000000000n,
+            liqFeeRatioBps: 250n,
+            maintenanceMarginBps: 500n,
+            quoteDecimals: 18,
+            minPositionSizeWad: 1n * (WAD / 10n) // minPositionSize = 0.1 WAD => maxPartial = 9.9 WAD
+        };
+
+        // Run research solver with coarse stepWad = 1 WAD (grid points = 1, 2, ..., 9 WAD)
+        // 9.9 WAD is sampled as tail point and is safe!
+        const rec = findMinimumSafePolicyBSizeExhaustive(paramsBase, 1n * WAD);
+
+        assert.equal(rec.willFullyLiquidate, false);
+        assert.equal(rec.mode, SizingMode.PARTIAL_GRID_RESEARCH);
+        assert.equal(rec.recommendedDeltaSWad, 99n * (WAD / 10n)); // 9.9 WAD sampled via tail!
+        assert.equal(rec.sampledMaxPartial, true);
+        assert.equal(rec.searchExhaustive, false);
+    });
+
+    test("LIQ-PART-RESEARCH-INCONCLUSIVE1: Coarse grid miss returns RESEARCH_INCONCLUSIVE without triggering FULL_FALLBACK", () => {
+        // Construct position where 9.5 WAD is safe, but grid step = 2 WAD samples {2, 4, 6, 8} which are all unsafe for 1.20 target
+        const paramsBase = {
+            s0Wad: 10n * WAD,
+            m0Wad: 2000n * WAD,
+            entryPrice8d: 2000_00000000n,
+            currentPrice8d: 1850_00000000n,
+            isLong: true,
+            fundingPaymentWad: 0n,
+            targetHfWad: 1200000000000000000n,
+            liqFeeRatioBps: 250n,
+            maintenanceMarginBps: 500n,
+            quoteDecimals: 18,
+            minPositionSizeWad: 2n * WAD // maxPartial = 8 WAD
+        };
+
+        const rec = findMinimumSafePolicyBSizeExhaustive(paramsBase, 2n * WAD);
+
+        assert.equal(rec.recommendedDeltaSWad, 0n);
+        assert.equal(rec.mode, SizingMode.RESEARCH_INCONCLUSIVE);
+        assert.equal(rec.willFullyLiquidate, false);
+        assert.equal(rec.searchExhaustive, false);
+        assert.equal(rec.fallbackReason, "No safe size found on sampled research grid; unsampled sizes may exist");
+    });
+
     test("LIQ-PART-TARGET-HF-FLOOR1: Freeze Codex P2 R7 targetHfWad < WAD invalid target RangeError counterexample", () => {
         const codexParams: PartialLiquidationParams = {
             s0Wad: 10n * WAD,
@@ -590,7 +641,7 @@ describe("Partial Liquidation Feasibility Suite (Prompt 07C-A-R2 Vectors A - P +
         const paramsWad = { ...paramsBase, targetHfWad: WAD };
         assert.ok(simulatePartialLiquidation(paramsWad).isSafe);
         assert.ok(isConservativeSafePolicyB(paramsWad));
-        assert.equal(findMinimumSafePolicyBSizeExhaustive(paramsWad, WAD / 10n).mode, SizingMode.PARTIAL_EXACT_RESEARCH);
+        assert.equal(findMinimumSafePolicyBSizeExhaustive(paramsWad, WAD / 10n).mode, SizingMode.PARTIAL_GRID_RESEARCH);
 
         // 3. targetHfWad = WAD + 1 -> ACCEPTED
         const paramsAbove = { ...paramsBase, targetHfWad: WAD + 1n };
@@ -700,10 +751,18 @@ describe("Partial Liquidation Feasibility Suite (Prompt 07C-A-R2 Vectors A - P +
             minPositionSizeWad: 1n * WAD
         };
 
-        const rec = findMinimumSafePolicyBSizeExhaustive(paramsBase);
-        assert.equal(rec.recommendedDeltaSWad, 10n * WAD);
-        assert.equal(rec.mode, SizingMode.FULL_FALLBACK);
-        assert.equal(rec.willFullyLiquidate, true);
+        // For stepWad > 1 (e.g. 1 WAD), coarse grid miss returns RESEARCH_INCONCLUSIVE
+        const recGrid = findMinimumSafePolicyBSizeExhaustive(paramsBase, 1n * WAD);
+        assert.equal(recGrid.recommendedDeltaSWad, 0n);
+        assert.equal(recGrid.mode, SizingMode.RESEARCH_INCONCLUSIVE);
+        assert.equal(recGrid.willFullyLiquidate, false);
+
+        // For stepWad = 1n (true integer exhaustive scan on small domain), scan completes with FULL_FALLBACK
+        const smallParamsBase = { ...paramsBase, s0Wad: 100n, m0Wad: 1n, minPositionSizeWad: 10n };
+        const recExhaustive = findMinimumSafePolicyBSizeExhaustive(smallParamsBase, 1n);
+        assert.equal(recExhaustive.recommendedDeltaSWad, 100n);
+        assert.equal(recExhaustive.mode, SizingMode.FULL_FALLBACK);
+        assert.equal(recExhaustive.willFullyLiquidate, true);
 
         // simulatePartialLiquidation(deltaS = S0) must reject full size
         const fullSim = simulatePartialLiquidation({ ...paramsBase, deltaSWad: 10n * WAD, policy: CollateralPolicy.POLICY_B });
@@ -857,7 +916,7 @@ describe("Partial Liquidation Feasibility Suite (Prompt 07C-A-R2 Vectors A - P +
             };
 
             const recExhaustive = findMinimumSafePolicyBSizeExhaustive(paramsBase, WAD / 10n);
-            assert.equal(recExhaustive.mode, SizingMode.PARTIAL_EXACT_RESEARCH);
+            assert.equal(recExhaustive.mode, SizingMode.PARTIAL_GRID_RESEARCH);
             const xCandidate = recExhaustive.recommendedDeltaSWad;
 
             // Exhaustive linear scan for xExact over step units

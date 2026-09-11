@@ -28,6 +28,8 @@ export enum SizingMode {
     NONE = "NONE",
     PARTIAL_CONSERVATIVE = "PARTIAL_CONSERVATIVE",
     PARTIAL_EXACT_RESEARCH = "PARTIAL_EXACT_RESEARCH",
+    PARTIAL_GRID_RESEARCH = "PARTIAL_GRID_RESEARCH",
+    RESEARCH_INCONCLUSIVE = "RESEARCH_INCONCLUSIVE",
     FULL_FALLBACK = "FULL_FALLBACK"
 }
 
@@ -105,6 +107,9 @@ export interface PartialSizingRecommendation {
     partialResult?: PartialLiquidationResult;
     fallbackReason?: string;
     evaluationCount?: number;
+    researchStepWad?: bigint;
+    searchExhaustive?: boolean;
+    sampledMaxPartial?: boolean;
 }
 
 /**
@@ -604,11 +609,19 @@ export function isConservativeSafePolicyB(
 }
 
 /**
- * Exhaustive Minimum Safe Size Solver over small integer domains (TEST / RESEARCH ONLY).
- * Iterates sequentially through all integer step units to find the exact minimum safe size
- * without relying on binary search over non-monotonic predicates.
+ * Research-Only Resolution-Aware Grid Sizing Solver.
+ * Evaluates Policy B safety over a declared stepWad research grid.
+ *
+ * Semantics:
+ * - stepWad == 1: True integer-domain exhaustive search (searchExhaustive = true).
+ *   Returns PARTIAL_EXACT_RESEARCH or FULL_FALLBACK.
+ * - stepWad > 1: Resolution-limited grid sampling (searchExhaustive = false).
+ *   Returns PARTIAL_GRID_RESEARCH if a safe grid point is found, or RESEARCH_INCONCLUSIVE
+ *   if no safe point is found on the grid (never FULL_FALLBACK).
+ *
+ * NOTE: For research and test verification only; not suitable for production sizing.
  */
-export function findMinimumSafePolicyBSizeExhaustive(
+export function findSafePolicyBSizeResearch(
     params: Omit<PartialLiquidationParams, "deltaSWad" | "policy">,
     stepWad: bigint = WAD
 ): PartialSizingRecommendation {
@@ -634,7 +647,10 @@ export function findMinimumSafePolicyBSizeExhaustive(
             mode: SizingMode.NONE,
             willFullyLiquidate: false,
             fallbackReason: "Position not liquidatable",
-            evaluationCount: 0
+            evaluationCount: 0,
+            researchStepWad: stepWad,
+            searchExhaustive: stepWad === 1n,
+            sampledMaxPartial: false
         };
     }
 
@@ -642,28 +658,97 @@ export function findMinimumSafePolicyBSizeExhaustive(
         ? params.s0Wad - params.minPositionSizeWad
         : params.s0Wad - 1n;
 
+    if (maxPartial <= 0n) {
+        return {
+            recommendedDeltaSWad: params.s0Wad,
+            mode: SizingMode.FULL_FALLBACK,
+            willFullyLiquidate: true,
+            fallbackReason: "Partial size domain empty; full fallback required",
+            evaluationCount: 0,
+            researchStepWad: stepWad,
+            searchExhaustive: stepWad === 1n,
+            sampledMaxPartial: false
+        };
+    }
+
+    const isExhaustive = stepWad === 1n;
     let evalCount = 0;
+    let sampledMaxPartial = false;
+
+    // Grid sampling
     for (let x = stepWad; x <= maxPartial; x += stepWad) {
         evalCount++;
+        if (x === maxPartial) sampledMaxPartial = true;
         const sim = simulatePartialLiquidation({ ...params, deltaSWad: x, policy: CollateralPolicy.POLICY_B });
         if (sim.isSafe) {
             return {
                 recommendedDeltaSWad: x,
-                mode: SizingMode.PARTIAL_EXACT_RESEARCH,
+                mode: isExhaustive ? SizingMode.PARTIAL_EXACT_RESEARCH : SizingMode.PARTIAL_GRID_RESEARCH,
                 willFullyLiquidate: false,
                 partialResult: sim,
-                evaluationCount: evalCount
+                evaluationCount: evalCount,
+                researchStepWad: stepWad,
+                searchExhaustive: isExhaustive,
+                sampledMaxPartial
             };
         }
     }
 
-    return {
-        recommendedDeltaSWad: params.s0Wad,
-        mode: SizingMode.FULL_FALLBACK,
-        willFullyLiquidate: true,
-        fallbackReason: "Full liquidation fallback required — no safe size found in domain",
-        evaluationCount: evalCount
-    };
+    // Tail sampling: if stepWad > 1 and maxPartial was not grid-aligned, explicitly sample maxPartial
+    if (stepWad > 1n && maxPartial % stepWad !== 0n) {
+        evalCount++;
+        sampledMaxPartial = true;
+        const simTail = simulatePartialLiquidation({ ...params, deltaSWad: maxPartial, policy: CollateralPolicy.POLICY_B });
+        if (simTail.isSafe) {
+            return {
+                recommendedDeltaSWad: maxPartial,
+                mode: SizingMode.PARTIAL_GRID_RESEARCH,
+                willFullyLiquidate: false,
+                partialResult: simTail,
+                evaluationCount: evalCount,
+                researchStepWad: stepWad,
+                searchExhaustive: false,
+                sampledMaxPartial: true
+            };
+        }
+    }
+
+    // Grid miss conclusions
+    if (isExhaustive) {
+        // True integer-domain exhaustive scan completed with zero safe partial points
+        return {
+            recommendedDeltaSWad: params.s0Wad,
+            mode: SizingMode.FULL_FALLBACK,
+            willFullyLiquidate: true,
+            fallbackReason: "Exhaustive integer scan completed — no safe partial size exists",
+            evaluationCount: evalCount,
+            researchStepWad: stepWad,
+            searchExhaustive: true,
+            sampledMaxPartial: true
+        };
+    } else {
+        // Coarse grid search completed with zero safe points on sampled grid points
+        return {
+            recommendedDeltaSWad: 0n,
+            mode: SizingMode.RESEARCH_INCONCLUSIVE,
+            willFullyLiquidate: false,
+            fallbackReason: "No safe size found on sampled research grid; unsampled sizes may exist",
+            evaluationCount: evalCount,
+            researchStepWad: stepWad,
+            searchExhaustive: false,
+            sampledMaxPartial
+        };
+    }
+}
+
+/**
+ * Backward compatibility alias for findSafePolicyBSizeResearch.
+ */
+export function findMinimumSafePolicyBSizeExhaustive(
+    params: Omit<PartialLiquidationParams, "deltaSWad" | "policy">,
+    stepWad: bigint = WAD
+): PartialSizingRecommendation {
+    return findSafePolicyBSizeResearch(params, stepWad);
 }
 
 /**
