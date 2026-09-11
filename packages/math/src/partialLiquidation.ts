@@ -654,22 +654,22 @@ export function findSafePolicyBSizeResearch(
         };
     }
 
-    const maxPartial = params.minPositionSizeWad > 0n && params.s0Wad > params.minPositionSizeWad
-        ? params.s0Wad - params.minPositionSizeWad
-        : params.s0Wad - 1n;
-
-    if (maxPartial <= 0n) {
+    if (params.minPositionSizeWad >= params.s0Wad) {
         return {
             recommendedDeltaSWad: params.s0Wad,
             mode: SizingMode.FULL_FALLBACK,
             willFullyLiquidate: true,
-            fallbackReason: "Partial size domain empty; full fallback required",
+            fallbackReason: "No valid partial domain: minPositionSizeWad >= s0Wad",
             evaluationCount: 0,
             researchStepWad: stepWad,
-            searchExhaustive: stepWad === 1n,
+            searchExhaustive: true,
             sampledMaxPartial: false
         };
     }
+
+    const maxPartial = params.minPositionSizeWad === 0n
+        ? params.s0Wad - 1n
+        : params.s0Wad - params.minPositionSizeWad;
 
     const isExhaustive = stepWad === 1n;
     let evalCount = 0;

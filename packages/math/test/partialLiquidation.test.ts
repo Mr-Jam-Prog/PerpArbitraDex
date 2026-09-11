@@ -577,6 +577,60 @@ describe("Partial Liquidation Feasibility Suite (Prompt 07C-A-R2 Vectors A - P +
         assert.equal(rec.fallbackReason, "No safe size found on sampled research grid; unsampled sizes may exist");
     });
 
+    test("LIQ-PART-NO-PARTIAL-DOMAIN1: Freeze Codex P2 R9 empty partial domain (minPositionSizeWad >= s0Wad) FULL_FALLBACK", () => {
+        const liquidatableBase = {
+            s0Wad: 10n * WAD,
+            m0Wad: 100n * WAD, // Low margin => liquidatable
+            entryPrice8d: 2000_00000000n,
+            currentPrice8d: 1700_00000000n,
+            isLong: true,
+            fundingPaymentWad: 0n,
+            targetHfWad: 1200000000000000000n,
+            liqFeeRatioBps: 250n,
+            maintenanceMarginBps: 500n,
+            quoteDecimals: 18
+        };
+
+        // 1. Equal size: s0Wad == minPositionSizeWad = 10 WAD
+        const paramsEqual = { ...liquidatableBase, minPositionSizeWad: 10n * WAD };
+        const recEqual1 = findMinimumSafePolicyBSizeExhaustive(paramsEqual, 1n);
+        assert.equal(recEqual1.recommendedDeltaSWad, 10n * WAD);
+        assert.equal(recEqual1.mode, SizingMode.FULL_FALLBACK);
+        assert.equal(recEqual1.willFullyLiquidate, true);
+        assert.equal(recEqual1.evaluationCount, 0);
+        assert.equal(recEqual1.searchExhaustive, true);
+        assert.equal(recEqual1.fallbackReason, "No valid partial domain: minPositionSizeWad >= s0Wad");
+
+        // 2. minPositionSizeWad > s0Wad: minPositionSizeWad = 15 WAD > s0Wad (10 WAD)
+        const paramsGreater = { ...liquidatableBase, minPositionSizeWad: 15n * WAD };
+        const recGreater = findMinimumSafePolicyBSizeExhaustive(paramsGreater, 1n * WAD);
+        assert.equal(recGreater.recommendedDeltaSWad, 10n * WAD);
+        assert.equal(recGreater.mode, SizingMode.FULL_FALLBACK);
+        assert.equal(recGreater.willFullyLiquidate, true);
+        assert.equal(recGreater.evaluationCount, 0);
+        assert.equal(recGreater.fallbackReason, "No valid partial domain: minPositionSizeWad >= s0Wad");
+
+        // 3. Healthy position precedence: HF >= 1.0 position with minPositionSizeWad >= s0Wad must return SizingMode.NONE
+        const healthyParams = {
+            s0Wad: 10n * WAD,
+            m0Wad: 2000n * WAD, // Healthy
+            entryPrice8d: 2000_00000000n,
+            currentPrice8d: 2000_00000000n,
+            isLong: true,
+            fundingPaymentWad: 0n,
+            targetHfWad: 1200000000000000000n,
+            liqFeeRatioBps: 250n,
+            maintenanceMarginBps: 500n,
+            quoteDecimals: 18,
+            minPositionSizeWad: 10n * WAD
+        };
+        const recHealthy = findMinimumSafePolicyBSizeExhaustive(healthyParams, 1n);
+        assert.equal(recHealthy.recommendedDeltaSWad, 0n);
+        assert.equal(recHealthy.mode, SizingMode.NONE);
+        assert.equal(recHealthy.willFullyLiquidate, false);
+        assert.equal(recHealthy.fallbackReason, "Position not liquidatable");
+    });
+
     test("LIQ-PART-TARGET-HF-FLOOR1: Freeze Codex P2 R7 targetHfWad < WAD invalid target RangeError counterexample", () => {
         const codexParams: PartialLiquidationParams = {
             s0Wad: 10n * WAD,
