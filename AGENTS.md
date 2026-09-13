@@ -17,7 +17,7 @@
 
 ## 2. Standard Commands
 
-- **Environment**: Node 20 LTS (`.nvmrc`), pnpm 9.15.5 (`packageManager`), Foundry v1.8.1 (pinned in CI).
+- **Environment**: Node 24.21.0 (`.nvmrc`), pnpm 12.4.0 (`packageManager`), Foundry v1.8.1 (pinned in CI).
 - **Frozen Installation**: `pnpm run install:frozen`
 - **Solidity Compilation**: `pnpm run compile` (Hardhat, then Foundry)
 - **Unit Tests (Hardhat)**: `pnpm run test:unit`

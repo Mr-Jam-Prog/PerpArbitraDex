@@ -28,8 +28,8 @@ Le protocole propose une architecture à **collaboration isolée avec collatéra
 ## 3. Guide de Démarrage & Exécution des Tests
 
 ### Prérequis
-* Node.js `^20.0.0` ou v22.x
-* `pnpm` `>=9.15.5`
+* Node.js `24.21.0` (voir `.nvmrc` et `package.json` engines)
+* `pnpm` `12.4.0` (voir `packageManager` et `package.json` engines)
 * `foundry` / `forge` (optionnel mais requis pour les tests de fuzzing)
 
 ### Installation
