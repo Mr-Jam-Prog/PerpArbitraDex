@@ -3,7 +3,7 @@ import hre from "hardhat";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 
-const { loadAllowlist, validateContractDeployment, validateScriptExecution } = require("../../scripts/utils/allowlist-validator.cjs");
+const { loadAllowlist, validateContractDeployment, validateScriptExecution, getActiveNetworkName } = require("../../scripts/utils/allowlist-validator.cjs");
 
 describe("🛡️ MVP Scope & Allowlist Validation", function () {
   let ethers, time, artifacts, loadFixture;
@@ -71,24 +71,37 @@ describe("🛡️ MVP Scope & Allowlist Validation", function () {
   });
 
   it("Should reject execution of QUARANTINED or TEST_ONLY scripts", function () {
-    expect(() => validateScriptExecution("05_deploy_integrations.js")).to.throw(
+    expect(() => validateScriptExecution("05_deploy_integrations.js", "arbitrumSepolia")).to.throw(
       /blocked from execution/
     );
-    expect(() => validateScriptExecution("04_deploy_governance.js")).to.throw(
+    expect(() => validateScriptExecution("04_deploy_governance.js", "arbitrumSepolia")).to.throw(
       /blocked from execution/
     );
-    expect(validateScriptExecution("01_deploy_core.js")).to.be.true;
+    expect(validateScriptExecution("01_deploy_core.js", "arbitrumSepolia")).to.be.true;
   });
 
-  it("Should enforce network target check if active network differs from arbitrumSepolia", function () {
-    const originalEnv = process.env.HARDHAT_NETWORK;
-    try {
-      process.env.HARDHAT_NETWORK = "mainnet";
-      expect(() => validateScriptExecution("01_deploy_core.js")).to.throw(
-        /Active network 'mainnet' does not match target network 'arbitrumSepolia'/
-      );
-    } finally {
-      process.env.HARDHAT_NETWORK = originalEnv;
-    }
+  it("Should validate normal allowed script execution on intended target network or hardhat network", function () {
+    expect(validateScriptExecution("01_deploy_core.js", "arbitrumSepolia")).to.be.true;
+    expect(validateScriptExecution("01_deploy_core.js", "hardhat")).to.be.true;
+    expect(validateScriptExecution("01_deploy_core.js", hre)).to.be.true;
+  });
+
+  it("Should reject wrong-network execution without relying on CommonJS require('hardhat')", function () {
+    expect(() => validateScriptExecution("01_deploy_core.js", "mainnet")).to.throw(
+      /Active network 'mainnet' does not match target network 'arbitrumSepolia'/
+    );
+    expect(() => validateScriptExecution("01_deploy_core.js", { network: { name: "mainnet" } })).to.throw(
+      /Active network 'mainnet' does not match target network 'arbitrumSepolia'/
+    );
+    expect(() => validateScriptExecution("01_deploy_core.js", { name: "sepolia" })).to.throw(
+      /Active network 'sepolia' does not match target network 'arbitrumSepolia'/
+    );
+  });
+
+  it("Should resolve active network name under Hardhat 3 from string or HRE object without require('hardhat')", function () {
+    expect(getActiveNetworkName("arbitrumSepolia")).to.equal("arbitrumSepolia");
+    expect(getActiveNetworkName("hardhat")).to.equal("hardhat");
+    expect(getActiveNetworkName(hre)).to.be.a("string");
+    expect(getActiveNetworkName({ network: { name: "arbitrumSepolia" } })).to.equal("arbitrumSepolia");
   });
 });

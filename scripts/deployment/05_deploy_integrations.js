@@ -4,9 +4,9 @@
 
 const { validateScriptExecution } = require("../utils/allowlist-validator.cjs");
 
-module.exports = async () => {
+module.exports = async (hre) => {
   // Always validate script execution against MVP allowlist first
-  validateScriptExecution("05_deploy_integrations.js");
+  validateScriptExecution("05_deploy_integrations.js", hre);
   
   console.log("🔗 Déploiement External Integrations");
   // Integrations are QUARANTINED and will throw prior to execution.

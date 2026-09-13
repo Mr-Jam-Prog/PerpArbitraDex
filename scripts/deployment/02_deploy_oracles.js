@@ -7,8 +7,8 @@ const { saveDeployment, validateOracleSetup } = require("../utils/deployment-uti
 const { ORACLE_CONFIG, NETWORK_CONFIG } = require("../utils/constants");
 const { validateContractDeployment, validateScriptExecution } = require("../utils/allowlist-validator.cjs");
 
-module.exports = async () => {
-  validateScriptExecution("02_deploy_oracles.js");
+module.exports = async (hre) => {
+  validateScriptExecution("02_deploy_oracles.js", hre);
   console.log("🔮 Déploiement Oracle System");
   
   const [deployer] = await ethers.getSigners();
