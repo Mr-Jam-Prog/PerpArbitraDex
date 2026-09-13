@@ -1,13 +1,25 @@
+import { expect } from "chai";
+import hre from "hardhat";
+
 // @title: Tests unitaires pour OracleAggregator
 // @coverage: >95% (multi-source, fallback, security)
 // @audit: Critical for price manipulation protection
 // @security: TWAP, deviation limits, stale checks
 
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
-const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("🔮 OracleAggregator - Unit Tests", function () {
+  let ethers, time, artifacts, loadFixture;
+  let BASE_PRICE, feedId;
+  before(async function () {
+    const conn = await hre.network.getOrCreate();
+    ethers = conn.ethers;
+    time = conn.networkHelpers?.time;
+    loadFixture = conn.networkHelpers?.loadFixture;
+    artifacts = hre.artifacts;
+    BASE_PRICE = ethers.parseUnits("2000", 18);
+    feedId = ethers.encodeBytes32String(ETH_USD_MARKET);
+  });
+
   let oracleAggregator;
   let oracleSanityChecker;
   let chainlinkOracle;
@@ -17,8 +29,6 @@ describe("🔮 OracleAggregator - Unit Tests", function () {
   let securityModule;
   
   const ETH_USD_MARKET = "ETH-USD";
-  const BASE_PRICE = ethers.parseUnits("2000", 18);
-  const feedId = ethers.encodeBytes32String(ETH_USD_MARKET);
   
   beforeEach(async function () {
     [owner] = await ethers.getSigners();
@@ -115,7 +125,7 @@ describe("🔮 OracleAggregator - Unit Tests", function () {
       await chainlinkOracle.setShouldRevert(true);
       await pythOracle.setShouldRevert(true);
       
-      await expect(oracleAggregator.updatePrice(feedId)).to.be.reverted;
+      await expect(oracleAggregator.updatePrice(feedId)).to.be.revertedWith("OracleAggregator: insufficient valid sources");
       
       const price = await oracleAggregator.getPrice(feedId);
       expect(price).to.equal(initialPrice);

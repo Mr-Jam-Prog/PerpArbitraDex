@@ -1,13 +1,29 @@
+import { expect } from "chai";
+import hre from "hardhat";
+import fs from "fs";
+import path from "path";
+
 // @title: Tests unitaires exhaustifs du PerpEngine
 // @coverage: >98% (core logic)
 // @audit: Critical path - position management, PnL, margins
 // @security: No external dependencies, pure unit tests
 
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
-const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("🚀 PerpEngine - Unit Tests", function () {
+  let ethers, time, artifacts, loadFixture;
+  let INITIAL_PRICE, COLLATERAL_AMOUNT, LEVERAGE, feedId;
+  before(async function () {
+    const conn = await hre.network.getOrCreate();
+    ethers = conn.ethers;
+    time = conn.networkHelpers?.time;
+    loadFixture = conn.networkHelpers?.loadFixture;
+    artifacts = hre.artifacts;
+    INITIAL_PRICE = ethers.parseUnits("2000", 8);
+    COLLATERAL_AMOUNT = ethers.parseUnits("1000", 18);
+    LEVERAGE = ethers.parseUnits("5", 18);
+    feedId = ethers.encodeBytes32String(ETH_USD_MARKET);
+  });
+
   let perpEngine;
   let positionManager;
   let riskManager;
@@ -22,10 +38,6 @@ describe("🚀 PerpEngine - Unit Tests", function () {
   
   const MARKET_ID = 1;
   const ETH_USD_MARKET = "ETH-USD";
-  const INITIAL_PRICE = ethers.parseUnits("2000", 8); // Oracle prices are 8 decimals
-  const COLLATERAL_AMOUNT = ethers.parseUnits("1000", 18); // 1000 USD (18 decimals)
-  const LEVERAGE = ethers.parseUnits("5", 18); // 5x
-  const feedId = ethers.encodeBytes32String(ETH_USD_MARKET);
   
   beforeEach(async function () {
     [owner, user1, user2, liquidator, insuranceFund] = await ethers.getSigners();

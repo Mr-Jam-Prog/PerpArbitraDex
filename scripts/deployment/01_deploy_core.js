@@ -8,8 +8,8 @@ const { saveDeployment, validateDeployment } = require("../utils/deployment-util
 const { PROTOCOL_PARAMS, NETWORK_CONFIG } = require("../utils/constants");
 const { validateContractDeployment, validateScriptExecution } = require("../utils/allowlist-validator.cjs");
 
-module.exports = async () => {
-  validateScriptExecution("01_deploy_core.js");
+module.exports = async (hre) => {
+  validateScriptExecution("01_deploy_core.js", hre);
   console.log("🚀 Déploiement Core Protocol");
   
   // 1. Déploiement ProtocolConfig

@@ -1,21 +1,32 @@
+import { expect } from "chai";
+import hre from "hardhat";
+import path from "path";
+
 // @title: Funding Model Specification & Invariants Verification Tests
 // @notice Verifies path independence (including non-aligned durations), non-double settlement, sign correctness, long/short conservation, mutation ordering, boundary conditions, and reference model parity.
 
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
-const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("📐 Funding Model Specification & Invariants", function () {
+  let ethers, time, artifacts, loadFixture;
+  let INITIAL_PRICE, INITIAL_PRICE_WAD, SKEW_SCALE, MAX_FUNDING_RATE;
+  before(async function () {
+    const conn = await hre.network.getOrCreate();
+    ethers = conn.ethers;
+    time = conn.networkHelpers?.time;
+    loadFixture = conn.networkHelpers?.loadFixture;
+    artifacts = hre.artifacts;
+    INITIAL_PRICE = ethers.parseUnits("2000", 8);
+    INITIAL_PRICE_WAD = ethers.parseUnits("2000", 18);
+    SKEW_SCALE = ethers.parseUnits("1000000", 18);
+    MAX_FUNDING_RATE = ethers.parseUnits("0.01", 18);
+  });
+
   let perpEngine, ammPool, oracleAggregator, liquidityVault, positionManager;
   let mockQuoteToken, mockBaseToken;
   let owner, traderLong, traderShort, liquidator;
   let oracleFeedId;
 
   const MARKET_ID = 1;
-  const INITIAL_PRICE = ethers.parseUnits("2000", 8); // $2000 Chainlink 8 decimals
-  const INITIAL_PRICE_WAD = ethers.parseUnits("2000", 18);
-  const SKEW_SCALE = ethers.parseUnits("1000000", 18); // $1M skew scale
-  const MAX_FUNDING_RATE = ethers.parseUnits("0.01", 18); // 1% per interval
   const FUNDING_INTERVAL = 3600; // 1 hour
 
   beforeEach(async function () {

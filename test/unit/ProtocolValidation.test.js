@@ -1,8 +1,17 @@
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
-const { time } = require("@nomicfoundation/hardhat-network-helpers");
+import { expect } from "chai";
+import hre from "hardhat";
+
 
 describe("🏁 Protocol Core Validation", function () {
+  let ethers, time, artifacts, loadFixture;
+  before(async function () {
+    const conn = await hre.network.getOrCreate();
+    ethers = conn.ethers;
+    time = conn.networkHelpers?.time;
+    loadFixture = conn.networkHelpers?.loadFixture;
+    artifacts = hre.artifacts;
+  });
+
     let perpEngine, ammPool, oracleAggregator, liquidationEngine, protocolConfig, riskManager;
     let quoteToken, baseToken, positionManager;
     let owner, trader, liquidator, insuranceFund;

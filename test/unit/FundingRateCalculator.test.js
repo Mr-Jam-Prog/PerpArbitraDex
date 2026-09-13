@@ -1,12 +1,24 @@
+import { expect } from "chai";
+import hre from "hardhat";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+
 // @title: Tests unitaires pour FundingRateCalculator
 // @coverage: >95% (funding rate logic)
 // @audit: Critical for protocol economics
 // @security: Rate capping, smooth adjustments
 
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
 
 describe("📊 FundingRateCalculator - Unit Tests", function () {
+  let ethers, time, artifacts, loadFixture;
+  before(async function () {
+    const conn = await hre.network.getOrCreate();
+    ethers = conn.ethers;
+    time = conn.networkHelpers?.time;
+    loadFixture = conn.networkHelpers?.loadFixture;
+    artifacts = hre.artifacts;
+  });
+
   let fundingRateCalculator;
   
   before(async function () {

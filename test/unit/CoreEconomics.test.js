@@ -1,7 +1,19 @@
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
+import { expect } from "chai";
+import hre from "hardhat";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+
 
 describe("💎 Core Economics - Validation", function () {
+  let ethers, time, artifacts, loadFixture;
+  before(async function () {
+    const conn = await hre.network.getOrCreate();
+    ethers = conn.ethers;
+    time = conn.networkHelpers?.time;
+    loadFixture = conn.networkHelpers?.loadFixture;
+    artifacts = hre.artifacts;
+  });
+
     let perpEngine, positionManager, oracleAggregator, protocolConfig, quoteToken;
     let owner, trader;
     

@@ -1,15 +1,30 @@
+import { expect } from "chai";
+import hre from "hardhat";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // @title: Economic Specification & Golden Vectors Tests (6d & 18d quote)
 // @notice Verifies PerpEngine, LiquidityVault, AMMPool against ECONOMIC_SPEC.md and TypeScript reference model
 
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
-const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests", function () {
+  let ethers, time, artifacts, loadFixture;
+  let INITIAL_PRICE_8DEC, FEED_ID;
+  before(async function () {
+    const conn = await hre.network.getOrCreate();
+    ethers = conn.ethers;
+    time = conn.networkHelpers?.time;
+    loadFixture = conn.networkHelpers?.loadFixture;
+    artifacts = hre.artifacts;
+    INITIAL_PRICE_8DEC = ethers.parseUnits("2000", 8);
+    FEED_ID = ethers.encodeBytes32String(ETH_USD_MARKET);
+  });
+
   let MARKET_ID = 1;
   const ETH_USD_MARKET = "ETH-USD";
-  const INITIAL_PRICE_8DEC = ethers.parseUnits("2000", 8); // $2,000 in 8 decimals
-  const FEED_ID = ethers.encodeBytes32String(ETH_USD_MARKET);
 
   async function deploySystem(quoteDecimals = 18) {
     const [deployer, t1, t2, lp, liq] = await ethers.getSigners();
@@ -2243,7 +2258,7 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
       // q + 1 MUST fail
       await expect(
         sys.engine.connect(sys.t1).increasePosition(1, q + 1n, additionalMargin)
-      ).to.be.reverted;
+      ).to.be.revertedWithCustomError(sys.engine, "LeverageTooHigh");
     });
 
     it("MAXQ-R3 — 6-decimal quote native fee ceil preview execution", async function () {
@@ -3021,9 +3036,6 @@ describe("📜 ECONOMIC_SPEC - Comprehensive Golden Vectors & Conservation Tests
 
   describe("SDK ABI Parity & Version Invariants (Source & Dist)", function () {
     it("Source and Dist PerpEngine ABI files contain collateralDelta in PositionDecreased and liquidityVault_ in constructor", async function () {
-      const fs = require("fs");
-      const path = require("path");
-
       const srcAbiPath = path.resolve(__dirname, "../../packages/sdk/src/abi/PerpEngine.json");
       const distAbiPath = path.resolve(__dirname, "../../packages/sdk/dist/abi/PerpEngine.json");
 

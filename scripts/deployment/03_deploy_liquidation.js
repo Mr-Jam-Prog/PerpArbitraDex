@@ -6,8 +6,8 @@ const { ethers, upgrades } = require("hardhat");
 const { saveDeployment, getDeployment } = require("../utils/deployment-utils");
 const { validateContractDeployment, validateScriptExecution } = require("../utils/allowlist-validator.cjs");
 
-module.exports = async () => {
-  validateScriptExecution("03_deploy_liquidation.js");
+module.exports = async (hre) => {
+  validateScriptExecution("03_deploy_liquidation.js", hre);
   console.log("⚡ Déploiement Liquidation System");
   
   // Récupération des adresses core

@@ -11,17 +11,20 @@ function loadAllowlist() {
   return JSON.parse(raw);
 }
 
-function getActiveNetworkName() {
-  if (process.env.HARDHAT_NETWORK) {
-    return process.env.HARDHAT_NETWORK;
+function getActiveNetworkName(networkNameOrHre) {
+  if (typeof networkNameOrHre === "string" && networkNameOrHre.trim() !== "") {
+    return networkNameOrHre.trim();
   }
-  try {
-    const hardhat = require("hardhat");
-    if (hardhat && hardhat.network && hardhat.network.name) {
-      return hardhat.network.name;
+  if (networkNameOrHre && typeof networkNameOrHre === "object") {
+    if (networkNameOrHre.network && typeof networkNameOrHre.network.name === "string") {
+      return networkNameOrHre.network.name;
     }
-  } catch (e) {
-    // Hardhat might not be required in pure node test scripts
+    if (typeof networkNameOrHre.name === "string") {
+      return networkNameOrHre.name;
+    }
+  }
+  if (process.env.HARDHAT_NETWORK && process.env.HARDHAT_NETWORK.trim() !== "") {
+    return process.env.HARDHAT_NETWORK.trim();
   }
   return process.env.NODE_ENV === "test" ? "arbitrumSepolia" : "unknown";
 }
@@ -57,9 +60,9 @@ function validateContractDeployment(contractName) {
   return true;
 }
 
-function validateScriptExecution(scriptName) {
+function validateScriptExecution(scriptName, networkNameOrHre) {
   const allowlist = loadAllowlist();
-  const activeNetwork = getActiveNetworkName();
+  const activeNetwork = getActiveNetworkName(networkNameOrHre);
 
   if (allowlist.targetNetwork && activeNetwork !== allowlist.targetNetwork && activeNetwork !== "hardhat") {
     throw new Error(
