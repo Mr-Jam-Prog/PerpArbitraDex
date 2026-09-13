@@ -2,9 +2,9 @@ packages:
   - packages/*
   - frontend
 
-onlyBuiltDependencies:
-  - esbuild
-  - keccak
-  - protobufjs
-  - secp256k1
-  - unrs-resolver
+allowBuilds:
+  classic-level: true
+  keccak: true
+  protobufjs: true
+  secp256k1: true
+  unrs-resolver: true
