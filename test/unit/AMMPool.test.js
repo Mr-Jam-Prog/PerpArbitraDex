@@ -1,13 +1,28 @@
+import { expect } from "chai";
+import hre from "hardhat";
+
 // @title: Tests unitaires pour AMMPool (funding rates)
 // @coverage: >95% (funding logic)
 // @audit: Critical for protocol economics
 // @invariants: Funding rate symmetry, no arbitrage
 
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
-const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("💰 AMMPool - Unit Tests", function () {
+  let ethers, time, artifacts, loadFixture;
+  let INITIAL_PRICE, COLLATERAL_AMOUNT, LEVERAGE, SKEW_SCALE, MAX_FUNDING_RATE;
+  before(async function () {
+    const conn = await hre.network.getOrCreate();
+    ethers = conn.ethers;
+    time = conn.networkHelpers?.time;
+    loadFixture = conn.networkHelpers?.loadFixture;
+    artifacts = hre.artifacts;
+    INITIAL_PRICE = ethers.parseUnits("2000", 18);
+    COLLATERAL_AMOUNT = ethers.parseUnits("1000", 18);
+    LEVERAGE = ethers.parseUnits("5", 18);
+    SKEW_SCALE = ethers.parseUnits("1000000", 18);
+    MAX_FUNDING_RATE = ethers.parseUnits("0.01", 18);
+  });
+
   let ammPool;
   let perpEngine;
   let oracleAggregator;
@@ -16,12 +31,7 @@ describe("💰 AMMPool - Unit Tests", function () {
   
   const MARKET_ID = 1;
   const ETH_USD_MARKET = "ETH-USD";
-  const INITIAL_PRICE = ethers.parseUnits("2000", 18);
-  const COLLATERAL_AMOUNT = ethers.parseUnits("1000", 18);
-  const LEVERAGE = ethers.parseUnits("5", 18);
   
-  const SKEW_SCALE = ethers.parseUnits("1000000", 18); // $1M
-  const MAX_FUNDING_RATE = ethers.parseUnits("0.01", 18); // 1%
   const FUNDING_INTERVAL = 3600; // 1 hour
 
   beforeEach(async function () {

@@ -1,7 +1,19 @@
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
+import { expect } from "chai";
+import hre from "hardhat";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+
 
 describe("🧮 PositionMath - Unit Tests", function () {
+  let ethers, time, artifacts, loadFixture;
+  before(async function () {
+    const conn = await hre.network.getOrCreate();
+    ethers = conn.ethers;
+    time = conn.networkHelpers?.time;
+    loadFixture = conn.networkHelpers?.loadFixture;
+    artifacts = hre.artifacts;
+  });
+
   let positionMath;
   const PRECISION = 10n**18n;
   const PRICE_PRECISION = 10n**8n;

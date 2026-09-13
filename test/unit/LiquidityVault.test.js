@@ -1,7 +1,19 @@
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
+import { expect } from "chai";
+import hre from "hardhat";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+
 
 describe("🏦 LiquidityVault - Comprehensive Unit Tests & Ledger Scenarios", function () {
+  let ethers, time, artifacts, loadFixture;
+  before(async function () {
+    const conn = await hre.network.getOrCreate();
+    ethers = conn.ethers;
+    time = conn.networkHelpers?.time;
+    loadFixture = conn.networkHelpers?.loadFixture;
+    artifacts = hre.artifacts;
+  });
+
   let owner, lp1, lp2, trader, liquidator, recipient;
   let quoteToken6, quoteToken18;
   let vault6, vault18;

@@ -19,7 +19,7 @@
         "compile:hardhat": "pnpm exec hardhat compile",
         "compile:forge": "forge build",
         "compile": "pnpm run compile:hardhat && pnpm run compile:forge",
-        "test:unit": "pnpm exec hardhat test --no-compile test/unit/*.test.cjs",
+        "test:unit": "pnpm exec hardhat test --no-compile test/unit/*.test.js",
         "test:forge": "forge test --offline --summary",
         "check:contract-size": "node scripts/check-contract-size.mjs",
         "test:math": "pnpm --filter @perpdex/math test",
@@ -35,12 +35,16 @@
         "test": "test"
     },
     "devDependencies": {
-        "@nomicfoundation/hardhat-toolbox": "4.0.0",
+        "@nomicfoundation/hardhat-ethers": "4.0.15",
+        "@nomicfoundation/hardhat-ethers-chai-matchers": "3.0.1",
+        "@nomicfoundation/hardhat-network-helpers": "3.0.11",
+        "@nomicfoundation/hardhat-toolbox-mocha-ethers": "3.0.7",
         "@openzeppelin/contracts": "4.9.0",
         "@chainlink/contracts": "0.8.0",
         "@pythnetwork/pyth-sdk-solidity": "2.2.1",
-        "ethers": "6.10.0",
-        "hardhat": "2.19.4"
+        "chai": "5.3.3",
+        "ethers": "6.14.0",
+        "hardhat": "3.16.0"
     },
     "keywords": [],
     "author": "",

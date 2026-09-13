@@ -1,7 +1,20 @@
-const { expect } = require("chai");
+import { expect } from "chai";
+import hre from "hardhat";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+
 const { loadAllowlist, validateContractDeployment, validateScriptExecution } = require("../../scripts/utils/allowlist-validator.cjs");
 
 describe("🛡️ MVP Scope & Allowlist Validation", function () {
+  let ethers, time, artifacts, loadFixture;
+  before(async function () {
+    const conn = await hre.network.getOrCreate();
+    ethers = conn.ethers;
+    time = conn.networkHelpers?.time;
+    loadFixture = conn.networkHelpers?.loadFixture;
+    artifacts = hre.artifacts;
+  });
+
   let allowlist;
 
   before(function () {

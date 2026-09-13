@@ -4,6 +4,7 @@ packages:
 
 allowBuilds:
   classic-level: true
+  esbuild: true
   keccak: true
   protobufjs: true
   secp256k1: true

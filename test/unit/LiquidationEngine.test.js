@@ -1,8 +1,20 @@
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
-const { time } = require("@nomicfoundation/hardhat-network-helpers");
+import { expect } from "chai";
+import hre from "hardhat";
+
 
 describe("⚡ LiquidationEngine - Unit Tests", function () {
+  let ethers, time, artifacts, loadFixture;
+  let INITIAL_PRICE, COLLATERAL_AMOUNT;
+  before(async function () {
+    const conn = await hre.network.getOrCreate();
+    ethers = conn.ethers;
+    time = conn.networkHelpers?.time;
+    loadFixture = conn.networkHelpers?.loadFixture;
+    artifacts = hre.artifacts;
+    INITIAL_PRICE = ethers.parseUnits("2000", 8);
+    COLLATERAL_AMOUNT = ethers.parseUnits("1000", 18);
+  });
+
   let liquidationEngine;
   let liquidationQueue;
   let incentiveDistributor;
@@ -17,8 +29,6 @@ describe("⚡ LiquidationEngine - Unit Tests", function () {
   
   const MARKET_ID = 1n;
   const FEED_ID = "0x0000000000000000000000000000000000000000000000000000000000000001";
-  const INITIAL_PRICE = ethers.parseUnits("2000", 8);
-  const COLLATERAL_AMOUNT = ethers.parseUnits("1000", 18);
   
   beforeEach(async function () {
     [owner, liquidator1, user, treasury, insurance, staking] = await ethers.getSigners();
