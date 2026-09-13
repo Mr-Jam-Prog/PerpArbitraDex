@@ -1,0 +1,835 @@
+[
+  {
+    "file": "node_modules/.pnpm/@openzeppelin+contracts@4.9.0/node_modules/@openzeppelin/contracts/security/ReentrancyGuard.sol",
+    "line": 53,
+    "message": "Unreachable code.",
+    "raw_warning": "Warning: Unreachable code.",
+    "justification": "Unreachable code block retained after defensive check or constant fold."
+  },
+  {
+    "file": "contracts/libraries/L2GasOptimized.sol",
+    "line": 190,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "Unused variable retained for debugging or layout alignment."
+  },
+  {
+    "file": "contracts/libraries/L2GasOptimized.sol",
+    "line": 361,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "Unused variable retained for debugging or layout alignment."
+  },
+  {
+    "file": "contracts/core/AMMPool.sol",
+    "line": 333,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/core/AMMPool.sol",
+    "line": 379,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/core/RiskManager.sol",
+    "line": 154,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/core/RiskManager.sol",
+    "line": 156,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/core/RiskManager.sol",
+    "line": 230,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/core/RiskManager.sol",
+    "line": 232,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/core/RiskManager.sol",
+    "line": 234,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/core/RiskManager.sol",
+    "line": 238,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "Unused variable retained for debugging or layout alignment."
+  },
+  {
+    "file": "contracts/core/RiskManager.sol",
+    "line": 261,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/core/RiskManager.sol",
+    "line": 392,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/core/RiskManager.sol",
+    "line": 394,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/core/RiskManager.sol",
+    "line": 416,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/governance/TimelockController.sol",
+    "line": 214,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/governance/TimelockController.sol",
+    "line": 214,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/integration/AaveFlashLoanIntegrator.sol",
+    "line": 384,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/integration/AccountAbstractionAdapter.sol",
+    "line": 380,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/integration/AccountAbstractionAdapter.sol",
+    "line": 413,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/integration/AccountAbstractionAdapter.sol",
+    "line": 440,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/integration/AccountAbstractionAdapter.sol",
+    "line": 441,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/integration/AccountAbstractionAdapter.sol",
+    "line": 442,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 245,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 399,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 440,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "Unused variable retained for debugging or layout alignment."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 440,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "Unused variable retained for debugging or layout alignment."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 440,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "Unused variable retained for debugging or layout alignment."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 440,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "Unused variable retained for debugging or layout alignment."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 462,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "Unused variable retained for debugging or layout alignment."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 462,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "Unused variable retained for debugging or layout alignment."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 462,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "Unused variable retained for debugging or layout alignment."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 484,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "Unused variable retained for debugging or layout alignment."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 484,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "Unused variable retained for debugging or layout alignment."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 484,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "Unused variable retained for debugging or layout alignment."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 506,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "Unused variable retained for debugging or layout alignment."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 506,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "Unused variable retained for debugging or layout alignment."
+  },
+  {
+    "file": "contracts/liquidation/FlashLiquidator.sol",
+    "line": 301,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "Unused variable retained for debugging or layout alignment."
+  },
+  {
+    "file": "contracts/liquidation/IncentiveDistributor.sol",
+    "line": 227,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/liquidation/IncentiveDistributor.sol",
+    "line": 280,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/liquidation/LiquidationEngine.sol",
+    "line": 249,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/liquidation/LiquidationEngine.sol",
+    "line": 250,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/liquidation/LiquidationEngine.sol",
+    "line": 251,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/oracles/ChainlinkOracle.sol",
+    "line": 96,
+    "message": "Unused try/catch parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused try/catch parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Catch parameter required by Solidity syntax but detailed error message is ignored in fallback path."
+  },
+  {
+    "file": "contracts/oracles/ChainlinkOracle.sol",
+    "line": 153,
+    "message": "Unused try/catch parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused try/catch parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Catch parameter required by Solidity syntax but detailed error message is ignored in fallback path."
+  },
+  {
+    "file": "contracts/oracles/OracleSanityChecker.sol",
+    "line": 259,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/oracles/OracleSanityChecker.sol",
+    "line": 378,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/oracles/OracleSanityChecker.sol",
+    "line": 378,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/oracles/OracleAggregator.sol",
+    "line": 342,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/security/CircuitBreaker.sol",
+    "line": 156,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Parameter required by interface or callback standard but unneeded in implementation."
+  },
+  {
+    "file": "contracts/test/MockAavePool.sol",
+    "line": 9,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Mock contract method accepts interface parameters that are unused in stub implementation."
+  },
+  {
+    "file": "contracts/test/MockAavePool.sol",
+    "line": 10,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Mock contract method accepts interface parameters that are unused in stub implementation."
+  },
+  {
+    "file": "contracts/test/MockAavePool.sol",
+    "line": 12,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "Mock contract method accepts interface parameters that are unused in stub implementation."
+  },
+  {
+    "file": "contracts/core/AMMPool.sol",
+    "line": 182,
+    "message": "Function state mutability can be restricted to view",
+    "raw_warning": "Warning: Function state mutability can be restricted to view",
+    "justification": "Function state mutability restriction suggestion tolerated to avoid breaking ABI interface compatibility."
+  },
+  {
+    "file": "contracts/core/AMMPool.sol",
+    "line": 379,
+    "message": "Function state mutability can be restricted to view",
+    "raw_warning": "Warning: Function state mutability can be restricted to view",
+    "justification": "Function state mutability restriction suggestion tolerated to avoid breaking ABI interface compatibility."
+  },
+  {
+    "file": "contracts/core/PositionManager.sol",
+    "line": 291,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Function state mutability restriction suggestion tolerated to avoid breaking ABI interface compatibility."
+  },
+  {
+    "file": "contracts/governance/Governor.sol",
+    "line": 139,
+    "message": "Function state mutability can be restricted to view",
+    "raw_warning": "Warning: Function state mutability can be restricted to view",
+    "justification": "Function state mutability restriction suggestion tolerated to avoid breaking ABI interface compatibility."
+  },
+  {
+    "file": "contracts/integration/AaveFlashLoanIntegrator.sol",
+    "line": 384,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Function state mutability restriction suggestion tolerated to avoid breaking ABI interface compatibility."
+  },
+  {
+    "file": "contracts/integration/AccountAbstractionAdapter.sol",
+    "line": 413,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Function state mutability restriction suggestion tolerated to avoid breaking ABI interface compatibility."
+  },
+  {
+    "file": "contracts/liquidation/FlashLiquidator.sol",
+    "line": 322,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Function state mutability restriction suggestion tolerated to avoid breaking ABI interface compatibility."
+  },
+  {
+    "file": "contracts/liquidation/IncentiveDistributor.sol",
+    "line": 227,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Function state mutability restriction suggestion tolerated to avoid breaking ABI interface compatibility."
+  },
+  {
+    "file": "contracts/liquidation/IncentiveDistributor.sol",
+    "line": 280,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Function state mutability restriction suggestion tolerated to avoid breaking ABI interface compatibility."
+  },
+  {
+    "file": "contracts/liquidation/IncentiveDistributor.sol",
+    "line": 430,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Function state mutability restriction suggestion tolerated to avoid breaking ABI interface compatibility."
+  },
+  {
+    "file": "contracts/liquidation/LiquidationEngine.sol",
+    "line": 511,
+    "message": "Function state mutability can be restricted to view",
+    "raw_warning": "Warning: Function state mutability can be restricted to view",
+    "justification": "Function state mutability restriction suggestion tolerated to avoid breaking ABI interface compatibility."
+  },
+  {
+    "file": "contracts/oracles/OracleSanityChecker.sol",
+    "line": 378,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Function state mutability restriction suggestion tolerated to avoid breaking ABI interface compatibility."
+  },
+  {
+    "file": "contracts/security/CircuitBreaker.sol",
+    "line": 376,
+    "message": "Function state mutability can be restricted to view",
+    "raw_warning": "Warning: Function state mutability can be restricted to view",
+    "justification": "Function state mutability restriction suggestion tolerated to avoid breaking ABI interface compatibility."
+  },
+  {
+    "file": "contracts/test/MockAMMPool.sol",
+    "line": 51,
+    "message": "Function state mutability can be restricted to view",
+    "raw_warning": "Warning: Function state mutability can be restricted to view",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockAMMPool.sol",
+    "line": 54,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockAMMPool.sol",
+    "line": 55,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockAMMPool.sol",
+    "line": 92,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockConfigRegistry.sol",
+    "line": 8,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockConfigRegistry.sol",
+    "line": 12,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockConfigRegistry.sol",
+    "line": 16,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockConfigRegistry.sol",
+    "line": 20,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockConfigRegistry.sol",
+    "line": 23,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockConfigRegistry.sol",
+    "line": 24,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockConfigRegistry.sol",
+    "line": 25,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockConfigRegistry.sol",
+    "line": 26,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockLiquidationEngine.sol",
+    "line": 8,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockLiquidationEngine.sol",
+    "line": 11,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockLiquidationEngine.sol",
+    "line": 14,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockLiquidationEngine.sol",
+    "line": 17,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockLiquidationEngine.sol",
+    "line": 18,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockLiquidationEngine.sol",
+    "line": 21,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockLiquidationEngine.sol",
+    "line": 22,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockLiquidationEngine.sol",
+    "line": 25,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockLiquidationEngine.sol",
+    "line": 26,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockLiquidationEngine.sol",
+    "line": 27,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockOracleSecurity.sol",
+    "line": 17,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPerpEngine.sol",
+    "line": 35,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPerpEngine.sol",
+    "line": 38,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPerpEngine.sol",
+    "line": 40,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPerpEngine.sol",
+    "line": 41,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPerpEngine.sol",
+    "line": 42,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPerpEngine.sol",
+    "line": 43,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPerpEngine.sol",
+    "line": 44,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPerpEngine.sol",
+    "line": 100,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPerpEngine.sol",
+    "line": 161,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPerpEngine.sol",
+    "line": 164,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPerpEngine.sol",
+    "line": 167,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPerpEngine.sol",
+    "line": 176,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPerpEngine.sol",
+    "line": 197,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPerpEngine.sol",
+    "line": 198,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPerpEngine.sol",
+    "line": 199,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPerpEngine.sol",
+    "line": 202,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPerpEngine.sol",
+    "line": 205,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPerpEngine.sol",
+    "line": 208,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPositionManager.sol",
+    "line": 19,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPositionManager.sol",
+    "line": 20,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPositionManager.sol",
+    "line": 21,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPositionManager.sol",
+    "line": 26,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockPositionManager.sol",
+    "line": 27,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockRiskManager.sol",
+    "line": 7,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockRiskManager.sol",
+    "line": 10,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockRiskManager.sol",
+    "line": 13,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockRiskManager.sol",
+    "line": 14,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockRiskManager.sol",
+    "line": 15,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockRiskManager.sol",
+    "line": 16,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  },
+  {
+    "file": "contracts/test/MockRiskManager.sol",
+    "line": 17,
+    "message": "Function state mutability can be restricted to pure",
+    "raw_warning": "Warning: Function state mutability can be restricted to pure",
+    "justification": "Mock contract implements interface function with state mutability view/nonpayable required by interface, but returns a constant dummy value."
+  }
+]
