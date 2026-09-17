@@ -30,8 +30,8 @@ function isFalsePositive(line) {
   return false;
 }
 
-function isKnownBenignFilelessWarning(msg) {
-  return /^lib\/(forge-std|openzeppelin-contracts|solmate): expected [0-9a-f]{40}, found [0-9a-f]{40}/i.test(msg);
+function isKnownBenignSubmoduleNotice(line) {
+  return /^Warning:\s*lib\/(forge-std|openzeppelin-contracts|solmate): expected [0-9a-f]{40}, found [0-9a-f]{40}/i.test(line.trim());
 }
 
 export function parseWarningsFromText(rawText) {
@@ -45,6 +45,10 @@ export function parseWarningsFromText(rawText) {
     const line = rawLine.trim();
 
     if (isFalsePositive(line)) {
+      continue;
+    }
+
+    if (isKnownBenignSubmoduleNotice(line)) {
       continue;
     }
 
@@ -92,9 +96,6 @@ export function parseWarningsFromText(rawText) {
   const uniqueList = [];
   const seenKeys = new Set();
   for (const item of parsedList) {
-    if (!item.file && isKnownBenignFilelessWarning(item.message)) {
-      continue;
-    }
     const key = `${item.file}:${item.line}:${item.column}:${item.message}`;
     if (!seenKeys.has(key)) {
       seenKeys.add(key);
