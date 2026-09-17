@@ -182,12 +182,21 @@ export function runWarningBaselineCheck(customOutput = null) {
     const normFile = normalizePath(actual.file);
     const matchIdx = unmatchedBaseline.findIndex((b) => {
       const bFile = normalizePath(b.file);
-      return (
-        bFile === normFile &&
-        b.line === actual.line &&
-        (b.column === actual.column || b.column === 0 || actual.column === 0) &&
-        (b.message === actual.message || b.raw_warning === actual.raw_warning)
-      );
+      if (normFile) {
+        return (
+          bFile === normFile &&
+          b.line === actual.line &&
+          b.column === actual.column &&
+          (b.message === actual.message || b.raw_warning === actual.raw_warning)
+        );
+      } else {
+        return (
+          !bFile &&
+          b.line === 0 &&
+          b.column === 0 &&
+          (b.message === actual.message || b.raw_warning === actual.raw_warning)
+        );
+      }
     });
 
     if (matchIdx !== -1) {

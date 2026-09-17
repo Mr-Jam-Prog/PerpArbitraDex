@@ -63,4 +63,27 @@ Warning: Sentinel unknown warning for testing gate failure
     expect(res.success).to.be.false;
     expect(res.reason).to.equal("Warning baseline mismatch");
   });
+
+  it("should enforce exact column matching and NOT treat warnings at different columns as interchangeable", () => {
+    const warnCol5 = `
+Warning: Function state mutability can be restricted to pure
+  --> contracts/test/MockRiskManager.sol:15:5
+`;
+    const warnCol10 = `
+Warning: Function state mutability can be restricted to pure
+  --> contracts/test/MockRiskManager.sol:15:10
+`;
+    const parsedCol5 = parseWarningsFromText(warnCol5);
+    const parsedCol10 = parseWarningsFromText(warnCol10);
+
+    expect(parsedCol5[0].column).to.equal(5);
+    expect(parsedCol10[0].column).to.equal(10);
+    expect(parsedCol5[0].column).to.not.equal(parsedCol10[0].column);
+
+    // Simulated check where output has col 10 but baseline entry has col 5
+    const mockOutput = warnCol10;
+    const res = runWarningBaselineCheck(mockOutput);
+    expect(res.success).to.be.false;
+    expect(res.reason).to.equal("Warning baseline mismatch");
+  });
 });
