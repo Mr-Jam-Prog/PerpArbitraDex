@@ -1136,17 +1136,17 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "contracts/liquidation/FlashLiquidator.sol",
-    "line": 280,
-    "column": 9,
+    "file": "test/fuzz/InvariantTests.t.sol",
+    "line": 228,
+    "column": 5,
     "message": "Function state mutability can be restricted to pure",
     "raw_warning": "Warning (2018): Function state mutability can be restricted to pure",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+    "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
     "file": "contracts/liquidation/FlashLiquidator.sol",
-    "line": 307,
-    "column": 20,
+    "line": 105,
+    "column": 29,
     "message": "weak randomness derived from a predictable on-chain value",
     "raw_warning": "warning[weak-prng]: weak randomness derived from a predictable on-chain value",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -1233,43 +1233,43 @@
   },
   {
     "file": "contracts/test/MockPerpEngine.sol",
-    "line": 6,
-    "column": 9,
+    "line": 224,
+    "column": 25,
     "message": "empty function body",
     "raw_warning": "warning[empty-block]: empty function body",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "contracts/tokens/PerpDexLPToken.sol",
-    "line": 105,
-    "column": 13,
+    "file": "contracts/test/MockPerpEngine.sol",
+    "line": 8,
+    "column": 10,
     "message": "contract can receive ETH but has no mechanism to send it out",
     "raw_warning": "warning[locked-ether]: contract can receive ETH but has no mechanism to send it out",
+    "justification": "Tolerated warning in test or script code; non-production contract scope."
+  },
+  {
+    "file": "contracts/liquidation/FlashLiquidator.sol",
+    "line": 106,
+    "column": 9,
+    "message": "`flashLoanRequests` is changed without an event but is used for access control",
+    "raw_warning": "warning[missing-events-access-control]: `flashLoanRequests` is changed without an event but is used for access control",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/test/MockPerpEngine.sol",
-    "line": 106,
-    "column": 50,
-    "message": "`flashLoanRequests` is changed without an event but is used for access control",
-    "raw_warning": "warning[missing-events-access-control]: `flashLoanRequests` is changed without an event but is used for access control",
-    "justification": "Tolerated warning in test or script code; non-production contract scope."
-  },
-  {
-    "file": "contracts/test/MockPerpEngine.sol",
-    "line": 106,
-    "column": 108,
+    "file": "contracts/liquidation/FlashLiquidator.sol",
+    "line": 259,
+    "column": 9,
     "message": "`approvedLiquidators` is changed without an event but is used for access control",
     "raw_warning": "warning[missing-events-access-control]: `approvedLiquidators` is changed without an event but is used for access control",
-    "justification": "Tolerated warning in test or script code; non-production contract scope."
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/test/MockPerpEngine.sol",
-    "line": 195,
-    "column": 45,
+    "file": "contracts/liquidation/FlashLiquidator.sol",
+    "line": 85,
+    "column": 9,
     "message": "OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
     "raw_warning": "warning[deprecated-oz-function]: OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
-    "justification": "Tolerated warning in test or script code; non-production contract scope."
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
     "file": "contracts/liquidation/FlashLiquidator.sol",
@@ -1320,28 +1320,28 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/liquidation/LiquidationEngine.sol",
-    "line": 445,
+    "file": "contracts/liquidation/FlashLiquidator.sol",
+    "line": 283,
     "column": 9,
     "message": "OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
     "raw_warning": "warning[deprecated-oz-function]: OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/governance/TimelockController.sol",
-    "line": 118,
-    "column": 9,
+    "file": "contracts/test/MockPerpEngine.sol",
+    "line": 19,
+    "column": 25,
     "message": "address parameter is used in a state write or value transfer without a zero-address check",
     "raw_warning": "warning[missing-zero-check]: address parameter is used in a state write or value transfer without a zero-address check",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+    "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "contracts/liquidation/LiquidationEngine.sol",
-    "line": 512,
-    "column": 9,
+    "file": "contracts/test/MockPerpEngine.sol",
+    "line": 114,
+    "column": 28,
     "message": "multiplication should occur before division to avoid loss of precision",
     "raw_warning": "warning[divide-before-multiply]: multiplication should occur before division to avoid loss of precision",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+    "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
     "file": "contracts/test/MockPerpEngine.sol",
@@ -1352,12 +1352,12 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "contracts/governance/TimelockController.sol",
-    "line": 145,
-    "column": 9,
+    "file": "contracts/test/MockPerpEngine.sol",
+    "line": 116,
+    "column": 55,
     "message": "multiplication should occur before division to avoid loss of precision",
     "raw_warning": "warning[divide-before-multiply]: multiplication should occur before division to avoid loss of precision",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+    "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
     "file": "contracts/governance/TimelockController.sol",
@@ -1408,9 +1408,9 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "contracts/test/MockAMMPool.sol",
-    "line": 92,
-    "column": 14,
+    "file": "contracts/test/MockRiskManager.sol",
+    "line": 20,
+    "column": 70,
     "message": "empty function body",
     "raw_warning": "warning[empty-block]: empty function body",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
@@ -1520,20 +1520,20 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "contracts/liquidation/LiquidationEngine.sol",
-    "line": 520,
-    "column": 9,
+    "file": "contracts/test/MockLiquidationEngine.sol",
+    "line": 30,
+    "column": 82,
     "message": "empty function body",
     "raw_warning": "warning[empty-block]: empty function body",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+    "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "contracts/liquidation/LiquidationEngine.sol",
-    "line": 533,
-    "column": 9,
+    "file": "contracts/test/MockLiquidationEngine.sol",
+    "line": 31,
+    "column": 64,
     "message": "empty function body",
     "raw_warning": "warning[empty-block]: empty function body",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+    "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
     "file": "contracts/test/MockLiquidationEngine.sol",
@@ -1545,8 +1545,8 @@
   },
   {
     "file": "contracts/test/MockLiquidationEngine.sol",
-    "line": 28,
-    "column": 16,
+    "line": 6,
+    "column": 10,
     "message": "contract can receive ETH but has no mechanism to send it out",
     "raw_warning": "warning[locked-ether]: contract can receive ETH but has no mechanism to send it out",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
@@ -1584,12 +1584,12 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "contracts/governance/EmissionController.sol",
-    "line": 28,
-    "column": 30,
+    "file": "contracts/test/MockConfigRegistry.sol",
+    "line": 11,
+    "column": 78,
     "message": "empty function body",
     "raw_warning": "warning[empty-block]: empty function body",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+    "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
     "file": "contracts/test/MockConfigRegistry.sol",
@@ -1600,12 +1600,12 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "contracts/governance/EmissionController.sol",
-    "line": 61,
-    "column": 11,
+    "file": "contracts/test/MockConfigRegistry.sol",
+    "line": 19,
+    "column": 62,
     "message": "empty function body",
     "raw_warning": "warning[empty-block]: empty function body",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+    "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
     "file": "contracts/test/MockConfigRegistry.sol",
@@ -1616,12 +1616,12 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "contracts/governance/EmissionController.sol",
-    "line": 6,
-    "column": 9,
+    "file": "contracts/test/MockConfigRegistry.sol",
+    "line": 22,
+    "column": 63,
     "message": "empty function body",
     "raw_warning": "warning[empty-block]: empty function body",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+    "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
     "file": "contracts/test/MockConfigRegistry.sol",
@@ -1640,20 +1640,20 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "contracts/test/PositionMathWrapper.sol",
-    "line": 4,
-    "column": 8,
+    "file": "contracts/test/MockConfigRegistry.sol",
+    "line": 29,
+    "column": 60,
     "message": "empty function body",
     "raw_warning": "warning[empty-block]: empty function body",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "contracts/test/MockAavePool.sol",
-    "line": 34,
-    "column": 16,
+    "file": "contracts/liquidation/LiquidationEngine.sol",
+    "line": 118,
+    "column": 9,
     "message": "event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
     "raw_warning": "warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
-    "justification": "Tolerated warning in test or script code; non-production contract scope."
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
     "file": "contracts/test/MockAavePool.sol",
@@ -1664,9 +1664,9 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "contracts/test/MockOracle.sol",
-    "line": 67,
-    "column": 36,
+    "file": "contracts/test/MockOracleSecurity.sol",
+    "line": 6,
+    "column": 10,
     "message": "contract can receive ETH but has no mechanism to send it out",
     "raw_warning": "warning[locked-ether]: contract can receive ETH but has no mechanism to send it out",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
@@ -1696,12 +1696,12 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "contracts/governance/EmissionController.sol",
-    "line": 331,
-    "column": 72,
+    "file": "contracts/test/MockOracle.sol",
+    "line": 133,
+    "column": 17,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+    "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
     "file": "contracts/test/MockOracle.sol",
@@ -1728,17 +1728,17 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "contracts/oracles/PythOracle.sol",
-    "line": 67,
+    "file": "contracts/governance/EmissionController.sol",
+    "line": 288,
     "column": 9,
     "message": "`governor` is changed without an event but is used for access control",
     "raw_warning": "warning[missing-events-access-control]: `governor` is changed without an event but is used for access control",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/governance/EmissionController.sol",
-    "line": 65,
-    "column": 5,
+    "file": "contracts/oracles/PythOracle.sol",
+    "line": 92,
+    "column": 21,
     "message": "misuse of a boolean constant",
     "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -1792,25 +1792,25 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/PythOracle.sol",
-    "line": 146,
-    "column": 9,
+    "file": "contracts/governance/EmissionController.sol",
+    "line": 101,
+    "column": 17,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/PythOracle.sol",
-    "line": 312,
+    "file": "contracts/governance/EmissionController.sol",
+    "line": 150,
     "column": 9,
     "message": "`transferFrom` uses an arbitrary `from`; require it to equal `msg.sender` or `address(this)`",
     "raw_warning": "warning[arbitrary-send-erc20]: `transferFrom` uses an arbitrary `from`; require it to equal `msg.sender` or `address(this)`",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/PythOracle.sol",
-    "line": 356,
-    "column": 9,
+    "file": "contracts/governance/EmissionController.sol",
+    "line": 138,
+    "column": 17,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -1848,9 +1848,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/PythOracle.sol",
-    "line": 261,
-    "column": 46,
+    "file": "contracts/governance/EmissionController.sol",
+    "line": 273,
+    "column": 17,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -1880,9 +1880,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/PythOracle.sol",
-    "line": 426,
-    "column": 33,
+    "file": "contracts/governance/EmissionController.sol",
+    "line": 336,
+    "column": 16,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -1904,41 +1904,41 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/tokens/SyntheticAsset.sol",
-    "line": 14,
-    "column": 30,
+    "file": "contracts/liquidation/LiquidationEngine.sol",
+    "line": 134,
+    "column": 17,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/tokens/SyntheticAsset.sol",
-    "line": 15,
-    "column": 30,
-    "message": "event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
-    "raw_warning": "warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
-  },
-  {
-    "file": "contracts/governance/FeeDistributor.sol",
-    "line": 71,
+    "file": "contracts/liquidation/LiquidationEngine.sol",
+    "line": 186,
     "column": 9,
     "message": "event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
     "raw_warning": "warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/tokens/SyntheticAsset.sol",
-    "line": 27,
-    "column": 9,
+    "file": "contracts/oracles/PythOracle.sol",
+    "line": 175,
+    "column": 13,
+    "message": "event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
+    "raw_warning": "warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+  },
+  {
+    "file": "contracts/oracles/PythOracle.sol",
+    "line": 212,
+    "column": 13,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/governance/FeeDistributor.sol",
-    "line": 72,
-    "column": 9,
+    "file": "contracts/oracles/PythOracle.sol",
+    "line": 222,
+    "column": 25,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -1952,9 +1952,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/tokens/SyntheticAsset.sol",
-    "line": 40,
-    "column": 9,
+    "file": "contracts/liquidation/LiquidationEngine.sol",
+    "line": 227,
+    "column": 17,
     "message": "external call can be reentered before `_status` is updated",
     "raw_warning": "warning[reentrancy-no-eth]: external call can be reentered before `_status` is updated",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -1968,25 +1968,25 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/governance/FeeDistributor.sol",
-    "line": 85,
-    "column": 9,
+    "file": "contracts/liquidation/LiquidationEngine.sol",
+    "line": 240,
+    "column": 17,
     "message": "event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
     "raw_warning": "warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/tokens/SyntheticAsset.sol",
-    "line": 41,
-    "column": 9,
+    "file": "contracts/oracles/PythOracle.sol",
+    "line": 261,
+    "column": 20,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/governance/FeeDistributor.sol",
-    "line": 113,
-    "column": 9,
+    "file": "contracts/oracles/PythOracle.sol",
+    "line": 261,
+    "column": 28,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -2000,17 +2000,17 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/governance/FeeDistributor.sol",
-    "line": 123,
-    "column": 9,
+    "file": "contracts/oracles/PythOracle.sol",
+    "line": 261,
+    "column": 52,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/tokens/SyntheticAsset.sol",
-    "line": 61,
-    "column": 9,
+    "file": "contracts/oracles/PythOracle.sol",
+    "line": 264,
+    "column": 20,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -2032,17 +2032,17 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/tokens/SyntheticAsset.sol",
-    "line": 78,
-    "column": 9,
+    "file": "contracts/oracles/PythOracle.sol",
+    "line": 264,
+    "column": 52,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/tokens/SyntheticAsset.sol",
-    "line": 81,
-    "column": 9,
+    "file": "contracts/oracles/PythOracle.sol",
+    "line": 288,
+    "column": 43,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -2144,16 +2144,16 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/governance/FeeDistributor.sol",
-    "line": 173,
-    "column": 13,
+    "file": "contracts/liquidation/LiquidationEngine.sol",
+    "line": 405,
+    "column": 20,
     "message": "multiplication should occur before division to avoid loss of precision",
     "raw_warning": "warning[divide-before-multiply]: multiplication should occur before division to avoid loss of precision",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/liquidation/LiquidationQueue.sol",
-    "line": 111,
+    "file": "contracts/liquidation/LiquidationEngine.sol",
+    "line": 526,
     "column": 9,
     "message": "event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
     "raw_warning": "warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
@@ -2177,16 +2177,16 @@
   },
   {
     "file": "contracts/liquidation/LiquidationQueue.sol",
-    "line": 357,
-    "column": 9,
+    "line": 149,
+    "column": 17,
     "message": "misuse of a boolean constant",
     "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
     "file": "contracts/liquidation/LiquidationQueue.sol",
-    "line": 57,
-    "column": 5,
+    "line": 293,
+    "column": 24,
     "message": "weak randomness derived from a predictable on-chain value",
     "raw_warning": "warning[weak-prng]: weak randomness derived from a predictable on-chain value",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -2216,9 +2216,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/governance/FeeDistributor.sol",
-    "line": 7,
-    "column": 9,
+    "file": "contracts/liquidation/LiquidationQueue.sol",
+    "line": 395,
+    "column": 17,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -2241,8 +2241,8 @@
   },
   {
     "file": "contracts/governance/FeeDistributor.sol",
-    "line": 63,
-    "column": 5,
+    "line": 275,
+    "column": 9,
     "message": "`claimCooldown` is changed without an event but is used for access control",
     "raw_warning": "warning[missing-events-access-control]: `claimCooldown` is changed without an event but is used for access control",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -2288,41 +2288,41 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/integration/AaveFlashLoanIntegrator.sol",
-    "line": 319,
-    "column": 9,
+    "file": "contracts/governance/FeeDistributor.sol",
+    "line": 173,
+    "column": 13,
     "message": "`require` or `revert` inside a loop",
     "raw_warning": "warning[require-revert-in-loop]: `require` or `revert` inside a loop",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
-  },
-  {
-    "file": "contracts/core/ProtocolConfig.sol",
-    "line": 439,
-    "column": 61,
-    "message": "weak randomness derived from a predictable on-chain value",
-    "raw_warning": "warning[weak-prng]: weak randomness derived from a predictable on-chain value",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
-  },
-  {
-    "file": "contracts/integration/AaveFlashLoanIntegrator.sol",
-    "line": 90,
-    "column": 5,
-    "message": "`timelockController` is changed without an event but is used for access control",
-    "raw_warning": "warning[missing-events-access-control]: `timelockController` is changed without an event but is used for access control",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
-  },
-  {
-    "file": "contracts/core/ProtocolConfig.sol",
-    "line": 62,
-    "column": 5,
-    "message": "OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
-    "raw_warning": "warning[deprecated-oz-function]: OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
     "file": "contracts/integration/AaveFlashLoanIntegrator.sol",
     "line": 138,
     "column": 29,
+    "message": "weak randomness derived from a predictable on-chain value",
+    "raw_warning": "warning[weak-prng]: weak randomness derived from a predictable on-chain value",
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+  },
+  {
+    "file": "contracts/core/ProtocolConfig.sol",
+    "line": 468,
+    "column": 9,
+    "message": "`timelockController` is changed without an event but is used for access control",
+    "raw_warning": "warning[missing-events-access-control]: `timelockController` is changed without an event but is used for access control",
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+  },
+  {
+    "file": "contracts/integration/AaveFlashLoanIntegrator.sol",
+    "line": 117,
+    "column": 9,
+    "message": "OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
+    "raw_warning": "warning[deprecated-oz-function]: OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+  },
+  {
+    "file": "contracts/integration/AaveFlashLoanIntegrator.sol",
+    "line": 177,
+    "column": 9,
     "message": "event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
     "raw_warning": "warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -2352,41 +2352,41 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/core/ProtocolConfig.sol",
-    "line": 72,
-    "column": 5,
+    "file": "contracts/integration/AaveFlashLoanIntegrator.sol",
+    "line": 266,
+    "column": 13,
     "message": "OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
     "raw_warning": "warning[deprecated-oz-function]: OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/OracleSanityChecker.sol",
-    "line": 141,
-    "column": 9,
-    "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
-    "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
-  },
-  {
-    "file": "contracts/oracles/OracleSanityChecker.sol",
-    "line": 177,
-    "column": 9,
-    "message": "OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
-    "raw_warning": "warning[deprecated-oz-function]: OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
-  },
-  {
-    "file": "contracts/oracles/OracleSanityChecker.sol",
-    "line": 199,
-    "column": 9,
-    "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
-    "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
-  },
-  {
-    "file": "contracts/oracles/OracleSanityChecker.sol",
-    "line": 375,
+    "file": "contracts/oracles/PythOracle.sol",
+    "line": 378,
     "column": 16,
+    "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
+    "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+  },
+  {
+    "file": "contracts/integration/AaveFlashLoanIntegrator.sol",
+    "line": 321,
+    "column": 9,
+    "message": "OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
+    "raw_warning": "warning[deprecated-oz-function]: OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+  },
+  {
+    "file": "contracts/core/ProtocolConfig.sol",
+    "line": 356,
+    "column": 17,
+    "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
+    "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+  },
+  {
+    "file": "contracts/core/ProtocolConfig.sol",
+    "line": 378,
+    "column": 17,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -2400,9 +2400,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/core/RiskManager.sol",
-    "line": 72,
-    "column": 9,
+    "file": "contracts/integration/AaveFlashLoanIntegrator.sol",
+    "line": 358,
+    "column": 39,
     "message": "Return value of an external call is not used",
     "raw_warning": "warning[unused-return]: Return value of an external call is not used",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -2481,7 +2481,7 @@
   },
   {
     "file": "contracts/core/RiskManager.sol",
-    "line": 398,
+    "line": 169,
     "column": 17,
     "message": "misuse of a boolean constant",
     "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
@@ -2496,9 +2496,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/tokens/CollateralWrapper.sol",
-    "line": 212,
-    "column": 9,
+    "file": "contracts/core/RiskManager.sol",
+    "line": 410,
+    "column": 17,
     "message": "misuse of a boolean constant",
     "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -2521,8 +2521,8 @@
   },
   {
     "file": "contracts/tokens/CollateralWrapper.sol",
-    "line": 19,
-    "column": 10,
+    "line": 275,
+    "column": 21,
     "message": "misuse of a boolean constant",
     "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -2545,8 +2545,8 @@
   },
   {
     "file": "contracts/tokens/CollateralWrapper.sol",
-    "line": 73,
-    "column": 5,
+    "line": 320,
+    "column": 9,
     "message": "`redemptionDelay` is changed without an event but is used in arithmetic",
     "raw_warning": "warning[missing-events-arithmetic]: `redemptionDelay` is changed without an event but is used in arithmetic",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -2560,17 +2560,17 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/integration/AccountAbstractionAdapter.sol",
-    "line": 52,
-    "column": 34,
+    "file": "contracts/tokens/CollateralWrapper.sol",
+    "line": 271,
+    "column": 13,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
     "file": "contracts/integration/LidoStETHIntegrator.sol",
-    "line": 93,
-    "column": 5,
+    "line": 223,
+    "column": 9,
     "message": "`userShares` is changed without an event but is used for access control",
     "raw_warning": "warning[missing-events-access-control]: `userShares` is changed without an event but is used for access control",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -2704,9 +2704,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/integration/CrossChainMessenger.sol",
-    "line": 32,
-    "column": 10,
+    "file": "contracts/integration/LidoStETHIntegrator.sol",
+    "line": 395,
+    "column": 9,
     "message": "Return value of an external call is not used",
     "raw_warning": "warning[unused-return]: Return value of an external call is not used",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -2753,24 +2753,24 @@
   },
   {
     "file": "contracts/integration/AccountAbstractionAdapter.sol",
-    "line": 88,
-    "column": 5,
+    "line": 359,
+    "column": 9,
     "message": "`paymasterDeposits` is changed without an event but is used for access control",
     "raw_warning": "warning[missing-events-access-control]: `paymasterDeposits` is changed without an event but is used for access control",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/integration/AccountAbstractionAdapter.sol",
-    "line": 93,
-    "column": 5,
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 353,
+    "column": 9,
     "message": "`gasBuffer` is changed without an event but is used in arithmetic",
     "raw_warning": "warning[missing-events-arithmetic]: `gasBuffer` is changed without an event but is used in arithmetic",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/ChainlinkOracle.sol",
-    "line": 59,
-    "column": 9,
+    "file": "contracts/integration/AccountAbstractionAdapter.sol",
+    "line": 125,
+    "column": 31,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -2841,8 +2841,8 @@
   },
   {
     "file": "contracts/oracles/ChainlinkOracle.sol",
-    "line": 236,
-    "column": 29,
+    "line": 137,
+    "column": 21,
     "message": "misuse of a boolean constant",
     "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -2864,9 +2864,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/ChainlinkOracle.sol",
-    "line": 281,
-    "column": 36,
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 128,
+    "column": 9,
     "message": "OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
     "raw_warning": "warning[deprecated-oz-function]: OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -2888,9 +2888,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/core/MarketRegistry.sol",
-    "line": 289,
-    "column": 9,
+    "file": "contracts/oracles/ChainlinkOracle.sol",
+    "line": 110,
+    "column": 43,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -2921,8 +2921,8 @@
   },
   {
     "file": "contracts/core/MarketRegistry.sol",
-    "line": 9,
-    "column": 9,
+    "line": 332,
+    "column": 17,
     "message": "misuse of a boolean constant",
     "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3000,9 +3000,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/TWAPOracle.sol",
-    "line": 81,
-    "column": 9,
+    "file": "contracts/oracles/ChainlinkOracle.sol",
+    "line": 345,
+    "column": 53,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3041,16 +3041,16 @@
   },
   {
     "file": "contracts/oracles/TWAPOracle.sol",
-    "line": 153,
-    "column": 9,
+    "line": 137,
+    "column": 17,
     "message": "misuse of a boolean constant",
     "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
     "file": "contracts/oracles/TWAPOracle.sol",
-    "line": 212,
-    "column": 14,
+    "line": 166,
+    "column": 37,
     "message": "empty function body",
     "raw_warning": "warning[empty-block]: empty function body",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3065,16 +3065,16 @@
   },
   {
     "file": "contracts/oracles/TWAPOracle.sol",
-    "line": 270,
-    "column": 36,
+    "line": 232,
+    "column": 21,
     "message": "misuse of a boolean constant",
     "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/TWAPOracle.sol",
-    "line": 453,
-    "column": 33,
+    "file": "contracts/core/RiskManager.sol",
+    "line": 141,
+    "column": 17,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3096,25 +3096,25 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/core/LiquidityVault.sol",
-    "line": 515,
-    "column": 9,
+    "file": "contracts/core/RiskManager.sol",
+    "line": 290,
+    "column": 34,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/core/LiquidityVault.sol",
-    "line": 535,
-    "column": 9,
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 160,
+    "column": 13,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/core/LiquidityVault.sol",
-    "line": 543,
-    "column": 9,
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 171,
+    "column": 25,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3160,8 +3160,8 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/governance/Treasury.sol",
-    "line": 207,
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 550,
     "column": 13,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
@@ -3192,9 +3192,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/core/LiquidityVault.sol",
-    "line": 39,
-    "column": 5,
+    "file": "contracts/governance/Treasury.sol",
+    "line": 68,
+    "column": 9,
     "message": "OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
     "raw_warning": "warning[deprecated-oz-function]: OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3256,57 +3256,57 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/TWAPOracle.sol",
-    "line": 278,
-    "column": 33,
+    "file": "contracts/governance/Treasury.sol",
+    "line": 172,
+    "column": 9,
+    "message": "event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
+    "raw_warning": "warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+  },
+  {
+    "file": "contracts/governance/Treasury.sol",
+    "line": 214,
+    "column": 9,
     "message": "event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
     "raw_warning": "warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
     "file": "contracts/governance/VotingEscrow.sol",
-    "line": 38,
-    "column": 30,
-    "message": "event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
-    "raw_warning": "warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
-  },
-  {
-    "file": "contracts/oracles/TWAPOracle.sol",
-    "line": 376,
-    "column": 13,
+    "line": 73,
+    "column": 17,
     "message": "`tx.origin` should not be used for authorization",
     "raw_warning": "warning[tx-origin]: `tx.origin` should not be used for authorization",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/OracleAggregator.sol",
-    "line": 206,
+    "file": "contracts/core/LiquidityVault.sol",
+    "line": 246,
     "column": 9,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/core/MarketRegistry.sol",
-    "line": 69,
-    "column": 5,
-    "message": "`nonReentrant` should be the first modifier",
-    "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
-  },
-  {
-    "file": "contracts/oracles/OracleAggregator.sol",
-    "line": 279,
+    "file": "contracts/core/LiquidityVault.sol",
+    "line": 290,
     "column": 9,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/core/MarketRegistry.sol",
-    "line": 81,
-    "column": 5,
+    "file": "contracts/core/LiquidityVault.sol",
+    "line": 324,
+    "column": 9,
+    "message": "`nonReentrant` should be the first modifier",
+    "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+  },
+  {
+    "file": "contracts/core/LiquidityVault.sol",
+    "line": 357,
+    "column": 9,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3328,9 +3328,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/core/LiquidityVault.sol",
-    "line": 390,
-    "column": 5,
+    "file": "contracts/governance/VotingEscrow.sol",
+    "line": 116,
+    "column": 17,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3360,17 +3360,17 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/OracleAggregator.sol",
-    "line": 280,
-    "column": 9,
+    "file": "contracts/core/LiquidityVault.sol",
+    "line": 417,
+    "column": 37,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/OracleAggregator.sol",
-    "line": 315,
-    "column": 9,
+    "file": "contracts/core/LiquidityVault.sol",
+    "line": 464,
+    "column": 36,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3392,25 +3392,25 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/core/MarketRegistry.sol",
-    "line": 359,
-    "column": 33,
+    "file": "contracts/governance/VotingEscrow.sol",
+    "line": 197,
+    "column": 17,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/OracleAggregator.sol",
-    "line": 342,
-    "column": 14,
+    "file": "contracts/core/LiquidityVault.sol",
+    "line": 533,
+    "column": 98,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/OracleAggregator.sol",
-    "line": 434,
-    "column": 9,
+    "file": "contracts/core/LiquidityVault.sol",
+    "line": 541,
+    "column": 99,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3440,9 +3440,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/core/AMMPool.sol",
-    "line": 34,
-    "column": 30,
+    "file": "contracts/oracles/OracleAggregator.sol",
+    "line": 467,
+    "column": 31,
     "message": "misuse of a boolean constant",
     "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3465,32 +3465,32 @@
   },
   {
     "file": "contracts/oracles/OracleAggregator.sol",
-    "line": 604,
-    "column": 9,
+    "line": 473,
+    "column": 17,
     "message": "misuse of a boolean constant",
     "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/upgradeability/TransparentUpgradeableProxy.sol",
-    "line": 23,
-    "column": 11,
-    "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
-    "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
-  },
-  {
-    "file": "contracts/upgradeability/TransparentUpgradeableProxy.sol",
-    "line": 48,
+    "file": "contracts/governance/VotingEscrow.sol",
+    "line": 295,
     "column": 13,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/core/AMMPool.sol",
-    "line": 426,
-    "column": 9,
+    "file": "contracts/governance/VotingEscrow.sol",
+    "line": 331,
+    "column": 13,
+    "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
+    "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+  },
+  {
+    "file": "contracts/governance/VotingEscrow.sol",
+    "line": 351,
+    "column": 41,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3512,9 +3512,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/core/AMMPool.sol",
-    "line": 6,
-    "column": 9,
+    "file": "contracts/governance/VotingEscrow.sol",
+    "line": 353,
+    "column": 27,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3528,16 +3528,16 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/core/AMMPool.sol",
-    "line": 442,
-    "column": 57,
+    "file": "contracts/governance/VotingEscrow.sol",
+    "line": 354,
+    "column": 28,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/upgradeability/TransparentUpgradeableProxy.sol",
-    "line": 206,
+    "file": "contracts/oracles/OracleAggregator.sol",
+    "line": 726,
     "column": 9,
     "message": "`oracleSecurity` is changed without an event but is used for access control",
     "raw_warning": "warning[missing-events-access-control]: `oracleSecurity` is changed without an event but is used for access control",
@@ -3592,9 +3592,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/OracleAggregator.sol",
-    "line": 95,
-    "column": 5,
+    "file": "contracts/upgradeability/TransparentUpgradeableProxy.sol",
+    "line": 103,
+    "column": 9,
     "message": "address parameter is used in a state write or value transfer without a zero-address check",
     "raw_warning": "warning[missing-zero-check]: address parameter is used in a state write or value transfer without a zero-address check",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3608,9 +3608,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/upgradeability/ProxyAdmin.sol",
-    "line": 28,
-    "column": 9,
+    "file": "contracts/oracles/OracleAggregator.sol",
+    "line": 129,
+    "column": 13,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3632,49 +3632,49 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/governance/PerpDexToken.sol",
-    "line": 79,
-    "column": 9,
+    "file": "contracts/governance/VotingEscrow.sol",
+    "line": 386,
+    "column": 17,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/governance/PerpDexToken.sol",
-    "line": 81,
-    "column": 9,
+    "file": "contracts/oracles/OracleAggregator.sol",
+    "line": 457,
+    "column": 17,
     "message": "external call inside a loop",
     "raw_warning": "warning[calls-loop]: external call inside a loop",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/upgradeability/ProxyAdmin.sol",
-    "line": 44,
-    "column": 51,
+    "file": "contracts/oracles/OracleAggregator.sol",
+    "line": 461,
+    "column": 17,
     "message": "external call inside a loop",
     "raw_warning": "warning[calls-loop]: external call inside a loop",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/governance/PerpDexToken.sol",
-    "line": 95,
-    "column": 9,
+    "file": "contracts/oracles/OracleAggregator.sol",
+    "line": 465,
+    "column": 17,
     "message": "external call inside a loop",
     "raw_warning": "warning[calls-loop]: external call inside a loop",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/upgradeability/ProxyAdmin.sol",
-    "line": 172,
+    "file": "contracts/oracles/OracleAggregator.sol",
+    "line": 258,
     "column": 9,
     "message": "event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
     "raw_warning": "warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/governance/PerpDexToken.sol",
-    "line": 38,
-    "column": 5,
+    "file": "contracts/oracles/OracleAggregator.sol",
+    "line": 284,
+    "column": 13,
     "message": "`require` or `revert` inside a loop",
     "raw_warning": "warning[require-revert-in-loop]: `require` or `revert` inside a loop",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3688,17 +3688,17 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/OracleAggregator.sol",
-    "line": 643,
-    "column": 17,
+    "file": "contracts/governance/PerpDexToken.sol",
+    "line": 86,
+    "column": 9,
     "message": "event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
     "raw_warning": "warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/core/PositionManager.sol",
-    "line": 291,
-    "column": 14,
+    "file": "contracts/oracles/OracleAggregator.sol",
+    "line": 680,
+    "column": 17,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3712,9 +3712,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/OracleSecurity.sol",
-    "line": 233,
-    "column": 9,
+    "file": "contracts/oracles/OracleAggregator.sol",
+    "line": 842,
+    "column": 13,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3728,17 +3728,17 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/upgradeability/ProxyAdmin.sol",
-    "line": 157,
-    "column": 35,
+    "file": "contracts/oracles/OracleSecurity.sol",
+    "line": 337,
+    "column": 20,
     "message": "misuse of a boolean constant",
     "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
     "file": "contracts/oracles/OracleSecurity.sol",
-    "line": 407,
-    "column": 9,
+    "line": 354,
+    "column": 21,
     "message": "misuse of a boolean constant",
     "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3752,17 +3752,17 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/OracleSecurity.sol",
-    "line": 436,
-    "column": 28,
+    "file": "contracts/upgradeability/ProxyAdmin.sol",
+    "line": 91,
+    "column": 9,
     "message": "event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
     "raw_warning": "warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
     "file": "contracts/oracles/OracleSecurity.sol",
-    "line": 84,
-    "column": 5,
+    "line": 400,
+    "column": 9,
     "message": "`oracleAggregator` is changed without an event but is used for access control",
     "raw_warning": "warning[missing-events-access-control]: `oracleAggregator` is changed without an event but is used for access control",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3832,9 +3832,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/RWAOracleAdapter.sol",
-    "line": 89,
-    "column": 9,
+    "file": "contracts/oracles/OracleSecurity.sol",
+    "line": 374,
+    "column": 37,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3865,16 +3865,16 @@
   },
   {
     "file": "contracts/oracles/RWAOracleAdapter.sol",
-    "line": 280,
-    "column": 9,
+    "line": 142,
+    "column": 17,
     "message": "misuse of a boolean constant",
     "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
     "file": "contracts/oracles/RWAOracleAdapter.sol",
-    "line": 383,
-    "column": 49,
+    "line": 309,
+    "column": 56,
     "message": "misuse of a boolean constant",
     "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3888,9 +3888,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/RWAOracleAdapter.sol",
-    "line": 421,
-    "column": 33,
+    "file": "contracts/core/AMMPool.sol",
+    "line": 95,
+    "column": 42,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -3921,8 +3921,8 @@
   },
   {
     "file": "contracts/oracles/RWAOracleAdapter.sol",
-    "line": 82,
-    "column": 5,
+    "line": 262,
+    "column": 9,
     "message": "`_authorizedUpdaters` is changed without an event but is used for access control",
     "raw_warning": "warning[missing-events-access-control]: `_authorizedUpdaters` is changed without an event but is used for access control",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -4064,9 +4064,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/oracles/RWAOracleAdapter.sol",
-    "line": 88,
-    "column": 5,
+    "file": "contracts/core/PositionManager.sol",
+    "line": 271,
+    "column": 9,
     "message": "event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
     "raw_warning": "warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -4097,8 +4097,8 @@
   },
   {
     "file": "contracts/oracles/RWAOracleAdapter.sol",
-    "line": 309,
-    "column": 21,
+    "line": 167,
+    "column": 17,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -4177,15 +4177,15 @@
   },
   {
     "file": "contracts/core/PerpEngine.sol",
-    "line": 1307,
-    "column": 30,
+    "line": 86,
+    "column": 5,
     "message": "state variable is read but never written",
     "raw_warning": "warning[uninitialized-state]: state variable is read but never written",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/security/PausableController.sol",
-    "line": 128,
+    "file": "contracts/core/PerpEngine.sol",
+    "line": 230,
     "column": 9,
     "message": "`governance` is changed without an event but is used for access control",
     "raw_warning": "warning[missing-events-access-control]: `governance` is changed without an event but is used for access control",
@@ -4201,8 +4201,8 @@
   },
   {
     "file": "contracts/security/PausableController.sol",
-    "line": 62,
-    "column": 5,
+    "line": 199,
+    "column": 21,
     "message": "misuse of a boolean constant",
     "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -4241,16 +4241,16 @@
   },
   {
     "file": "contracts/security/PausableController.sol",
-    "line": 136,
+    "line": 129,
     "column": 13,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/security/CircuitBreaker.sol",
-    "line": 205,
-    "column": 9,
+    "file": "contracts/security/PausableController.sol",
+    "line": 195,
+    "column": 13,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -4265,16 +4265,16 @@
   },
   {
     "file": "contracts/security/CircuitBreaker.sol",
-    "line": 393,
-    "column": 62,
+    "line": 264,
+    "column": 17,
     "message": "misuse of a boolean constant",
     "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
     "file": "contracts/security/CircuitBreaker.sol",
-    "line": 66,
-    "column": 5,
+    "line": 297,
+    "column": 9,
     "message": "`guardian` is changed without an event but is used for access control",
     "raw_warning": "warning[missing-events-access-control]: `guardian` is changed without an event but is used for access control",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -4305,16 +4305,16 @@
   },
   {
     "file": "contracts/security/CircuitBreaker.sol",
-    "line": 312,
-    "column": 21,
+    "line": 259,
+    "column": 17,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/security/RateLimiter.sol",
-    "line": 74,
-    "column": 9,
+    "file": "contracts/security/CircuitBreaker.sol",
+    "line": 388,
+    "column": 13,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -4353,16 +4353,16 @@
   },
   {
     "file": "contracts/security/RateLimiter.sol",
-    "line": 296,
-    "column": 13,
+    "line": 126,
+    "column": 25,
     "message": "misuse of a boolean constant",
     "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
     "file": "contracts/security/RateLimiter.sol",
-    "line": 65,
-    "column": 5,
+    "line": 205,
+    "column": 9,
     "message": "`admin` is changed without an event but is used for access control",
     "raw_warning": "warning[missing-events-access-control]: `admin` is changed without an event but is used for access control",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -4408,9 +4408,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/upgradeability/UpgradeExecutor.sol",
-    "line": 255,
-    "column": 13,
+    "file": "contracts/security/RateLimiter.sol",
+    "line": 345,
+    "column": 34,
     "message": "multiplication should occur before division to avoid loss of precision",
     "raw_warning": "warning[divide-before-multiply]: multiplication should occur before division to avoid loss of precision",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -4464,17 +4464,17 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/view/PerpEngineViewer.sol",
-    "line": 587,
-    "column": 35,
+    "file": "contracts/upgradeability/UpgradeExecutor.sol",
+    "line": 324,
+    "column": 17,
     "message": "misuse of a boolean constant",
     "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/libraries/AddressArrayUtils.sol",
-    "line": 425,
-    "column": 9,
+    "file": "contracts/upgradeability/UpgradeExecutor.sol",
+    "line": 136,
+    "column": 27,
     "message": "weak randomness derived from a predictable on-chain value",
     "raw_warning": "warning[weak-prng]: weak randomness derived from a predictable on-chain value",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -4560,9 +4560,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/upgradeability/UpgradeExecutor.sol",
-    "line": 93,
-    "column": 5,
+    "file": "contracts/view/PerpEngineViewer.sol",
+    "line": 456,
+    "column": 47,
     "message": "external call inside a loop",
     "raw_warning": "warning[calls-loop]: external call inside a loop",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -4576,9 +4576,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/upgradeability/UpgradeExecutor.sol",
-    "line": 98,
-    "column": 5,
+    "file": "contracts/view/PerpEngineViewer.sol",
+    "line": 264,
+    "column": 44,
     "message": "external call inside a loop",
     "raw_warning": "warning[calls-loop]: external call inside a loop",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -4680,9 +4680,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/libraries/FundingRateCalculator.sol",
-    "line": 139,
-    "column": 14,
+    "file": "contracts/libraries/PositionMath.sol",
+    "line": 550,
+    "column": 37,
     "message": "`require` or `revert` inside a loop",
     "raw_warning": "warning[require-revert-in-loop]: `require` or `revert` inside a loop",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -4704,9 +4704,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/upgradeability/UpgradeExecutor.sol",
-    "line": 136,
-    "column": 27,
+    "file": "contracts/core/PerpEngine.sol",
+    "line": 327,
+    "column": 41,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -4792,17 +4792,17 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/libraries/FundingRateCalculator.sol",
-    "line": 145,
-    "column": 9,
+    "file": "contracts/upgradeability/UpgradeExecutor.sol",
+    "line": 195,
+    "column": 17,
     "message": "external call inside a loop",
     "raw_warning": "warning[calls-loop]: external call inside a loop",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/core/PerpEngine.sol",
-    "line": 351,
-    "column": 5,
+    "file": "contracts/upgradeability/UpgradeExecutor.sol",
+    "line": 202,
+    "column": 17,
     "message": "external call inside a loop",
     "raw_warning": "warning[calls-loop]: external call inside a loop",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -4840,9 +4840,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/libraries/FundingRateCalculator.sol",
-    "line": 146,
-    "column": 9,
+    "file": "contracts/view/PerpEngineViewer.sol",
+    "line": 321,
+    "column": 42,
     "message": "external call inside a loop",
     "raw_warning": "warning[calls-loop]: external call inside a loop",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -4888,8 +4888,8 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/libraries/FundingRateCalculator.sol",
-    "line": 239,
+    "file": "contracts/view/PerpEngineViewer.sol",
+    "line": 316,
     "column": 9,
     "message": "`require` or `revert` inside a loop",
     "raw_warning": "warning[require-revert-in-loop]: `require` or `revert` inside a loop",
@@ -4913,7 +4913,7 @@
   },
   {
     "file": "contracts/upgradeability/UpgradeExecutor.sol",
-    "line": 206,
+    "line": 213,
     "column": 13,
     "message": "`require` or `revert` inside a loop",
     "raw_warning": "warning[require-revert-in-loop]: `require` or `revert` inside a loop",
@@ -5128,9 +5128,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/core/PerpEngine.sol",
-    "line": 607,
-    "column": 5,
+    "file": "contracts/view/PerpEngineViewer.sol",
+    "line": 282,
+    "column": 45,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -5424,9 +5424,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/security/AccessControlManager.sol",
-    "line": 49,
-    "column": 9,
+    "file": "contracts/core/PerpEngine.sol",
+    "line": 869,
+    "column": 13,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -5440,9 +5440,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/security/AccessControlManager.sol",
-    "line": 140,
-    "column": 9,
+    "file": "contracts/libraries/FundingRateCalculator.sol",
+    "line": 246,
+    "column": 38,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -5456,65 +5456,65 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/libraries/BitPacking.sol",
-    "line": 82,
+    "file": "contracts/libraries/FundingRateCalculator.sol",
+    "line": 239,
     "column": 9,
     "message": "`require` or `revert` inside a loop",
     "raw_warning": "warning[require-revert-in-loop]: `require` or `revert` inside a loop",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/libraries/BitPacking.sol",
-    "line": 224,
+    "file": "contracts/core/PerpEngine.sol",
+    "line": 902,
     "column": 9,
     "message": "event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
     "raw_warning": "warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/liquidation/IncentiveDistributor.sol",
-    "line": 89,
-    "column": 9,
+    "file": "contracts/core/PerpEngine.sol",
+    "line": 905,
+    "column": 13,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/libraries/BitPacking.sol",
-    "line": 244,
+    "file": "contracts/security/AccessControlManager.sol",
+    "line": 51,
     "column": 9,
     "message": "OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
     "raw_warning": "warning[deprecated-oz-function]: OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/liquidation/IncentiveDistributor.sol",
-    "line": 346,
+    "file": "contracts/security/AccessControlManager.sol",
+    "line": 52,
     "column": 9,
     "message": "OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
     "raw_warning": "warning[deprecated-oz-function]: OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/libraries/BitPacking.sol",
-    "line": 300,
-    "column": 34,
+    "file": "contracts/security/AccessControlManager.sol",
+    "line": 53,
+    "column": 9,
     "message": "OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
     "raw_warning": "warning[deprecated-oz-function]: OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/liquidation/IncentiveDistributor.sol",
-    "line": 406,
-    "column": 9,
+    "file": "contracts/security/AccessControlManager.sol",
+    "line": 127,
+    "column": 16,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/libraries/BitPacking.sol",
-    "line": 322,
-    "column": 47,
+    "file": "contracts/security/AccessControlManager.sol",
+    "line": 148,
+    "column": 21,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -5560,9 +5560,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/liquidation/IncentiveDistributor.sol",
-    "line": 419,
-    "column": 9,
+    "file": "contracts/libraries/BitPacking.sol",
+    "line": 322,
+    "column": 25,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -5576,9 +5576,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/liquidation/IncentiveDistributor.sol",
-    "line": 9,
-    "column": 9,
+    "file": "contracts/security/EmergencyGuardian.sol",
+    "line": 234,
+    "column": 21,
     "message": "misuse of a boolean constant",
     "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -5609,8 +5609,8 @@
   },
   {
     "file": "contracts/security/EmergencyGuardian.sol",
-    "line": 314,
-    "column": 9,
+    "line": 259,
+    "column": 21,
     "message": "misuse of a boolean constant",
     "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -5632,9 +5632,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/liquidation/IncentiveDistributor.sol",
-    "line": 87,
-    "column": 5,
+    "file": "contracts/security/EmergencyGuardian.sol",
+    "line": 133,
+    "column": 9,
     "message": "`activeSession` is changed without an event but is used for access control",
     "raw_warning": "warning[missing-events-access-control]: `activeSession` is changed without an event but is used for access control",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -5656,20 +5656,20 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/liquidation/LiquidationEstimator.sol",
-    "line": 9,
-    "column": 41,
+    "file": "contracts/liquidation/IncentiveDistributor.sol",
+    "line": 98,
+    "column": 9,
     "message": "address parameter is used in a state write or value transfer without a zero-address check",
     "raw_warning": "warning[missing-zero-check]: address parameter is used in a state write or value transfer without a zero-address check",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "test/fuzz/DriftTest.t.sol",
-    "line": 110,
-    "column": 49,
+    "file": "contracts/liquidation/LiquidationEstimator.sol",
+    "line": 21,
+    "column": 9,
     "message": "Return value of an external call is not used",
     "raw_warning": "warning[unused-return]: Return value of an external call is not used",
-    "justification": "Tolerated warning in test or script code; non-production contract scope."
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
     "file": "contracts/core/PerpEngine.sol",
@@ -5704,9 +5704,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/libraries/L2GasOptimized.sol",
-    "line": 31,
-    "column": 9,
+    "file": "contracts/core/PerpEngine.sol",
+    "line": 964,
+    "column": 31,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -5736,33 +5736,33 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/libraries/L2GasOptimized.sol",
-    "line": 57,
-    "column": 9,
+    "file": "contracts/core/PerpEngine.sol",
+    "line": 993,
+    "column": 94,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/libraries/L2GasOptimized.sol",
-    "line": 123,
-    "column": 13,
+    "file": "test/fuzz/DriftTest.t.sol",
+    "line": 30,
+    "column": 23,
     "message": "multiplication should occur before division to avoid loss of precision",
     "raw_warning": "warning[divide-before-multiply]: multiplication should occur before division to avoid loss of precision",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+    "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "contracts/libraries/L2GasOptimized.sol",
-    "line": 148,
-    "column": 9,
+    "file": "contracts/core/PerpEngine.sol",
+    "line": 1019,
+    "column": 14,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/libraries/L2GasOptimized.sol",
-    "line": 245,
-    "column": 9,
+    "file": "contracts/core/PerpEngine.sol",
+    "line": 1361,
+    "column": 30,
     "message": "external call can be reentered before `_status` is updated",
     "raw_warning": "warning[reentrancy-no-eth]: external call can be reentered before `_status` is updated",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -5776,9 +5776,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/libraries/L2GasOptimized.sol",
-    "line": 257,
-    "column": 58,
+    "file": "contracts/core/PerpEngine.sol",
+    "line": 1362,
+    "column": 27,
     "message": "external call inside a loop",
     "raw_warning": "warning[calls-loop]: external call inside a loop",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -5832,12 +5832,12 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/security/EmergencyGuardian.sol",
-    "line": 78,
-    "column": 5,
+    "file": "test/fuzz/DriftTest.t.sol",
+    "line": 40,
+    "column": 9,
     "message": "Return value of an external call is not used",
     "raw_warning": "warning[unused-return]: Return value of an external call is not used",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+    "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
     "file": "test/fuzz/DriftTest.t.sol",
@@ -5848,9 +5848,9 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "contracts/core/PerpEngine.sol",
-    "line": 1310,
-    "column": 17,
+    "file": "contracts/security/EmergencyGuardian.sol",
+    "line": 91,
+    "column": 9,
     "message": "OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
     "raw_warning": "warning[deprecated-oz-function]: OpenZeppelin deprecated this function: `_grantRole` replaces `_setupRole`, `safeIncreaseAllowance` / `safeDecreaseAllowance` replace `safeApprove`",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -5880,9 +5880,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/libraries/PositionMath.sol",
-    "line": 253,
-    "column": 76,
+    "file": "contracts/security/EmergencyGuardian.sol",
+    "line": 108,
+    "column": 13,
     "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
     "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -5912,25 +5912,25 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/libraries/PositionMath.sol",
-    "line": 324,
-    "column": 92,
+    "file": "contracts/core/PerpEngine.sol",
+    "line": 1285,
+    "column": 16,
     "message": "external call inside a loop",
     "raw_warning": "warning[calls-loop]: external call inside a loop",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/libraries/PositionMath.sol",
-    "line": 558,
-    "column": 50,
+    "file": "contracts/core/PerpEngine.sol",
+    "line": 1226,
+    "column": 16,
     "message": "external call inside a loop",
     "raw_warning": "warning[calls-loop]: external call inside a loop",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "contracts/libraries/PositionMath.sol",
-    "line": 576,
-    "column": 50,
+    "file": "contracts/core/PerpEngine.sol",
+    "line": 1271,
+    "column": 16,
     "message": "external call inside a loop",
     "raw_warning": "warning[calls-loop]: external call inside a loop",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
@@ -6001,16 +6001,16 @@
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
-    "line": 270,
-    "column": 40,
+    "line": 269,
+    "column": 88,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "test/fuzz/PropertyTests.t.sol",
-    "line": 27,
-    "column": 36,
+    "file": "test/fuzz/InvariantTests.t.sol",
+    "line": 194,
+    "column": 63,
     "message": "empty function body",
     "raw_warning": "warning[empty-block]: empty function body",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
@@ -6040,9 +6040,9 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "test/fuzz/PropertyTests.t.sol",
-    "line": 37,
-    "column": 141,
+    "file": "test/fuzz/DriftTest.t.sol",
+    "line": 61,
+    "column": 9,
     "message": "Return value of an external call is not used",
     "raw_warning": "warning[unused-return]: Return value of an external call is not used",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
@@ -6056,36 +6056,36 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "test/fuzz/PropertyTests.t.sol",
-    "line": 45,
-    "column": 34,
+    "file": "test/fuzz/InvariantTests.t.sol",
+    "line": 256,
+    "column": 45,
     "message": "empty function body",
     "raw_warning": "warning[empty-block]: empty function body",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "test/fuzz/PropertyTests.t.sol",
-    "line": 46,
-    "column": 40,
+    "file": "test/fuzz/DriftTest.t.sol",
+    "line": 71,
+    "column": 9,
     "message": "Return value of an external call is not used",
     "raw_warning": "warning[unused-return]: Return value of an external call is not used",
-    "justification": "Tolerated warning in test or script code; non-production contract scope."
-  },
-  {
-    "file": "test/fuzz/PropertyTests.t.sol",
-    "line": 70,
-    "column": 43,
-    "message": "typecasts that can truncate values should be checked",
-    "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
-    "line": 285,
-    "column": 40,
+    "line": 284,
+    "column": 88,
+    "message": "typecasts that can truncate values should be checked",
+    "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+  },
+  {
+    "file": "test/fuzz/DriftTest.t.sol",
+    "line": 114,
+    "column": 13,
     "message": "Return value of an external call is not used",
     "raw_warning": "warning[unused-return]: Return value of an external call is not used",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+    "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
@@ -6120,20 +6120,20 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "test/fuzz/InvariantTests.t.sol",
-    "line": 5,
-    "column": 9,
+    "file": "contracts/libraries/PositionMath.sol",
+    "line": 339,
+    "column": 27,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "Tolerated warning in test or script code; non-production contract scope."
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "test/fuzz/EdgeCases.t.sol",
-    "line": 19,
-    "column": 30,
+    "file": "contracts/libraries/PositionMath.sol",
+    "line": 340,
+    "column": 28,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "Tolerated warning in test or script code; non-production contract scope."
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
@@ -6144,20 +6144,20 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "test/fuzz/EdgeCases.t.sol",
-    "line": 58,
-    "column": 30,
+    "file": "contracts/libraries/PositionMath.sol",
+    "line": 355,
+    "column": 31,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "Tolerated warning in test or script code; non-production contract scope."
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "test/fuzz/InvariantTests.t.sol",
-    "line": 243,
-    "column": 10,
+    "file": "contracts/libraries/PositionMath.sol",
+    "line": 401,
+    "column": 16,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "Tolerated warning in test or script code; non-production contract scope."
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
@@ -6168,28 +6168,28 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "test/fuzz/InvariantTests.t.sol",
-    "line": 273,
-    "column": 10,
+    "file": "contracts/libraries/PositionMath.sol",
+    "line": 465,
+    "column": 20,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "Tolerated warning in test or script code; non-production contract scope."
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "test/fuzz/PropertyTests.t.sol",
-    "line": 91,
-    "column": 13,
+    "file": "contracts/libraries/PositionMath.sol",
+    "line": 479,
+    "column": 19,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "Tolerated warning in test or script code; non-production contract scope."
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "test/fuzz/PropertyTests.t.sol",
-    "line": 99,
-    "column": 13,
+    "file": "contracts/libraries/PositionMath.sol",
+    "line": 485,
+    "column": 20,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "Tolerated warning in test or script code; non-production contract scope."
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
@@ -6216,49 +6216,49 @@
     "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "test/fuzz/PropertyTests.t.sol",
-    "line": 117,
-    "column": 38,
+    "file": "contracts/libraries/PositionMath.sol",
+    "line": 519,
+    "column": 20,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "Tolerated warning in test or script code; non-production contract scope."
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "test/fuzz/EdgeCases.t.sol",
-    "line": 69,
-    "column": 45,
+    "file": "contracts/libraries/PositionMath.sol",
+    "line": 530,
+    "column": 16,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "Tolerated warning in test or script code; non-production contract scope."
+    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
   },
   {
-    "file": "test/fuzz/PropertyTests.t.sol",
-    "line": 135,
-    "column": 40,
+    "file": "test/fuzz/AdversarialTests.t.sol",
+    "line": 157,
+    "column": 17,
     "message": "misuse of a boolean constant",
     "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "test/fuzz/PropertyTests.t.sol",
-    "line": 153,
-    "column": 42,
-    "message": "external call inside a loop",
-    "raw_warning": "warning[calls-loop]: external call inside a loop",
-    "justification": "Tolerated warning in test or script code; non-production contract scope."
-  },
-  {
-    "file": "test/fuzz/AdversarialTests.t.sol",
-    "line": 178,
+    "file": "test/fuzz/InvariantTests.t.sol",
+    "line": 73,
     "column": 34,
     "message": "external call inside a loop",
     "raw_warning": "warning[calls-loop]: external call inside a loop",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "test/fuzz/PropertyTests.t.sol",
-    "line": 222,
-    "column": 35,
+    "file": "test/fuzz/InvariantTests.t.sol",
+    "line": 74,
+    "column": 38,
+    "message": "external call inside a loop",
+    "raw_warning": "warning[calls-loop]: external call inside a loop",
+    "justification": "Tolerated warning in test or script code; non-production contract scope."
+  },
+  {
+    "file": "test/fuzz/InvariantTests.t.sol",
+    "line": 63,
+    "column": 13,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
@@ -6272,9 +6272,9 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "test/fuzz/AdversarialTests.t.sol",
-    "line": 119,
-    "column": 32,
+    "file": "test/fuzz/EdgeCases.t.sol",
+    "line": 53,
+    "column": 9,
     "message": "external call can be reentered before `perpEngine` is updated",
     "raw_warning": "warning[reentrancy-no-eth]: external call can be reentered before `perpEngine` is updated",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
@@ -6288,33 +6288,33 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "test/fuzz/AdversarialTests.t.sol",
-    "line": 173,
-    "column": 30,
+    "file": "test/fuzz/InvariantTests.t.sol",
+    "line": 121,
+    "column": 40,
     "message": "external call inside a loop",
     "raw_warning": "warning[calls-loop]: external call inside a loop",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "test/fuzz/AdversarialTests.t.sol",
-    "line": 184,
-    "column": 35,
+    "file": "test/fuzz/InvariantTests.t.sol",
+    "line": 148,
+    "column": 17,
     "message": "external call inside a loop",
     "raw_warning": "warning[calls-loop]: external call inside a loop",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "test/fuzz/AdversarialTests.t.sol",
-    "line": 251,
-    "column": 30,
+    "file": "test/fuzz/EdgeCases.t.sol",
+    "line": 73,
+    "column": 13,
     "message": "external call inside a loop",
     "raw_warning": "warning[calls-loop]: external call inside a loop",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "test/fuzz/AdversarialTests.t.sol",
-    "line": 70,
-    "column": 5,
+    "file": "test/fuzz/PropertyTests.t.sol",
+    "line": 37,
+    "column": 27,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
@@ -6464,17 +6464,17 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "test/fuzz/InvariantEconomic.t.sol",
-    "line": 67,
-    "column": 10,
+    "file": "test/fuzz/PropertyTests.t.sol",
+    "line": 116,
+    "column": 29,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "test/fuzz/InvariantEconomic.t.sol",
-    "line": 283,
-    "column": 10,
+    "file": "test/fuzz/AdversarialTests.t.sol",
+    "line": 127,
+    "column": 13,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
@@ -6520,9 +6520,9 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "test/fuzz/InvariantEconomic.t.sol",
-    "line": 294,
-    "column": 10,
+    "file": "test/fuzz/AdversarialTests.t.sol",
+    "line": 144,
+    "column": 9,
     "message": "Return value of an external call is not used",
     "raw_warning": "warning[unused-return]: Return value of an external call is not used",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
@@ -6544,9 +6544,9 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "test/fuzz/InvariantEconomic.t.sol",
-    "line": 151,
-    "column": 34,
+    "file": "test/fuzz/AdversarialTests.t.sol",
+    "line": 181,
+    "column": 27,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
@@ -6568,9 +6568,9 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "script/DeployCore.s.sol",
-    "line": 29,
-    "column": 68,
+    "file": "test/fuzz/AdversarialTests.t.sol",
+    "line": 207,
+    "column": 25,
     "message": "external call inside a loop",
     "raw_warning": "warning[calls-loop]: external call inside a loop",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
@@ -6584,9 +6584,9 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "script/DeployCore.s.sol",
-    "line": 89,
-    "column": 54,
+    "file": "test/fuzz/AdversarialTests.t.sol",
+    "line": 224,
+    "column": 13,
     "message": "external call inside a loop",
     "raw_warning": "warning[calls-loop]: external call inside a loop",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
@@ -6600,25 +6600,25 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "test/fuzz/InvariantEconomic.t.sol",
-    "line": 158,
-    "column": 16,
+    "file": "test/fuzz/AdversarialTests.t.sol",
+    "line": 225,
+    "column": 13,
     "message": "external call inside a loop",
     "raw_warning": "warning[calls-loop]: external call inside a loop",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "test/fuzz/InvariantEconomic.t.sol",
-    "line": 176,
+    "file": "test/fuzz/AdversarialTests.t.sol",
+    "line": 225,
     "column": 13,
     "message": "Return value of an external call is not used",
     "raw_warning": "warning[unused-return]: Return value of an external call is not used",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "test/fuzz/InvariantEconomic.t.sol",
-    "line": 178,
-    "column": 13,
+    "file": "test/fuzz/AdversarialTests.t.sol",
+    "line": 265,
+    "column": 9,
     "message": "Return value of an external call is not used",
     "raw_warning": "warning[unused-return]: Return value of an external call is not used",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
@@ -6632,17 +6632,17 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "test/fuzz/InvariantEconomic.t.sol",
-    "line": 188,
-    "column": 33,
+    "file": "test/fuzz/AdversarialTests.t.sol",
+    "line": 302,
+    "column": 13,
     "message": "external call inside a loop",
     "raw_warning": "warning[calls-loop]: external call inside a loop",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "script/DeployCore.s.sol",
-    "line": 95,
-    "column": 51,
+    "file": "test/fuzz/AdversarialTests.t.sol",
+    "line": 287,
+    "column": 9,
     "message": "Return value of an external call is not used",
     "raw_warning": "warning[unused-return]: Return value of an external call is not used",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
@@ -6769,8 +6769,8 @@
   },
   {
     "file": "test/fuzz/InvariantEconomic.t.sol",
-    "line": 263,
-    "column": 58,
+    "line": 236,
+    "column": 22,
     "message": "external call inside a loop",
     "raw_warning": "warning[calls-loop]: external call inside a loop",
     "justification": "Tolerated warning in test or script code; non-production contract scope."
@@ -6792,11 +6792,11 @@
     "justification": "Tolerated warning in test or script code; non-production contract scope."
   },
   {
-    "file": "contracts/upgradeability/UpgradeExecutor.sol",
-    "line": 98,
-    "column": 5,
+    "file": "test/fuzz/InvariantEconomic.t.sol",
+    "line": 290,
+    "column": 9,
     "message": "Return value of an external call is not used",
     "raw_warning": "warning[unused-return]: Return value of an external call is not used",
-    "justification": "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate."
+    "justification": "Tolerated warning in test or script code; non-production contract scope."
   }
 ]

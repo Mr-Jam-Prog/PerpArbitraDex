@@ -59,7 +59,7 @@ export function parseWarningsFromText(rawText) {
         warnings.push(currentWarn);
       }
       currentWarn = { warning: line, file: "", line: 0, column: 0 };
-    } else if (currentWarn && (line.includes("-->") || line.includes("╭▸") || line.includes("┌─"))) {
+    } else if (currentWarn && !currentWarn.file && (line.includes("-->") || line.includes("╭▸") || line.includes("┌─"))) {
       const match = line.match(/(?:-->|╭▸|┌─)\s*(?:\.\/)?([^:]+):(\d+):(\d+)/);
       if (match) {
         currentWarn.file = normalizePath(match[1]);
