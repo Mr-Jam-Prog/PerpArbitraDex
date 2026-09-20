@@ -153,6 +153,14 @@ export function compareWarnings(actualWarnings, baselineEntries) {
   };
 }
 
+export function parseJustificationCategory(justification) {
+  if (!justification) return null;
+  const trimmed = justification.trim();
+  const match = trimmed.match(/^\[([A-Z_]+)\]/);
+  if (!match) return null;
+  return match[1];
+}
+
 export function validateBaselineJustifications(baselineEntries) {
   const invalid = [];
 
@@ -170,16 +178,47 @@ export function validateBaselineJustifications(baselineEntries) {
       continue;
     }
 
-    const hasValidCategory = VALID_CATEGORIES.some((cat) => j.includes(cat));
-    if (!hasValidCategory) {
-      invalid.push({ index: i, entry: b, reason: "Missing valid category classification" });
+    const categoryToken = parseJustificationCategory(j);
+    if (!categoryToken) {
+      invalid.push({ index: i, entry: b, reason: "Missing explicit bracketed category token" });
+      continue;
+    }
+
+    if (!VALID_CATEGORIES.includes(categoryToken)) {
+      invalid.push({ index: i, entry: b, reason: `Unknown bracketed category token [${categoryToken}]` });
     }
   }
 
   return invalid;
 }
 
-export function runWarningBaselineCheck(customOutput = null, customBaseline = null) {
+export function getCoreGateSteps() {
+  return [
+    { name: "install:frozen", cmd: "pnpm run install:frozen", checkWarnings: false },
+    { name: "compile:hardhat", cmd: "pnpm exec hardhat compile --force", checkWarnings: true },
+    { name: "check:contract-size", cmd: "node scripts/check-contract-size.mjs", checkWarnings: false },
+    { name: "compile:forge", cmd: "forge build --force", checkWarnings: true },
+    { name: "test:unit", cmd: "pnpm run test:unit", checkWarnings: false },
+    { name: "test:forge", cmd: "forge test --offline --summary", checkWarnings: false },
+    { name: "build:packages", cmd: "pnpm run build:packages", checkWarnings: false },
+    { name: "test:math", cmd: "pnpm run test:math", checkWarnings: false },
+  ];
+}
+
+export function defaultExecutor(cmd, env) {
+  return spawnSync(cmd, {
+    shell: true,
+    encoding: "utf-8",
+    maxBuffer: 100 * 1024 * 1024,
+    env,
+  });
+}
+
+export function runWarningBaselineCheck(
+  customOutput = null,
+  customBaseline = null,
+  customExecutor = defaultExecutor
+) {
   const baselineEntries = customBaseline !== null ? customBaseline : loadBaseline();
 
   const invalidJustifications = validateBaselineJustifications(baselineEntries);
@@ -207,48 +246,50 @@ export function runWarningBaselineCheck(customOutput = null, customBaseline = nu
       PATH: `${process.env.HOME}/.foundry/bin:${process.env.PATH || ""}`,
     };
 
-    const forceFlag = process.env.FAST_CHECK ? "" : " --force";
-
-    const steps = [
-      { name: "install:frozen", cmd: "pnpm run install:frozen", checkWarnings: false },
-      { name: "compile:hardhat", cmd: `pnpm exec hardhat compile${forceFlag}`, checkWarnings: true },
-      { name: "check:contract-size", cmd: "node scripts/check-contract-size.mjs", checkWarnings: false },
-      { name: "compile:forge", cmd: `forge build${forceFlag}`, checkWarnings: true },
-      { name: "test:unit", cmd: "pnpm run test:unit", checkWarnings: false },
-      { name: "test:forge", cmd: "forge test --offline --summary", checkWarnings: false },
-      { name: "build:packages", cmd: "pnpm run build:packages", checkWarnings: false },
-      { name: "test:math", cmd: "pnpm run test:math", checkWarnings: false },
-    ];
+    const steps = getCoreGateSteps();
 
     for (const step of steps) {
       logDirect(`\n---> [STEP START] ${step.name}`);
       const t0 = Date.now();
-      const res = spawnSync(step.cmd, {
-        shell: true,
-        encoding: "utf-8",
-        maxBuffer: 100 * 1024 * 1024,
-        env,
-      });
-      logDirect(`---> [STEP END] ${step.name} in ${(Date.now() - t0) / 1000}s, status: ${res.status}`);
+      const res = customExecutor(step.cmd, env, step);
+      logDirect(`---> [STEP END] ${step.name} in ${(Date.now() - t0) / 1000}s, status: ${res ? res.status : "unknown"}`);
 
-      if (res.stdout) process.stdout.write(res.stdout);
-      if (res.stderr) process.stderr.write(res.stderr);
+      if (res && res.stdout) process.stdout.write(res.stdout);
+      if (res && res.stderr) process.stderr.write(res.stderr);
 
-      if (step.checkWarnings) {
+      if (step.checkWarnings && res) {
         fullOutput += (res.stdout || "") + "\n" + (res.stderr || "") + "\n";
       }
 
-      if (res.error) {
+      if (res && res.error) {
         logDirect(`\n❌ ERROR: Step ${step.name} child process error: ${res.error}`);
-        return { success: false, code: 1, reason: `Step ${step.name} process error` };
+        return {
+          success: false,
+          code: 1,
+          reason: `Step ${step.name} process error: ${res.error.message || res.error}`,
+          step: step.name,
+          error: res.error,
+        };
       }
-      if (res.status !== 0 && res.status !== null) {
+      if (res && res.status !== 0 && res.status !== null && res.status !== undefined) {
         logDirect(`\n❌ ERROR: Step ${step.name} failed with status code ${res.status}`);
-        return { success: false, code: res.status, reason: `Step ${step.name} failed with status ${res.status}` };
+        return {
+          success: false,
+          code: res.status,
+          reason: `Step ${step.name} failed with status ${res.status}`,
+          step: step.name,
+          status: res.status,
+        };
       }
-      if (res.signal) {
+      if (res && res.signal) {
         logDirect(`\n❌ ERROR: Step ${step.name} terminated by signal ${res.signal}`);
-        return { success: false, code: 1, reason: `Step ${step.name} signal ${res.signal}` };
+        return {
+          success: false,
+          code: 1,
+          reason: `Step ${step.name} terminated by signal ${res.signal}`,
+          step: step.name,
+          signal: res.signal,
+        };
       }
     }
   }

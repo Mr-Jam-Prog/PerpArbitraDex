@@ -4,6 +4,8 @@ import {
   compareWarnings,
   runWarningBaselineCheck,
   validateBaselineJustifications,
+  parseJustificationCategory,
+  getCoreGateSteps,
   loadBaseline,
 } from "../../scripts/check-warning-baseline.mjs";
 
@@ -144,36 +146,144 @@ no warnings detected
     });
   });
 
-  describe("W8 — child process failure without warnings", () => {
-    it("should fail closed when justification validation fails on custom baseline", () => {
-      const invalidJustificationBaseline = [
-        {
-          ...sampleFixtureEntry,
-          justification: "Tolerated compiler diagnostic in production Solidity contract; required for baseline gate.",
-        },
-      ];
-      const res = runWarningBaselineCheck("clean output", invalidJustificationBaseline);
-      expect(res.success).to.be.false;
-      expect(res.reason).to.equal("Invalid baseline justifications");
-      expect(res.invalidJustifications).to.have.lengthOf(1);
+  describe("FAST_CHECK_WARNING_COLLECTION_DETERMINISTIC", () => {
+    it("should ensure Hardhat and Forge warning compilation steps ALWAYS use --force regardless of FAST_CHECK", () => {
+      process.env.FAST_CHECK = "1";
+      const steps = getCoreGateSteps();
+      delete process.env.FAST_CHECK;
+
+      const hardhatStep = steps.find((s) => s.name === "compile:hardhat");
+      const forgeStep = steps.find((s) => s.name === "compile:forge");
+
+      expect(hardhatStep.cmd).to.include("--force");
+      expect(forgeStep.cmd).to.include("--force");
+      expect(hardhatStep.checkWarnings).to.be.true;
+      expect(forgeStep.checkWarnings).to.be.true;
     });
   });
 
-  describe("W9 — child process failure plus warnings", () => {
-    it("should fail for child process failure and not convert to successful warning comparison", () => {
-      const invalidBaseline = [
-        {
-          ...sampleFixtureEntry,
-          justification: "",
-        },
-      ];
+  describe("EXACT_CATEGORY_TOKEN_TEST", () => {
+    it("should PASS for valid bracketed token [TEST_ONLY]", () => {
+      const entry = [{ ...sampleFixtureEntry, justification: "[TEST_ONLY] valid test justification" }];
+      const invalid = validateBaselineJustifications(entry);
+      expect(invalid).to.have.lengthOf(0);
+      expect(parseJustificationCategory(entry[0].justification)).to.equal("TEST_ONLY");
+    });
+
+    it("should FAIL for [NOT_TEST_ONLY] unknown category token", () => {
+      const entry = [{ ...sampleFixtureEntry, justification: "[NOT_TEST_ONLY] explanation" }];
+      const invalid = validateBaselineJustifications(entry);
+      expect(invalid).to.have.lengthOf(1);
+      expect(invalid[0].reason).to.include("Unknown bracketed category token");
+    });
+
+    it("should FAIL for [TEST_ONLYISH] unknown category token", () => {
+      const entry = [{ ...sampleFixtureEntry, justification: "[TEST_ONLYISH] explanation" }];
+      const invalid = validateBaselineJustifications(entry);
+      expect(invalid).to.have.lengthOf(1);
+      expect(invalid[0].reason).to.include("Unknown bracketed category token");
+    });
+
+    it("should FAIL when category appears in prose without bracketed token", () => {
+      const entry = [{ ...sampleFixtureEntry, justification: "this prose mentions TEST_ONLY" }];
+      const invalid = validateBaselineJustifications(entry);
+      expect(invalid).to.have.lengthOf(1);
+      expect(invalid[0].reason).to.equal("Missing explicit bracketed category token");
+    });
+
+    it("should FAIL when bracketed category token is missing completely", () => {
+      const entry = [{ ...sampleFixtureEntry, justification: "explanation without category" }];
+      const invalid = validateBaselineJustifications(entry);
+      expect(invalid).to.have.lengthOf(1);
+      expect(invalid[0].reason).to.equal("Missing explicit bracketed category token");
+    });
+
+    it("should FAIL when bracketed category token is unknown", () => {
+      const entry = [{ ...sampleFixtureEntry, justification: "[INVALID_CAT] explanation" }];
+      const invalid = validateBaselineJustifications(entry);
+      expect(invalid).to.have.lengthOf(1);
+      expect(invalid[0].reason).to.equal("Unknown bracketed category token [INVALID_CAT]");
+    });
+  });
+
+  describe("Real Child Process Failure Tests (W8 & W9 & Propagation)", () => {
+    it("W8_REAL_CHILD_FAILURE — child process failure WITHOUT warnings fails closed", () => {
+      const mockExecutor = (cmd, env, step) => {
+        if (step.name === "compile:hardhat") {
+          return { status: 1, stdout: "", stderr: "Fatal compilation error in solc" };
+        }
+        return { status: 0, stdout: "", stderr: "" };
+      };
+
+      const res = runWarningBaselineCheck(null, [sampleFixtureEntry], mockExecutor);
+      expect(res.success).to.be.false;
+      expect(res.status).to.equal(1);
+      expect(res.step).to.equal("compile:hardhat");
+      expect(res.reason).to.equal("Step compile:hardhat failed with status 1");
+    });
+
+    it("W9_REAL_CHILD_FAILURE_WITH_WARNINGS — child process failure WITH warnings present fails closed and is never converted to success", () => {
       const rawOutputWithWarning = `
 Warning: Function state mutability can be restricted to pure
   --> contracts/core/PerpEngine.sol:15:5
+Internal solc crash after warning emission
 `;
-      const res = runWarningBaselineCheck(rawOutputWithWarning, invalidBaseline);
+      const mockExecutor = (cmd, env, step) => {
+        if (step.name === "compile:hardhat") {
+          return { status: 1, stdout: rawOutputWithWarning, stderr: "solc crashed with status 1" };
+        }
+        return { status: 0, stdout: "", stderr: "" };
+      };
+
+      const res = runWarningBaselineCheck(null, [sampleFixtureEntry], mockExecutor);
       expect(res.success).to.be.false;
-      expect(res.reason).to.equal("Invalid baseline justifications");
+      expect(res.status).to.equal(1);
+      expect(res.step).to.equal("compile:hardhat");
+      expect(res.reason).to.equal("Step compile:hardhat failed with status 1");
+    });
+
+    it("CHILD_ERROR_PROPAGATION — child process error is propagated and fails closed", () => {
+      const spawnError = new Error("spawn ENOENT");
+      const mockExecutor = (cmd, env, step) => {
+        if (step.name === "install:frozen") {
+          return { status: null, error: spawnError, stdout: "", stderr: "" };
+        }
+        return { status: 0, stdout: "", stderr: "" };
+      };
+
+      const res = runWarningBaselineCheck(null, [sampleFixtureEntry], mockExecutor);
+      expect(res.success).to.be.false;
+      expect(res.error).to.equal(spawnError);
+      expect(res.reason).to.include("Step install:frozen process error");
+    });
+
+    it("CHILD_STATUS_PROPAGATION — nonzero status code is propagated and fails closed", () => {
+      const mockExecutor = (cmd, env, step) => {
+        if (step.name === "compile:forge") {
+          return { status: 127, stdout: "", stderr: "forge: command not found" };
+        }
+        return { status: 0, stdout: "", stderr: "" };
+      };
+
+      const res = runWarningBaselineCheck(null, [sampleFixtureEntry], mockExecutor);
+      expect(res.success).to.be.false;
+      expect(res.code).to.equal(127);
+      expect(res.status).to.equal(127);
+      expect(res.reason).to.equal("Step compile:forge failed with status 127");
+    });
+
+    it("CHILD_SIGNAL_PROPAGATION — signal termination is propagated and fails closed", () => {
+      const mockExecutor = (cmd, env, step) => {
+        if (step.name === "test:unit") {
+          return { status: null, signal: "SIGKILL", stdout: "", stderr: "Killed" };
+        }
+        return { status: 0, stdout: "", stderr: "" };
+      };
+
+      const res = runWarningBaselineCheck(null, [sampleFixtureEntry], mockExecutor);
+      expect(res.success).to.be.false;
+      expect(res.signal).to.equal("SIGKILL");
+      expect(res.reason).to.equal("Step test:unit terminated by signal SIGKILL");
     });
   });
 
@@ -200,7 +310,7 @@ Warning: Function state mutability can be restricted to pure
   });
 
   describe("Repository Baseline Integrity Check", () => {
-    it("should validate that all 850 entries in warnings-baseline.json have valid justifications", () => {
+    it("should validate that all 850 entries in warnings-baseline.json have valid justifications with exact category tokens", () => {
       const baseline = loadBaseline();
       expect(baseline).to.have.lengthOf(850);
       const invalid = validateBaselineJustifications(baseline);
