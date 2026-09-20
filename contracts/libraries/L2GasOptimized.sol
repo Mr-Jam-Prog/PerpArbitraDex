@@ -187,7 +187,7 @@ library L2GasOptimized {
         function(uint256) internal callback,
         uint256 gasPerItem
     ) internal returns (uint256 processed) {
-        uint256 startGas = gasleft();
+        // uint256 startGas = gasleft();
         uint256 length = array.length;
         
         for (uint256 i = 0; i < length; i++) {
@@ -358,7 +358,7 @@ library L2GasOptimized {
     function isLikelyL2() internal view returns (bool isL2) {
         // Heuristic: L2s typically have different gas prices and block properties
         uint256 gasPrice = tx.gasprice;
-        uint256 blockNumber = block.number;
+        // uint256 blockNumber = block.number;
         
         // Arbitrum: gas price is in gwei per L2 gas, not wei
         // Optimism: similar

@@ -330,7 +330,7 @@ contract AMMPool is IAMMPool, Ownable {
      * @inheritdoc IAMMPool
      * @notice Warning: Simplified TWAP implementation. In production uses oracle history.
      */
-    function getTWAFundingRate(uint256 marketId, uint256 period)
+    function getTWAFundingRate(uint256 marketId, uint256 /* period */)
         external
         view
         override

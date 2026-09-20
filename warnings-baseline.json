@@ -8,398 +8,6 @@
     "justification": "[THIRD_PARTY_PINNED] Tolerated compiler diagnostic in third-party dependency."
   },
   {
-    "file": "contracts/libraries/L2GasOptimized.sol",
-    "line": 190,
-    "column": 9,
-    "message": "Unused local variable.",
-    "raw_warning": "Warning: Unused local variable.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/libraries/L2GasOptimized.sol",
-    "line": 361,
-    "column": 9,
-    "message": "Unused local variable.",
-    "raw_warning": "Warning: Unused local variable.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/core/AMMPool.sol",
-    "line": 333,
-    "column": 50,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/core/AMMPool.sol",
-    "line": 379,
-    "column": 33,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/core/RiskManager.sol",
-    "line": 154,
-    "column": 9,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/core/RiskManager.sol",
-    "line": 156,
-    "column": 9,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/core/RiskManager.sol",
-    "line": 230,
-    "column": 9,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/core/RiskManager.sol",
-    "line": 232,
-    "column": 9,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/core/RiskManager.sol",
-    "line": 234,
-    "column": 9,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/core/RiskManager.sol",
-    "line": 238,
-    "column": 9,
-    "message": "Unused local variable.",
-    "raw_warning": "Warning: Unused local variable.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/core/RiskManager.sol",
-    "line": 261,
-    "column": 9,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/core/RiskManager.sol",
-    "line": 392,
-    "column": 9,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/core/RiskManager.sol",
-    "line": 394,
-    "column": 9,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/core/RiskManager.sol",
-    "line": 416,
-    "column": 37,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/governance/TimelockController.sol",
-    "line": 214,
-    "column": 35,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/governance/TimelockController.sol",
-    "line": 214,
-    "column": 51,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/integration/AaveFlashLoanIntegrator.sol",
-    "line": 384,
-    "column": 30,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/integration/AccountAbstractionAdapter.sol",
-    "line": 380,
-    "column": 9,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/integration/AccountAbstractionAdapter.sol",
-    "line": 413,
-    "column": 31,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/integration/AccountAbstractionAdapter.sol",
-    "line": 440,
-    "column": 9,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/integration/AccountAbstractionAdapter.sol",
-    "line": 441,
-    "column": 9,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/integration/AccountAbstractionAdapter.sol",
-    "line": 442,
-    "column": 9,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/integration/CrossChainMessenger.sol",
-    "line": 245,
-    "column": 9,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/integration/CrossChainMessenger.sol",
-    "line": 399,
-    "column": 9,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/integration/CrossChainMessenger.sol",
-    "line": 440,
-    "column": 10,
-    "message": "Unused local variable.",
-    "raw_warning": "Warning: Unused local variable.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/integration/CrossChainMessenger.sol",
-    "line": 440,
-    "column": 26,
-    "message": "Unused local variable.",
-    "raw_warning": "Warning: Unused local variable.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/integration/CrossChainMessenger.sol",
-    "line": 440,
-    "column": 46,
-    "message": "Unused local variable.",
-    "raw_warning": "Warning: Unused local variable.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/integration/CrossChainMessenger.sol",
-    "line": 440,
-    "column": 60,
-    "message": "Unused local variable.",
-    "raw_warning": "Warning: Unused local variable.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/integration/CrossChainMessenger.sol",
-    "line": 462,
-    "column": 10,
-    "message": "Unused local variable.",
-    "raw_warning": "Warning: Unused local variable.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/integration/CrossChainMessenger.sol",
-    "line": 462,
-    "column": 30,
-    "message": "Unused local variable.",
-    "raw_warning": "Warning: Unused local variable.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/integration/CrossChainMessenger.sol",
-    "line": 462,
-    "column": 46,
-    "message": "Unused local variable.",
-    "raw_warning": "Warning: Unused local variable.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/integration/CrossChainMessenger.sol",
-    "line": 484,
-    "column": 10,
-    "message": "Unused local variable.",
-    "raw_warning": "Warning: Unused local variable.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/integration/CrossChainMessenger.sol",
-    "line": 484,
-    "column": 26,
-    "message": "Unused local variable.",
-    "raw_warning": "Warning: Unused local variable.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/integration/CrossChainMessenger.sol",
-    "line": 484,
-    "column": 41,
-    "message": "Unused local variable.",
-    "raw_warning": "Warning: Unused local variable.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/integration/CrossChainMessenger.sol",
-    "line": 506,
-    "column": 10,
-    "message": "Unused local variable.",
-    "raw_warning": "Warning: Unused local variable.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/integration/CrossChainMessenger.sol",
-    "line": 506,
-    "column": 32,
-    "message": "Unused local variable.",
-    "raw_warning": "Warning: Unused local variable.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/liquidation/FlashLiquidator.sol",
-    "line": 301,
-    "column": 9,
-    "message": "Unused local variable.",
-    "raw_warning": "Warning: Unused local variable.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/liquidation/IncentiveDistributor.sol",
-    "line": 227,
-    "column": 32,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/liquidation/IncentiveDistributor.sol",
-    "line": 280,
-    "column": 38,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/liquidation/LiquidationEngine.sol",
-    "line": 249,
-    "column": 9,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/liquidation/LiquidationEngine.sol",
-    "line": 250,
-    "column": 9,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/liquidation/LiquidationEngine.sol",
-    "line": 251,
-    "column": 9,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/oracles/ChainlinkOracle.sol",
-    "line": 96,
-    "column": 13,
-    "message": "Unused try/catch parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused try/catch parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/oracles/ChainlinkOracle.sol",
-    "line": 153,
-    "column": 13,
-    "message": "Unused try/catch parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused try/catch parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/oracles/OracleSanityChecker.sol",
-    "line": 259,
-    "column": 32,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/oracles/OracleSanityChecker.sol",
-    "line": 378,
-    "column": 35,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/oracles/OracleSanityChecker.sol",
-    "line": 378,
-    "column": 51,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/oracles/OracleAggregator.sol",
-    "line": 342,
-    "column": 38,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
-    "file": "contracts/security/CircuitBreaker.sol",
-    "line": 156,
-    "column": 47,
-    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-  },
-  {
     "file": "contracts/test/MockAavePool.sol",
     "line": 9,
     "column": 9,
@@ -1277,7 +885,7 @@
     "column": 13,
     "message": "external call can be reentered before `_status` is updated",
     "raw_warning": "warning[reentrancy-no-eth]: external call can be reentered before `_status` is updated",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/liquidation/FlashLiquidator.sol",
@@ -1285,7 +893,7 @@
     "column": 38,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/liquidation/FlashLiquidator.sol",
@@ -1821,7 +1429,7 @@
     "column": 16,
     "message": "multiplication should occur before division to avoid loss of precision",
     "raw_warning": "warning[divide-before-multiply]: multiplication should occur before division to avoid loss of precision",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/governance/EmissionController.sol",
@@ -1861,7 +1469,7 @@
     "column": 30,
     "message": "multiplication should occur before division to avoid loss of precision",
     "raw_warning": "warning[divide-before-multiply]: multiplication should occur before division to avoid loss of precision",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/governance/EmissionController.sol",
@@ -1941,7 +1549,7 @@
     "column": 25,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/oracles/PythOracle.sol",
@@ -1949,7 +1557,7 @@
     "column": 33,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/liquidation/LiquidationEngine.sol",
@@ -1957,7 +1565,7 @@
     "column": 17,
     "message": "external call can be reentered before `_status` is updated",
     "raw_warning": "warning[reentrancy-no-eth]: external call can be reentered before `_status` is updated",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/liquidation/LiquidationEngine.sol",
@@ -1981,7 +1589,7 @@
     "column": 20,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/oracles/PythOracle.sol",
@@ -1989,7 +1597,7 @@
     "column": 28,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/liquidation/LiquidationEngine.sol",
@@ -2005,7 +1613,7 @@
     "column": 52,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/oracles/PythOracle.sol",
@@ -2013,7 +1621,7 @@
     "column": 20,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/oracles/PythOracle.sol",
@@ -2021,7 +1629,7 @@
     "column": 28,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/liquidation/LiquidationEngine.sol",
@@ -2037,7 +1645,7 @@
     "column": 52,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/oracles/PythOracle.sol",
@@ -2045,7 +1653,7 @@
     "column": 43,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/oracles/PythOracle.sol",
@@ -2053,7 +1661,7 @@
     "column": 43,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/liquidation/LiquidationEngine.sol",
@@ -2149,7 +1757,7 @@
     "column": 20,
     "message": "multiplication should occur before division to avoid loss of precision",
     "raw_warning": "warning[divide-before-multiply]: multiplication should occur before division to avoid loss of precision",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/liquidation/LiquidationEngine.sol",
@@ -2261,7 +1869,7 @@
     "column": 64,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/governance/FeeDistributor.sol",
@@ -2333,7 +1941,7 @@
     "column": 38,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/integration/AaveFlashLoanIntegrator.sol",
@@ -2581,7 +2189,7 @@
     "column": 9,
     "message": "external call can be reentered before `_status` is updated",
     "raw_warning": "warning[reentrancy-no-eth]: external call can be reentered before `_status` is updated",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/integration/LidoStETHIntegrator.sol",
@@ -2589,7 +2197,7 @@
     "column": 21,
     "message": "external call can be reentered before `_status` is updated",
     "raw_warning": "warning[reentrancy-no-eth]: external call can be reentered before `_status` is updated",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/integration/LidoStETHIntegrator.sol",
@@ -2621,7 +2229,7 @@
     "column": 13,
     "message": "external call can be reentered before `_status` is updated",
     "raw_warning": "warning[reentrancy-no-eth]: external call can be reentered before `_status` is updated",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/integration/LidoStETHIntegrator.sol",
@@ -2653,7 +2261,7 @@
     "column": 13,
     "message": "external call can be reentered before `_status` is updated",
     "raw_warning": "warning[reentrancy-no-eth]: external call can be reentered before `_status` is updated",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/integration/LidoStETHIntegrator.sol",
@@ -2677,7 +2285,7 @@
     "column": 21,
     "message": "external call can be reentered before `_status` is updated",
     "raw_warning": "warning[reentrancy-no-eth]: external call can be reentered before `_status` is updated",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/integration/LidoStETHIntegrator.sol",
@@ -2773,7 +2381,7 @@
     "column": 31,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/oracles/ChainlinkOracle.sol",
@@ -2877,7 +2485,7 @@
     "column": 38,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/integration/CrossChainMessenger.sol",
@@ -2957,7 +2565,7 @@
     "column": 37,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/MarketRegistry.sol",
@@ -2981,7 +2589,7 @@
     "column": 45,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/oracles/ChainlinkOracle.sol",
@@ -2997,7 +2605,7 @@
     "column": 16,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/oracles/ChainlinkOracle.sol",
@@ -3005,7 +2613,7 @@
     "column": 53,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/oracles/TWAPOracle.sol",
@@ -3109,7 +2717,7 @@
     "column": 13,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/integration/CrossChainMessenger.sol",
@@ -3117,7 +2725,7 @@
     "column": 25,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/LiquidityVault.sol",
@@ -3133,7 +2741,7 @@
     "column": 30,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/integration/CrossChainMessenger.sol",
@@ -3141,7 +2749,7 @@
     "column": 25,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/integration/CrossChainMessenger.sol",
@@ -3157,7 +2765,7 @@
     "column": 39,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/integration/CrossChainMessenger.sol",
@@ -3165,7 +2773,7 @@
     "column": 13,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/governance/Treasury.sol",
@@ -3213,7 +2821,7 @@
     "column": 9,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/governance/Treasury.sol",
@@ -3221,7 +2829,7 @@
     "column": 9,
     "message": "external call can be reentered before `scheduledWithdrawals` is updated",
     "raw_warning": "warning[reentrancy-no-eth]: external call can be reentered before `scheduledWithdrawals` is updated",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/governance/Treasury.sol",
@@ -3285,7 +2893,7 @@
     "column": 9,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/LiquidityVault.sol",
@@ -3293,7 +2901,7 @@
     "column": 9,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/LiquidityVault.sol",
@@ -3301,7 +2909,7 @@
     "column": 9,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/LiquidityVault.sol",
@@ -3309,7 +2917,7 @@
     "column": 9,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/LiquidityVault.sol",
@@ -3317,7 +2925,7 @@
     "column": 40,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/governance/VotingEscrow.sol",
@@ -3341,7 +2949,7 @@
     "column": 31,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/LiquidityVault.sol",
@@ -3349,7 +2957,7 @@
     "column": 30,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/LiquidityVault.sol",
@@ -3357,7 +2965,7 @@
     "column": 35,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/LiquidityVault.sol",
@@ -3365,7 +2973,7 @@
     "column": 37,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/LiquidityVault.sol",
@@ -3373,7 +2981,7 @@
     "column": 36,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/LiquidityVault.sol",
@@ -3381,7 +2989,7 @@
     "column": 104,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/governance/VotingEscrow.sol",
@@ -3405,7 +3013,7 @@
     "column": 98,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/LiquidityVault.sol",
@@ -3413,7 +3021,7 @@
     "column": 99,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/oracles/OracleAggregator.sol",
@@ -3501,7 +3109,7 @@
     "column": 20,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/AMMPool.sol",
@@ -3517,7 +3125,7 @@
     "column": 27,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/governance/VotingEscrow.sol",
@@ -3525,7 +3133,7 @@
     "column": 21,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/governance/VotingEscrow.sol",
@@ -3533,7 +3141,7 @@
     "column": 28,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/oracles/OracleAggregator.sol",
@@ -3605,7 +3213,7 @@
     "column": 19,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/oracles/OracleAggregator.sol",
@@ -3629,7 +3237,7 @@
     "column": 26,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/governance/VotingEscrow.sol",
@@ -3885,7 +3493,7 @@
     "column": 42,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/AMMPool.sol",
@@ -3893,7 +3501,7 @@
     "column": 42,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/AMMPool.sol",
@@ -3901,7 +3509,7 @@
     "column": 43,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/AMMPool.sol",
@@ -3909,7 +3517,7 @@
     "column": 43,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/PositionManager.sol",
@@ -3933,7 +3541,7 @@
     "column": 24,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/PositionManager.sol",
@@ -3949,7 +3557,7 @@
     "column": 56,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/AMMPool.sol",
@@ -3957,7 +3565,7 @@
     "column": 34,
     "message": "multiplication should occur before division to avoid loss of precision",
     "raw_warning": "warning[divide-before-multiply]: multiplication should occur before division to avoid loss of precision",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/AMMPool.sol",
@@ -3973,7 +3581,7 @@
     "column": 27,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/AMMPool.sol",
@@ -3981,7 +3589,7 @@
     "column": 27,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/AMMPool.sol",
@@ -3989,7 +3597,7 @@
     "column": 35,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/AMMPool.sol",
@@ -3997,7 +3605,7 @@
     "column": 28,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/AMMPool.sol",
@@ -4005,7 +3613,7 @@
     "column": 55,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/PositionManager.sol",
@@ -4029,7 +3637,7 @@
     "column": 27,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/AMMPool.sol",
@@ -4037,7 +3645,7 @@
     "column": 27,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/AMMPool.sol",
@@ -4045,7 +3653,7 @@
     "column": 35,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/AMMPool.sol",
@@ -4053,7 +3661,7 @@
     "column": 28,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/AMMPool.sol",
@@ -4061,7 +3669,7 @@
     "column": 80,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/PositionManager.sol",
@@ -4373,7 +3981,7 @@
     "column": 24,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/security/RateLimiter.sol",
@@ -4389,7 +3997,7 @@
     "column": 21,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/security/RateLimiter.sol",
@@ -4413,7 +4021,7 @@
     "column": 34,
     "message": "multiplication should occur before division to avoid loss of precision",
     "raw_warning": "warning[divide-before-multiply]: multiplication should occur before division to avoid loss of precision",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/upgradeability/UpgradeExecutor.sol",
@@ -4677,7 +4285,7 @@
     "column": 39,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
@@ -4709,7 +4317,7 @@
     "column": 41,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
@@ -4757,7 +4365,7 @@
     "column": 17,
     "message": "external call can be reentered before `lastUpgradeTime` is updated",
     "raw_warning": "warning[reentrancy-no-eth]: external call can be reentered before `lastUpgradeTime` is updated",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/upgradeability/UpgradeExecutor.sol",
@@ -4765,7 +4373,7 @@
     "column": 66,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/upgradeability/UpgradeExecutor.sol",
@@ -4821,7 +4429,7 @@
     "column": 43,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/PerpEngine.sol",
@@ -4829,7 +4437,7 @@
     "column": 33,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/view/PerpEngineViewer.sol",
@@ -4869,7 +4477,7 @@
     "column": 79,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/PerpEngine.sol",
@@ -4877,7 +4485,7 @@
     "column": 34,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/upgradeability/UpgradeExecutor.sol",
@@ -4909,7 +4517,7 @@
     "column": 79,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/upgradeability/UpgradeExecutor.sol",
@@ -4957,7 +4565,7 @@
     "column": 13,
     "message": "external call can be reentered before `_status` is updated",
     "raw_warning": "warning[reentrancy-no-eth]: external call can be reentered before `_status` is updated",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/FundingRateCalculator.sol",
@@ -4981,7 +4589,7 @@
     "column": 26,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/FundingRateCalculator.sol",
@@ -4989,7 +4597,7 @@
     "column": 53,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/FundingRateCalculator.sol",
@@ -4997,7 +4605,7 @@
     "column": 30,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/FundingRateCalculator.sol",
@@ -5005,7 +4613,7 @@
     "column": 41,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/FundingRateCalculator.sol",
@@ -5013,7 +4621,7 @@
     "column": 72,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/FundingRateCalculator.sol",
@@ -5021,7 +4629,7 @@
     "column": 95,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/view/PerpEngineViewer.sol",
@@ -5053,7 +4661,7 @@
     "column": 29,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/view/PerpEngineViewer.sol",
@@ -5077,7 +4685,7 @@
     "column": 50,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/upgradeability/UpgradeExecutor.sol",
@@ -5085,7 +4693,7 @@
     "column": 29,
     "message": "`nonReentrant` should be the first modifier",
     "raw_warning": "warning[non-reentrant-not-first]: `nonReentrant` should be the first modifier",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/upgradeability/UpgradeExecutor.sol",
@@ -5101,7 +4709,7 @@
     "column": 45,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/PerpEngine.sol",
@@ -5117,7 +4725,7 @@
     "column": 29,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/upgradeability/UpgradeExecutor.sol",
@@ -5133,7 +4741,7 @@
     "column": 45,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/FundingRateCalculator.sol",
@@ -5141,7 +4749,7 @@
     "column": 27,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/FundingRateCalculator.sol",
@@ -5149,7 +4757,7 @@
     "column": 27,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/FundingRateCalculator.sol",
@@ -5157,7 +4765,7 @@
     "column": 35,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/view/PerpEngineViewer.sol",
@@ -5165,7 +4773,7 @@
     "column": 69,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/PerpEngine.sol",
@@ -5173,7 +4781,7 @@
     "column": 13,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/view/PerpEngineViewer.sol",
@@ -5181,7 +4789,7 @@
     "column": 95,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/FundingRateCalculator.sol",
@@ -5189,7 +4797,7 @@
     "column": 28,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/FundingRateCalculator.sol",
@@ -5197,7 +4805,7 @@
     "column": 26,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/FundingRateCalculator.sol",
@@ -5205,7 +4813,7 @@
     "column": 53,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/view/PerpEngineViewer.sol",
@@ -5213,7 +4821,7 @@
     "column": 29,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/FundingRateCalculator.sol",
@@ -5221,7 +4829,7 @@
     "column": 30,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/FundingRateCalculator.sol",
@@ -5229,7 +4837,7 @@
     "column": 51,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/view/PerpEngineViewer.sol",
@@ -5237,7 +4845,7 @@
     "column": 29,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/upgradeability/UpgradeExecutor.sol",
@@ -5253,7 +4861,7 @@
     "column": 29,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/view/PerpEngineViewer.sol",
@@ -5261,7 +4869,7 @@
     "column": 53,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/PerpEngine.sol",
@@ -5277,7 +4885,7 @@
     "column": 79,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/FundingRateCalculator.sol",
@@ -5285,7 +4893,7 @@
     "column": 44,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/view/PerpEngineViewer.sol",
@@ -5293,7 +4901,7 @@
     "column": 29,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/PerpEngine.sol",
@@ -5301,7 +4909,7 @@
     "column": 13,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/FundingRateCalculator.sol",
@@ -5309,7 +4917,7 @@
     "column": 73,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/view/PerpEngineViewer.sol",
@@ -5317,7 +4925,7 @@
     "column": 25,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/view/PerpEngineViewer.sol",
@@ -5325,7 +4933,7 @@
     "column": 55,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/FundingRateCalculator.sol",
@@ -5333,7 +4941,7 @@
     "column": 32,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/view/PerpEngineViewer.sol",
@@ -5341,7 +4949,7 @@
     "column": 13,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/upgradeability/UpgradeExecutor.sol",
@@ -5365,7 +4973,7 @@
     "column": 16,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/view/PerpEngineViewer.sol",
@@ -5381,7 +4989,7 @@
     "column": 31,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/view/PerpEngineViewer.sol",
@@ -5389,7 +4997,7 @@
     "column": 33,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/PerpEngine.sol",
@@ -5405,7 +5013,7 @@
     "column": 54,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/FundingRateCalculator.sol",
@@ -5413,7 +5021,7 @@
     "column": 89,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/FundingRateCalculator.sol",
@@ -5421,7 +5029,7 @@
     "column": 21,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/PerpEngine.sol",
@@ -5429,7 +5037,7 @@
     "column": 13,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/FundingRateCalculator.sol",
@@ -5437,7 +5045,7 @@
     "column": 25,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/FundingRateCalculator.sol",
@@ -5445,7 +5053,7 @@
     "column": 38,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/view/PerpEngineViewer.sol",
@@ -5477,7 +5085,7 @@
     "column": 13,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/security/AccessControlManager.sol",
@@ -5533,7 +5141,7 @@
     "column": 30,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/BitPacking.sol",
@@ -5541,7 +5149,7 @@
     "column": 20,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/BitPacking.sol",
@@ -5549,7 +5157,7 @@
     "column": 17,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/BitPacking.sol",
@@ -5557,7 +5165,7 @@
     "column": 25,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/BitPacking.sol",
@@ -5565,7 +5173,7 @@
     "column": 25,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/security/EmergencyGuardian.sol",
@@ -5685,7 +5293,7 @@
     "column": 25,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/SafeDecimalMath.sol",
@@ -5693,7 +5301,7 @@
     "column": 38,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/PerpEngine.sol",
@@ -5701,7 +5309,7 @@
     "column": 33,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/PerpEngine.sol",
@@ -5709,7 +5317,7 @@
     "column": 31,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/PerpEngine.sol",
@@ -5717,7 +5325,7 @@
     "column": 27,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/PerpEngine.sol",
@@ -5725,7 +5333,7 @@
     "column": 48,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/PerpEngine.sol",
@@ -5733,7 +5341,7 @@
     "column": 69,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/PerpEngine.sol",
@@ -5741,7 +5349,7 @@
     "column": 94,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "test/fuzz/DriftTest.t.sol",
@@ -5757,7 +5365,7 @@
     "column": 14,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/PerpEngine.sol",
@@ -5765,7 +5373,7 @@
     "column": 30,
     "message": "external call can be reentered before `_status` is updated",
     "raw_warning": "warning[reentrancy-no-eth]: external call can be reentered before `_status` is updated",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/core/PerpEngine.sol",
@@ -5957,7 +5565,7 @@
     "column": 24,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "test/fuzz/InvariantTests.t.sol",
@@ -5997,7 +5605,7 @@
     "column": 32,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
@@ -6005,7 +5613,7 @@
     "column": 88,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "test/fuzz/InvariantTests.t.sol",
@@ -6029,7 +5637,7 @@
     "column": 42,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
@@ -6037,7 +5645,7 @@
     "column": 32,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "test/fuzz/DriftTest.t.sol",
@@ -6077,7 +5685,7 @@
     "column": 88,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "test/fuzz/DriftTest.t.sol",
@@ -6093,7 +5701,7 @@
     "column": 42,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "test/fuzz/InvariantTests.t.sol",
@@ -6125,7 +5733,7 @@
     "column": 27,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
@@ -6133,7 +5741,7 @@
     "column": 28,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
@@ -6141,7 +5749,7 @@
     "column": 30,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
@@ -6149,7 +5757,7 @@
     "column": 31,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
@@ -6157,7 +5765,7 @@
     "column": 16,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
@@ -6165,7 +5773,7 @@
     "column": 19,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
@@ -6173,7 +5781,7 @@
     "column": 20,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
@@ -6181,7 +5789,7 @@
     "column": 19,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
@@ -6189,7 +5797,7 @@
     "column": 20,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
@@ -6197,7 +5805,7 @@
     "column": 19,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
@@ -6205,7 +5813,7 @@
     "column": 20,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
@@ -6213,7 +5821,7 @@
     "column": 19,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
@@ -6221,7 +5829,7 @@
     "column": 20,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "contracts/libraries/PositionMath.sol",
@@ -6229,7 +5837,7 @@
     "column": 16,
     "message": "typecasts that can truncate values should be checked",
     "raw_warning": "warning[unsafe-typecast]: typecasts that can truncate values should be checked",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
   },
   {
     "file": "test/fuzz/AdversarialTests.t.sol",
