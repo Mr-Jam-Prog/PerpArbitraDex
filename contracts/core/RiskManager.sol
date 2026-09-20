@@ -235,7 +235,7 @@ contract RiskManager is IRiskManager, Ownable {
     ) external view override returns (uint256 liquidationPrice) {
         // This would call PositionMath library
         // Simplified implementation
-        uint256 maintenanceMargin = size.mulDiv(_globalParams.minMarginRatio, PRECISION);
+        // uint256 maintenanceMargin = size.mulDiv(_globalParams.minMarginRatio, PRECISION);
         
         if (isLong) {
             // For long: price where (margin + PnL + funding) = maintenanceMargin

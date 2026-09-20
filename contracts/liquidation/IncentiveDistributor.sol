@@ -173,7 +173,6 @@ contract IncentiveDistributor is ReentrancyGuard, Ownable {
 
     /**
      * @notice Distribute protocol fees
-     * @param feeAmount Fee amount to distribute
      */
     function distributeProtocolFees(uint256 feeAmount) external nonReentrant onlyAuthorized {
         require(feeAmount > 0, "No fees to distribute");
