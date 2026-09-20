@@ -8,6 +8,310 @@
     "justification": "[THIRD_PARTY_PINNED] Tolerated compiler diagnostic in third-party dependency."
   },
   {
+    "file": "contracts/core/AMMPool.sol",
+    "line": 379,
+    "column": 33,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/core/RiskManager.sol",
+    "line": 154,
+    "column": 9,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/core/RiskManager.sol",
+    "line": 156,
+    "column": 9,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/core/RiskManager.sol",
+    "line": 230,
+    "column": 9,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/core/RiskManager.sol",
+    "line": 232,
+    "column": 9,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/core/RiskManager.sol",
+    "line": 234,
+    "column": 9,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/core/RiskManager.sol",
+    "line": 238,
+    "column": 9,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/core/RiskManager.sol",
+    "line": 261,
+    "column": 9,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/core/RiskManager.sol",
+    "line": 392,
+    "column": 9,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/core/RiskManager.sol",
+    "line": 394,
+    "column": 9,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/core/RiskManager.sol",
+    "line": 416,
+    "column": 37,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/integration/AaveFlashLoanIntegrator.sol",
+    "line": 384,
+    "column": 30,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/integration/AccountAbstractionAdapter.sol",
+    "line": 380,
+    "column": 9,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/integration/AccountAbstractionAdapter.sol",
+    "line": 413,
+    "column": 31,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/integration/AccountAbstractionAdapter.sol",
+    "line": 440,
+    "column": 9,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/integration/AccountAbstractionAdapter.sol",
+    "line": 441,
+    "column": 9,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/integration/AccountAbstractionAdapter.sol",
+    "line": 442,
+    "column": 9,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 245,
+    "column": 9,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 399,
+    "column": 9,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 440,
+    "column": 10,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 440,
+    "column": 26,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 440,
+    "column": 46,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 440,
+    "column": 60,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 462,
+    "column": 10,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 462,
+    "column": 30,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 462,
+    "column": 46,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 484,
+    "column": 10,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 484,
+    "column": 26,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 484,
+    "column": 41,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 506,
+    "column": 10,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/integration/CrossChainMessenger.sol",
+    "line": 506,
+    "column": 32,
+    "message": "Unused local variable.",
+    "raw_warning": "Warning: Unused local variable.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/liquidation/IncentiveDistributor.sol",
+    "line": 227,
+    "column": 32,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/liquidation/IncentiveDistributor.sol",
+    "line": 280,
+    "column": 38,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/liquidation/LiquidationEngine.sol",
+    "line": 249,
+    "column": 9,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/liquidation/LiquidationEngine.sol",
+    "line": 250,
+    "column": 9,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/liquidation/LiquidationEngine.sol",
+    "line": 251,
+    "column": 9,
+    "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/oracles/ChainlinkOracle.sol",
+    "line": 96,
+    "column": 13,
+    "message": "Unused try/catch parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused try/catch parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
+    "file": "contracts/oracles/ChainlinkOracle.sol",
+    "line": 153,
+    "column": 13,
+    "message": "Unused try/catch parameter. Remove or comment out the variable name to silence this warning.",
+    "raw_warning": "Warning: Unused try/catch parameter. Remove or comment out the variable name to silence this warning.",
+    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+  },
+  {
     "file": "contracts/test/MockAavePool.sol",
     "line": 9,
     "column": 9,
@@ -129,7 +433,7 @@
   },
   {
     "file": "contracts/security/CircuitBreaker.sol",
-    "line": 376,
+    "line": 374,
     "column": 5,
     "message": "Function state mutability can be restricted to view",
     "raw_warning": "Warning: Function state mutability can be restricted to view",

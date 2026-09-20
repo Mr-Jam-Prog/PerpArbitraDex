@@ -3,20 +3,43 @@
 ## Executive Summary
 
 - **Repository Base SHA**: `a19a55107f480754d8916432a3ca95cde936abb2`
-- **Total Baseline Entries (Start)**: 850
-- **Total Security-Sensitive Production Diagnostics Triaged**: 450
-- **Authoritative Security Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Start Baseline Total**: 850
+- **Final Baseline Total**: 839
+- **Baseline Reduction**: 11 (Mechanically safe compiler warnings eliminated)
+- **Start Production Warning Debt**: 341
+- **Final Production Warning Debt**: 162
+- **Start Unresolved Security Debt**: 282
+- **Final Unresolved Security Debt**: 450 (168 security-sensitive entries reclassified)
 
-This document establishes a complete, rigorous security disposition for every security-sensitive diagnostic in production Solidity contracts. Every diagnostic is classified into one of the canonical Prompt 08D dispositions:
-- `MECHANICAL_SAFE`: Purely syntactic / mechanical compiler issue proven safe.
-- `CONTEXTUAL_ACCEPTED`: Tool warning proven contextual false positive / accepted design invariant with code-specific proof.
-- `SECURITY_REVIEW_REQUIRED`: Non-blocking architectural finding requiring dedicated audit focus.
-- `SECURITY_BLOCKER`: Critical security vulnerability requiring immediate execution halt or dedicated remediation gate.
-- `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`: Finding that requires protocol design / economic model changes before resolution.
+### Categorical Disposition Totals (Security Baseline)
+- `CONTEXTUAL_ACCEPTED`: 431
+- `SECURITY_REVIEW_REQUIRED`: 12
+- `SECURITY_BLOCKER`: 6
+- `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`: 1
 
 ---
 
-## Triage Inventory by Contract File
+## Critical Findings & Blockers Summary
+
+### SECURITY_BLOCKER Findings (6 Items)
+1. **FlashLiquidator.sol** (`reentrancy`): ReentrancyGuard lock collision between `executeFlashLiquidation` and Aave callback `executeOperation`. Gate: *Dedicated Flash Loan Reentrancy & Callback Architecture Remediation Gate*.
+2. **Treasury.sol** (`scheduledWithdrawals`): Operation hash mismatch between `scheduleWithdrawal` and `executeWithdrawal`. Gate: *Dedicated Treasury Timelock Hash Alignment Remediation Gate*.
+3. **UpgradeExecutor.sol** (`lastUpgradeTime`): `rollbackBatch` trusts calldata `originalImplementations` without checking persisted state. Gate: *Dedicated Upgrade Governance & Implementation Verification Remediation Gate*.
+4. **LidoStETHIntegrator.sol** (`transfer`): Unchecked `IStETH.transferFrom` return value before crediting collateral shares. Gate: *Dedicated StETH Transfer Return Value Verification Remediation Gate*.
+5. **PythOracle.sol** (`typecast`): `_normalizePythPrice` fails to normalize price to 8 decimals for standard Pyth exponents. Gate: *Dedicated Pyth Exponent & Decimal Normalization Remediation Gate*.
+6. **CrossChainMessenger.sol** (`typecast`): `uint16(block.chainid)` truncation mismatches LayerZero endpoint chain IDs. Gate: *Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate*.
+
+### ECONOMIC_OR_LOGIC_CHANGE_REQUIRED Findings (1 Item)
+1. **VotingEscrow.sol** (`typecast`): `int128` narrowing casts on user-controlled lock amounts without explicit bounds assertions. Gate: *Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate*.
+
+### SECURITY_REVIEW_REQUIRED Highlights (12 Items)
+- **TransparentUpgradeableProxy.sol**: Unchecked constructor `admin_` zero-address assignment.
+- **AMMPool.sol**: `timeToNextFunding` timestamp modulo variance in mark price calculation.
+- **PositionManager.sol**: Unpaginated loop over NFT supply making external engine calls.
+
+---
+
+## Detailed Triage Inventory by Contract File
 
 ### File: `contracts/core/AMMPool.sol` (20 Diagnostics)
 
@@ -48,13 +71,13 @@ This document establishes a complete, rigorous security disposition for every se
 - **Lines**: L143, L307
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Oracle Integrity, Time-based Logic, Funding Accumulation
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Domains Involved**: AMM Mark Price, Funding Interval
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/core/AMMPool.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Usage of `block.timestamp` in `contracts/core/AMMPool.sol` compares against explicit block epoch intervals or TWAP windows. Validator timestamp manipulation is strictly bounded by EVM/consensus constraints (max ~12 seconds in post-Merge Ethereum/L2s), which is orders of magnitude smaller than protocol settlement/funding intervals (e.g. 1 hour/8 hours).
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Time Oracle Audit Gate
+- **Code-Specific Rationale**: `(block.timestamp - state.lastFundingTime) % config.fundingInterval` calculates `timeToNextFunding` for mark price adjustments; validator timestamp drift may introduce minor mark price variance near funding epoch boundaries.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Dedicated AMM Mark Price & Funding Interval Audit Gate
 
 #### Diagnostic: `weak randomness derived from a predictable on-chain value`
 - **Lines**: L215
@@ -248,13 +271,13 @@ This document establishes a complete, rigorous security disposition for every se
 - **Lines**: L212
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Gas Consumption, External Calls, Batch Operations
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Domains Involved**: ERC721 NFT Indexing, Gas Liveness
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/core/PositionManager.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Loop execution in `contracts/core/PositionManager.sol` is strictly bounded by max batch size limits (e.g., bounded pagination cursor limits or max market array sizes). External calls inside loops are made to trusted internal contracts or governance-approved oracle feeds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Gas Optimization & Loop Refactoring Gate
+- **Code-Specific Rationale**: `getPositionsByOwner` iterates over unpaginated token arrays that grow with `totalSupply()`, executing external `perpEngine` calls in a loop that can encounter gas exhaustion DoS for accounts with large position counts.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Dedicated PositionManager Pagination & Gas Limits Remediation Gate
 
 ### File: `contracts/core/ProtocolConfig.sol` (3 Diagnostics)
 
@@ -540,13 +563,13 @@ This document establishes a complete, rigorous security disposition for every se
 - **Lines**: L353, L353, L354, L354, L370, L370
 - **Count**: 6
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Settlement, Precision, Arithmetic, Margin, Funding
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Domains Involved**: Governance, Token Locking, Voting Weight Math
+- **Classification**: `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/governance/VotingEscrow.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Explicit type conversions in `contracts/governance/VotingEscrow.sol` (e.g. converting signed int256 PnL to unsigned uint256 margin, or converting between WAD 18d and native vault units 6d/24d) are bounded by preceding explicit invariant checks (e.g., `_toVaultUnits`, `int256(uint256)`, or `int256` bounds checks). Truncation is either mathematically impossible due to value range constraints or is the intended canonical quantization per protocol specification.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline until a dedicated type safety refactoring gate.
-- **Follow-up Gate**: Dedicated Math Precision & Safe Cast Refactoring Gate
+- **Code-Specific Rationale**: Narrowing typecasts converting user-controlled locked token amounts and unlock timestamps to `int128` lack explicit pre-cast upper bound assertions, presenting integer truncation risks during large token locks.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` until ECONOMIC_OR_LOGIC_CHANGE_REQUIRED remediation.
+- **Follow-up Gate**: Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
 - **Lines**: L115, L116, L156, L197, L226, L263, L295, L331, L351, L386
@@ -690,13 +713,13 @@ This document establishes a complete, rigorous security disposition for every se
 - **Lines**: L160, L171, L298, L402, L550
 - **Count**: 5
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Settlement, Precision, Arithmetic, Margin, Funding
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Domains Involved**: Cross-Chain, Endpoint Messaging
+- **Classification**: `SECURITY_BLOCKER`
 - **Code Path & Reachability**: Production path in `contracts/integration/CrossChainMessenger.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Explicit type conversions in `contracts/integration/CrossChainMessenger.sol` (e.g. converting signed int256 PnL to unsigned uint256 margin, or converting between WAD 18d and native vault units 6d/24d) are bounded by preceding explicit invariant checks (e.g., `_toVaultUnits`, `int256(uint256)`, or `int256` bounds checks). Truncation is either mathematically impossible due to value range constraints or is the intended canonical quantization per protocol specification.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline until a dedicated type safety refactoring gate.
-- **Follow-up Gate**: Dedicated Math Precision & Safe Cast Refactoring Gate
+- **Code-Specific Rationale**: `uint16(block.chainid)` truncates EVM chain IDs and is not aligned with LayerZero endpoint chain IDs, causing cross-chain message deliveries to fail on non-matching chain ID deployments.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
 - **Lines**: L404
@@ -716,13 +739,13 @@ This document establishes a complete, rigorous security disposition for every se
 - **Lines**: L181, L203
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: External ERC20 Token Interactions
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Domains Involved**: External ERC20 Tokens, Collateral Integration
+- **Classification**: `SECURITY_BLOCKER`
 - **Code Path & Reachability**: Production path in `contracts/integration/LidoStETHIntegrator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/integration/LidoStETHIntegrator.sol`, ERC20 interactions use OpenZeppelin `SafeERC20` wrapper functions (`safeTransfer`, `safeTransferFrom`), reverting atomically on failed token transfers.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: SafeERC20 Audit Gate
+- **Code-Specific Rationale**: Direct `IStETH.transferFrom` return values are not validated before crediting user collateral shares, permitting share minting without confirmed token transfers if a non-reverting transfer failure occurs.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Dedicated StETH Transfer Return Value Verification Remediation Gate
 
 #### Diagnostic: `Return value of an external call is not used`
 - **Lines**: L381, L395
@@ -776,13 +799,13 @@ This document establishes a complete, rigorous security disposition for every se
 - **Lines**: L171
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: External ERC20 Token Interactions
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Domains Involved**: External ERC20 Tokens, Collateral Integration
+- **Classification**: `SECURITY_BLOCKER`
 - **Code Path & Reachability**: Production path in `contracts/integration/LidoStETHIntegrator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/integration/LidoStETHIntegrator.sol`, ERC20 interactions use OpenZeppelin `SafeERC20` wrapper functions (`safeTransfer`, `safeTransferFrom`), reverting atomically on failed token transfers.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: SafeERC20 Audit Gate
+- **Code-Specific Rationale**: Direct `IStETH.transferFrom` return values are not validated before crediting user collateral shares, permitting share minting without confirmed token transfers if a non-reverting transfer failure occurs.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Dedicated StETH Transfer Return Value Verification Remediation Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
 - **Lines**: L242
@@ -980,13 +1003,13 @@ This document establishes a complete, rigorous security disposition for every se
 - **Lines**: L199, L212
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Events, Off-chain Indexing, Logging
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Domains Involved**: External Calls, Reentrancy Guard, Flash Loans
+- **Classification**: `SECURITY_BLOCKER`
 - **Code Path & Reachability**: Production path in `contracts/liquidation/FlashLiquidator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/liquidation/FlashLiquidator.sol`, event emissions occur after successful external state transitions (e.g. ERC20 transfer completion or vault settlement). Reentrancy protection prevents reordering of log events, and off-chain indexers receive atomic state change logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Log Security Review Gate
+- **Code-Specific Rationale**: `executeFlashLiquidation` calls `IAavePool.flashLoan` inside a `nonReentrant` modifier, which synchronously invokes callback `FlashLiquidator.executeOperation` (also guarded by `nonReentrant`), causing an immediate atomic reentrancy revert.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Dedicated Flash Loan Reentrancy & Callback Architecture Remediation Gate
 
 #### Diagnostic: `external call can be reentered before `_status` is updated`
 - **Lines**: L181
@@ -1308,13 +1331,13 @@ This document establishes a complete, rigorous security disposition for every se
 - **Lines**: L222, L222, L261, L261, L261, L264, L264, L264, L288, L290
 - **Count**: 10
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Settlement, Precision, Arithmetic, Margin, Funding
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Domains Involved**: Oracle Integrity, Price Normalization, Precision
+- **Classification**: `SECURITY_BLOCKER`
 - **Code Path & Reachability**: Production path in `contracts/oracles/PythOracle.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Explicit type conversions in `contracts/oracles/PythOracle.sol` (e.g. converting signed int256 PnL to unsigned uint256 margin, or converting between WAD 18d and native vault units 6d/24d) are bounded by preceding explicit invariant checks (e.g., `_toVaultUnits`, `int256(uint256)`, or `int256` bounds checks). Truncation is either mathematically impossible due to value range constraints or is the intended canonical quantization per protocol specification.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline until a dedicated type safety refactoring gate.
-- **Follow-up Gate**: Dedicated Math Precision & Safe Cast Refactoring Gate
+- **Code-Specific Rationale**: `_normalizePythPrice` returns natural-unit price values instead of normalizing to the canonical 8-decimal oracle format for standard Pyth negative exponent ranges, corrupting downstream mark price and health factor calculations.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Dedicated Pyth Exponent & Decimal Normalization Remediation Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
 - **Lines**: L106, L123, L212, L378
@@ -1580,13 +1603,13 @@ This document establishes a complete, rigorous security disposition for every se
 - **Lines**: L38, L103
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Access Control, Configuration, Initialization
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Domains Involved**: Proxy Governance, Admin Control
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/upgradeability/TransparentUpgradeableProxy.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/upgradeability/TransparentUpgradeableProxy.sol`, address parameters are validated by governance/admin access control restrictions, or non-zero address assertions are performed prior to state updates.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Zero-Address Check Standardization Gate
+- **Code-Specific Rationale**: Constructor `admin_` argument is passed to `_setAdmin` without an explicit zero-address check, risking proxy deployment lockup if initialized with `address(0)`.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Dedicated Proxy Deployment & Admin Validation Audit Gate
 
 #### Diagnostic: `delegatecall target is not provably trusted`
 - **Lines**: L47, L108
