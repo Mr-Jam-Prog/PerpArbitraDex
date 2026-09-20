@@ -12,10 +12,10 @@
 - **Final Unresolved Security Debt**: 450 (168 security-sensitive entries reclassified)
 
 ### Categorical Disposition Totals (Security Baseline)
-- `CONTEXTUAL_ACCEPTED`: 431
-- `SECURITY_REVIEW_REQUIRED`: 12
-- `SECURITY_BLOCKER`: 6
-- `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`: 1
+- `CONTEXTUAL_ACCEPTED`: 321
+- `SECURITY_REVIEW_REQUIRED`: 101
+- `SECURITY_BLOCKER`: 22
+- `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`: 6
 
 ---
 
@@ -23,7 +23,7 @@
 
 ### SECURITY_BLOCKER Findings (6 Items)
 1. **FlashLiquidator.sol** (`reentrancy`): ReentrancyGuard lock collision between `executeFlashLiquidation` and Aave callback `executeOperation`. Gate: *Dedicated Flash Loan Reentrancy & Callback Architecture Remediation Gate*.
-2. **Treasury.sol** (`scheduledWithdrawals`): Operation hash mismatch between `scheduleWithdrawal` and `executeWithdrawal`. Gate: *Dedicated Treasury Timelock Hash Alignment Remediation Gate*.
+2. **Treasury.sol** (`scheduledWithdrawals`): Operation hash mismatch between `scheduleWithdrawal` and `executeWithdrawal` (`salt` vs `bytes32(0)`). Gate: *Dedicated Treasury Timelock Hash Alignment Remediation Gate*.
 3. **UpgradeExecutor.sol** (`lastUpgradeTime`): `rollbackBatch` trusts calldata `originalImplementations` without checking persisted state. Gate: *Dedicated Upgrade Governance & Implementation Verification Remediation Gate*.
 4. **LidoStETHIntegrator.sol** (`transfer`): Unchecked `IStETH.transferFrom` return value before crediting collateral shares. Gate: *Dedicated StETH Transfer Return Value Verification Remediation Gate*.
 5. **PythOracle.sol** (`typecast`): `_normalizePythPrice` fails to normalize price to 8 decimals for standard Pyth exponents. Gate: *Dedicated Pyth Exponent & Decimal Normalization Remediation Gate*.
@@ -32,7 +32,7 @@
 ### ECONOMIC_OR_LOGIC_CHANGE_REQUIRED Findings (1 Item)
 1. **VotingEscrow.sol** (`typecast`): `int128` narrowing casts on user-controlled lock amounts without explicit bounds assertions. Gate: *Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate*.
 
-### SECURITY_REVIEW_REQUIRED Highlights (12 Items)
+### SECURITY_REVIEW_REQUIRED Highlights
 - **TransparentUpgradeableProxy.sol**: Unchecked constructor `admin_` zero-address assignment.
 - **AMMPool.sol**: `timeToNextFunding` timestamp modulo variance in mark price calculation.
 - **PositionManager.sol**: Unpaginated loop over NFT supply making external engine calls.
@@ -40,7 +40,6 @@
 ---
 
 ## Detailed Triage Inventory by Contract File
-
 ### File: `contracts/core/AMMPool.sol` (20 Diagnostics)
 
 #### Diagnostic: `multiplication should occur before division to avoid loss of precision`
@@ -198,11 +197,11 @@
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Core Architecture & Security
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/core/PerpEngine.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/core/PerpEngine.sol`, diagnostic `external call can be reentered before `_status` is updated` is verified as contextual false positive / accepted design constraint within contract invariant bounds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Code-Specific Rationale**: In `contracts/core/PerpEngine.sol`, diagnostic `external call can be reentered before `_status` is updated` requires formal code-specific security review during upcoming security audit gates.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: General Security Review Gate
 
 #### Diagnostic: `external call inside a loop`
@@ -210,12 +209,12 @@
 - **Count**: 5
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Gas Consumption, External Calls, Batch Operations
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/core/PerpEngine.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Loop execution in `contracts/core/PerpEngine.sol` is strictly bounded by max batch size limits (e.g., bounded pagination cursor limits or max market array sizes). External calls inside loops are made to trusted internal contracts or governance-approved oracle feeds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Gas Optimization & Loop Refactoring Gate
+- **Code-Specific Rationale**: In `contracts/core/PerpEngine.sol`, loop execution iterates over arrays or feeds during batch operations. To prevent potential gas exhaustion or liveness issues on large input arrays, this path requires formal pagination bounds review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
 #### Diagnostic: `typecasts that can truncate values should be checked`
 - **Lines**: L278, L280, L305, L327, L408, L411, L463, L491, L580, L678, L799, L869, L905, L946, L964, L993, L993, L993, L993, L1019
@@ -412,12 +411,12 @@
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Gas Consumption, External Calls, Batch Operations
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/governance/FeeDistributor.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Loop execution in `contracts/governance/FeeDistributor.sol` is strictly bounded by max batch size limits (e.g., bounded pagination cursor limits or max market array sizes). External calls inside loops are made to trusted internal contracts or governance-approved oracle feeds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Gas Optimization & Loop Refactoring Gate
+- **Code-Specific Rationale**: In `contracts/governance/FeeDistributor.sol`, loop execution iterates over arrays or feeds during batch operations. To prevent potential gas exhaustion or liveness issues on large input arrays, this path requires formal pagination bounds review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
 #### Diagnostic: ``transferFrom` uses an arbitrary `from`; require it to equal `msg.sender` or `address(this)``
 - **Lines**: L90
@@ -460,7 +459,7 @@
 ### File: `contracts/governance/TimelockController.sol` (2 Diagnostics)
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
-- **Lines**: L93, L172
+- **Lines**: L93, L171
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Oracle Integrity, Time-based Logic, Funding Accumulation
@@ -478,11 +477,11 @@
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Core Architecture & Security
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/governance/Treasury.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/governance/Treasury.sol`, diagnostic `ETH is sent to a user-controlled destination; restrict the destination or the caller` is verified as contextual false positive / accepted design constraint within contract invariant bounds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Code-Specific Rationale**: In `contracts/governance/Treasury.sol`, diagnostic `ETH is sent to a user-controlled destination; restrict the destination or the caller` requires formal code-specific security review during upcoming security audit gates.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: General Security Review Gate
 
 #### Diagnostic: `address parameter is used in a state write or value transfer without a zero-address check`
@@ -490,11 +489,11 @@
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Access Control, Configuration, Initialization
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/governance/Treasury.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/governance/Treasury.sol`, address parameters are validated by governance/admin access control restrictions, or non-zero address assertions are performed prior to state updates.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Code-Specific Rationale**: In `contracts/governance/Treasury.sol`, address parameters in state setters or initialization functions require explicit non-zero address assertions to prevent accidental zero-address assignment.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Zero-Address Check Standardization Gate
 
 #### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on`
@@ -514,11 +513,11 @@
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Core Architecture & Security
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/governance/Treasury.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/governance/Treasury.sol`, diagnostic `external call can be reentered before `scheduledWithdrawals` is updated` is verified as contextual false positive / accepted design constraint within contract invariant bounds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Code-Specific Rationale**: In `contracts/governance/Treasury.sol`, diagnostic `external call can be reentered before `scheduledWithdrawals` is updated` requires formal code-specific security review during upcoming security audit gates.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: General Security Review Gate
 
 #### Diagnostic: `uncapped ETH transfer can be reentered before `scheduledWithdrawals` is updated`
@@ -552,11 +551,11 @@
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Core Architecture & Security
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/governance/VotingEscrow.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/governance/VotingEscrow.sol`, diagnostic ``tx.origin` should not be used for authorization` is verified as contextual false positive / accepted design constraint within contract invariant bounds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Code-Specific Rationale**: In `contracts/governance/VotingEscrow.sol`, diagnostic ``tx.origin` should not be used for authorization` requires formal code-specific security review during upcoming security audit gates.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: General Security Review Gate
 
 #### Diagnostic: `typecasts that can truncate values should be checked`
@@ -788,11 +787,11 @@
 - **Count**: 5
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Core Architecture & Security
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/integration/LidoStETHIntegrator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/integration/LidoStETHIntegrator.sol`, diagnostic `external call can be reentered before `_status` is updated` is verified as contextual false positive / accepted design constraint within contract invariant bounds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Code-Specific Rationale**: In `contracts/integration/LidoStETHIntegrator.sol`, diagnostic `external call can be reentered before `_status` is updated` requires formal code-specific security review during upcoming security audit gates.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: General Security Review Gate
 
 #### Diagnostic: `uncapped ETH transfer can be reentered before `_status` is updated`
@@ -840,23 +839,23 @@
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Gas Consumption, External Calls, Batch Operations
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/libraries/FundingRateCalculator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Loop execution in `contracts/libraries/FundingRateCalculator.sol` is strictly bounded by max batch size limits (e.g., bounded pagination cursor limits or max market array sizes). External calls inside loops are made to trusted internal contracts or governance-approved oracle feeds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Gas Optimization & Loop Refactoring Gate
+- **Code-Specific Rationale**: In `contracts/libraries/FundingRateCalculator.sol`, loop execution iterates over arrays or feeds during batch operations. To prevent potential gas exhaustion or liveness issues on large input arrays, this path requires formal pagination bounds review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
 #### Diagnostic: `local variable is read before being initialized`
 - **Lines**: L63
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Core Architecture & Security
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/libraries/FundingRateCalculator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/libraries/FundingRateCalculator.sol`, diagnostic `local variable is read before being initialized` is verified as contextual false positive / accepted design constraint within contract invariant bounds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Code-Specific Rationale**: In `contracts/libraries/FundingRateCalculator.sol`, diagnostic `local variable is read before being initialized` requires formal code-specific security review during upcoming security audit gates.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: General Security Review Gate
 
 #### Diagnostic: `typecasts that can truncate values should be checked`
@@ -878,35 +877,35 @@
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Gas Consumption, External Calls, Batch Operations
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/libraries/L2GasOptimized.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Loop execution in `contracts/libraries/L2GasOptimized.sol` is strictly bounded by max batch size limits (e.g., bounded pagination cursor limits or max market array sizes). External calls inside loops are made to trusted internal contracts or governance-approved oracle feeds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Gas Optimization & Loop Refactoring Gate
+- **Code-Specific Rationale**: In `contracts/libraries/L2GasOptimized.sol`, loop execution iterates over arrays or feeds during batch operations. To prevent potential gas exhaustion or liveness issues on large input arrays, this path requires formal pagination bounds review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
 #### Diagnostic: `external call inside a loop`
 - **Lines**: L96
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Gas Consumption, External Calls, Batch Operations
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/libraries/L2GasOptimized.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Loop execution in `contracts/libraries/L2GasOptimized.sol` is strictly bounded by max batch size limits (e.g., bounded pagination cursor limits or max market array sizes). External calls inside loops are made to trusted internal contracts or governance-approved oracle feeds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Gas Optimization & Loop Refactoring Gate
+- **Code-Specific Rationale**: In `contracts/libraries/L2GasOptimized.sol`, loop execution iterates over arrays or feeds during batch operations. To prevent potential gas exhaustion or liveness issues on large input arrays, this path requires formal pagination bounds review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
 #### Diagnostic: `local variable is read before being initialized`
 - **Lines**: L124
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Core Architecture & Security
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/libraries/L2GasOptimized.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/libraries/L2GasOptimized.sol`, diagnostic `local variable is read before being initialized` is verified as contextual false positive / accepted design constraint within contract invariant bounds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Code-Specific Rationale**: In `contracts/libraries/L2GasOptimized.sol`, diagnostic `local variable is read before being initialized` requires formal code-specific security review during upcoming security audit gates.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: General Security Review Gate
 
 ### File: `contracts/libraries/PositionMath.sol` (31 Diagnostics)
@@ -916,12 +915,12 @@
 - **Count**: 10
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Gas Consumption, External Calls, Batch Operations
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/libraries/PositionMath.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Loop execution in `contracts/libraries/PositionMath.sol` is strictly bounded by max batch size limits (e.g., bounded pagination cursor limits or max market array sizes). External calls inside loops are made to trusted internal contracts or governance-approved oracle feeds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Gas Optimization & Loop Refactoring Gate
+- **Code-Specific Rationale**: In `contracts/libraries/PositionMath.sol`, loop execution iterates over arrays or feeds during batch operations. To prevent potential gas exhaustion or liveness issues on large input arrays, this path requires formal pagination bounds review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
 #### Diagnostic: `typecasts that can truncate values should be checked`
 - **Lines**: L225, L269, L269, L275, L284, L284, L288, L339, L340, L354, L355, L401, L459, L465, L479, L485, L502, L503, L518, L519, L530
@@ -942,12 +941,12 @@
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Gas Consumption, External Calls, Batch Operations
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/libraries/SafeDecimalMath.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Loop execution in `contracts/libraries/SafeDecimalMath.sol` is strictly bounded by max batch size limits (e.g., bounded pagination cursor limits or max market array sizes). External calls inside loops are made to trusted internal contracts or governance-approved oracle feeds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Gas Optimization & Loop Refactoring Gate
+- **Code-Specific Rationale**: In `contracts/libraries/SafeDecimalMath.sol`, loop execution iterates over arrays or feeds during batch operations. To prevent potential gas exhaustion or liveness issues on large input arrays, this path requires formal pagination bounds review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
 #### Diagnostic: `typecasts that can truncate values should be checked`
 - **Lines**: L64, L64
@@ -1016,11 +1015,11 @@
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Core Architecture & Security
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/liquidation/FlashLiquidator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/liquidation/FlashLiquidator.sol`, diagnostic `external call can be reentered before `_status` is updated` is verified as contextual false positive / accepted design constraint within contract invariant bounds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Code-Specific Rationale**: In `contracts/liquidation/FlashLiquidator.sol`, diagnostic `external call can be reentered before `_status` is updated` requires formal code-specific security review during upcoming security audit gates.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: General Security Review Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
@@ -1066,11 +1065,11 @@
 - **Count**: 3
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Access Control, Configuration, Initialization
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/liquidation/IncentiveDistributor.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/liquidation/IncentiveDistributor.sol`, address parameters are validated by governance/admin access control restrictions, or non-zero address assertions are performed prior to state updates.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Code-Specific Rationale**: In `contracts/liquidation/IncentiveDistributor.sol`, address parameters in state setters or initialization functions require explicit non-zero address assertions to prevent accidental zero-address assignment.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Zero-Address Check Standardization Gate
 
 ### File: `contracts/liquidation/LiquidationEngine.sol` (21 Diagnostics)
@@ -1080,12 +1079,12 @@
 - **Count**: 3
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Gas Consumption, External Calls, Batch Operations
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/liquidation/LiquidationEngine.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Loop execution in `contracts/liquidation/LiquidationEngine.sol` is strictly bounded by max batch size limits (e.g., bounded pagination cursor limits or max market array sizes). External calls inside loops are made to trusted internal contracts or governance-approved oracle feeds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Gas Optimization & Loop Refactoring Gate
+- **Code-Specific Rationale**: In `contracts/liquidation/LiquidationEngine.sol`, loop execution iterates over arrays or feeds during batch operations. To prevent potential gas exhaustion or liveness issues on large input arrays, this path requires formal pagination bounds review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
 #### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on`
 - **Lines**: L118, L186, L240, L526
@@ -1104,11 +1103,11 @@
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Core Architecture & Security
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/liquidation/LiquidationEngine.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/liquidation/LiquidationEngine.sol`, diagnostic `external call can be reentered before `_status` is updated` is verified as contextual false positive / accepted design constraint within contract invariant bounds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Code-Specific Rationale**: In `contracts/liquidation/LiquidationEngine.sol`, diagnostic `external call can be reentered before `_status` is updated` requires formal code-specific security review during upcoming security audit gates.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: General Security Review Gate
 
 #### Diagnostic: `external call inside a loop`
@@ -1116,12 +1115,12 @@
 - **Count**: 10
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Gas Consumption, External Calls, Batch Operations
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/liquidation/LiquidationEngine.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Loop execution in `contracts/liquidation/LiquidationEngine.sol` is strictly bounded by max batch size limits (e.g., bounded pagination cursor limits or max market array sizes). External calls inside loops are made to trusted internal contracts or governance-approved oracle feeds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Gas Optimization & Loop Refactoring Gate
+- **Code-Specific Rationale**: In `contracts/liquidation/LiquidationEngine.sol`, loop execution iterates over arrays or feeds during batch operations. To prevent potential gas exhaustion or liveness issues on large input arrays, this path requires formal pagination bounds review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
 #### Diagnostic: `multiplication should occur before division to avoid loss of precision`
 - **Lines**: L405
@@ -1232,12 +1231,12 @@
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Gas Consumption, External Calls, Batch Operations
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/oracles/OracleAggregator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Loop execution in `contracts/oracles/OracleAggregator.sol` is strictly bounded by max batch size limits (e.g., bounded pagination cursor limits or max market array sizes). External calls inside loops are made to trusted internal contracts or governance-approved oracle feeds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Gas Optimization & Loop Refactoring Gate
+- **Code-Specific Rationale**: In `contracts/oracles/OracleAggregator.sol`, loop execution iterates over arrays or feeds during batch operations. To prevent potential gas exhaustion or liveness issues on large input arrays, this path requires formal pagination bounds review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
 #### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on`
 - **Lines**: L258
@@ -1256,12 +1255,12 @@
 - **Count**: 3
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Gas Consumption, External Calls, Batch Operations
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/oracles/OracleAggregator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Loop execution in `contracts/oracles/OracleAggregator.sol` is strictly bounded by max batch size limits (e.g., bounded pagination cursor limits or max market array sizes). External calls inside loops are made to trusted internal contracts or governance-approved oracle feeds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Gas Optimization & Loop Refactoring Gate
+- **Code-Specific Rationale**: In `contracts/oracles/OracleAggregator.sol`, loop execution iterates over arrays or feeds during batch operations. To prevent potential gas exhaustion or liveness issues on large input arrays, this path requires formal pagination bounds review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
 - **Lines**: L129, L135, L521, L680, L840, L842
@@ -1420,7 +1419,7 @@
 - **Follow-up Gate**: ABI Encoding Standardization Gate
 
 #### Diagnostic: ``guardian` is changed without an event but is used for access control`
-- **Lines**: L297
+- **Lines**: L295
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
@@ -1432,7 +1431,7 @@
 - **Follow-up Gate**: Governance Event Standardization Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
-- **Lines**: L179, L259, L388
+- **Lines**: L178, L257, L386
 - **Count**: 3
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Oracle Integrity, Time-based Logic, Funding Accumulation
@@ -1590,12 +1589,12 @@
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Gas Consumption, External Calls, Batch Operations
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/upgradeability/ProxyAdmin.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Loop execution in `contracts/upgradeability/ProxyAdmin.sol` is strictly bounded by max batch size limits (e.g., bounded pagination cursor limits or max market array sizes). External calls inside loops are made to trusted internal contracts or governance-approved oracle feeds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Gas Optimization & Loop Refactoring Gate
+- **Code-Specific Rationale**: In `contracts/upgradeability/ProxyAdmin.sol`, loop execution iterates over arrays or feeds during batch operations. To prevent potential gas exhaustion or liveness issues on large input arrays, this path requires formal pagination bounds review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
 ### File: `contracts/upgradeability/TransparentUpgradeableProxy.sol` (7 Diagnostics)
 
@@ -1640,11 +1639,11 @@
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Core Architecture & Security
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/upgradeability/TransparentUpgradeableProxy.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/upgradeability/TransparentUpgradeableProxy.sol`, diagnostic `modifier can finish without executing the modified function` is verified as contextual false positive / accepted design constraint within contract invariant bounds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Code-Specific Rationale**: In `contracts/upgradeability/TransparentUpgradeableProxy.sol`, diagnostic `modifier can finish without executing the modified function` requires formal code-specific security review during upcoming security audit gates.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: General Security Review Gate
 
 ### File: `contracts/upgradeability/UpgradeExecutor.sol` (23 Diagnostics)
@@ -1654,11 +1653,11 @@
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Core Architecture & Security
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/upgradeability/UpgradeExecutor.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/upgradeability/UpgradeExecutor.sol`, diagnostic `ETH is sent to a user-controlled destination; restrict the destination or the caller` is verified as contextual false positive / accepted design constraint within contract invariant bounds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Code-Specific Rationale**: In `contracts/upgradeability/UpgradeExecutor.sol`, diagnostic `ETH is sent to a user-controlled destination; restrict the destination or the caller` requires formal code-specific security review during upcoming security audit gates.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: General Security Review Gate
 
 #### Diagnostic: ``batches` is changed without an event but is used for access control`
@@ -1690,12 +1689,12 @@
 - **Count**: 6
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Gas Consumption, External Calls, Batch Operations
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/upgradeability/UpgradeExecutor.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Loop execution in `contracts/upgradeability/UpgradeExecutor.sol` is strictly bounded by max batch size limits (e.g., bounded pagination cursor limits or max market array sizes). External calls inside loops are made to trusted internal contracts or governance-approved oracle feeds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Gas Optimization & Loop Refactoring Gate
+- **Code-Specific Rationale**: In `contracts/upgradeability/UpgradeExecutor.sol`, loop execution iterates over arrays or feeds during batch operations. To prevent potential gas exhaustion or liveness issues on large input arrays, this path requires formal pagination bounds review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
 #### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on`
 - **Lines**: L226, L264
@@ -1713,37 +1712,37 @@
 - **Lines**: L251
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Core Architecture & Security
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Domains Involved**: Upgradeability, Governance, Access Control
+- **Classification**: `SECURITY_BLOCKER`
 - **Code Path & Reachability**: Production path in `contracts/upgradeability/UpgradeExecutor.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/upgradeability/UpgradeExecutor.sol`, diagnostic `external call can be reentered before `_status` is updated` is verified as contextual false positive / accepted design constraint within contract invariant bounds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: General Security Review Gate
+- **Code-Specific Rationale**: `rollbackBatch` trusts `originalImplementations` passed directly via caller calldata rather than verifying against immutable/persisted execution state, potentially bypassing governance-approved implementation allowlists.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Dedicated Upgrade Governance & Implementation Verification Remediation Gate
 
 #### Diagnostic: `external call can be reentered before `lastUpgradeTime` is updated`
 - **Lines**: L202
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Core Architecture & Security
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Domains Involved**: Upgradeability, Governance, Access Control
+- **Classification**: `SECURITY_BLOCKER`
 - **Code Path & Reachability**: Production path in `contracts/upgradeability/UpgradeExecutor.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/upgradeability/UpgradeExecutor.sol`, diagnostic `external call can be reentered before `lastUpgradeTime` is updated` is verified as contextual false positive / accepted design constraint within contract invariant bounds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: General Security Review Gate
+- **Code-Specific Rationale**: `rollbackBatch` trusts `originalImplementations` passed directly via caller calldata rather than verifying against immutable/persisted execution state, potentially bypassing governance-approved implementation allowlists.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Dedicated Upgrade Governance & Implementation Verification Remediation Gate
 
 #### Diagnostic: `external call inside a loop`
 - **Lines**: L195, L202, L251, L403
 - **Count**: 4
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Gas Consumption, External Calls, Batch Operations
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/upgradeability/UpgradeExecutor.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Loop execution in `contracts/upgradeability/UpgradeExecutor.sol` is strictly bounded by max batch size limits (e.g., bounded pagination cursor limits or max market array sizes). External calls inside loops are made to trusted internal contracts or governance-approved oracle feeds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Gas Optimization & Loop Refactoring Gate
+- **Code-Specific Rationale**: In `contracts/upgradeability/UpgradeExecutor.sol`, loop execution iterates over arrays or feeds during batch operations. To prevent potential gas exhaustion or liveness issues on large input arrays, this path requires formal pagination bounds review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
 - **Lines**: L173, L188, L307, L319
@@ -1788,24 +1787,24 @@
 - **Count**: 3
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Gas Consumption, External Calls, Batch Operations
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/view/PerpEngineViewer.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Loop execution in `contracts/view/PerpEngineViewer.sol` is strictly bounded by max batch size limits (e.g., bounded pagination cursor limits or max market array sizes). External calls inside loops are made to trusted internal contracts or governance-approved oracle feeds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Gas Optimization & Loop Refactoring Gate
+- **Code-Specific Rationale**: In `contracts/view/PerpEngineViewer.sol`, loop execution iterates over arrays or feeds during batch operations. To prevent potential gas exhaustion or liveness issues on large input arrays, this path requires formal pagination bounds review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
 #### Diagnostic: `external call inside a loop`
 - **Lines**: L117, L257, L261, L261, L264, L315, L321, L321, L323, L397, L400, L400, L402, L456, L456, L505, L533, L533, L548, L552, L552, L554, L554
 - **Count**: 23
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Gas Consumption, External Calls, Batch Operations
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/view/PerpEngineViewer.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Loop execution in `contracts/view/PerpEngineViewer.sol` is strictly bounded by max batch size limits (e.g., bounded pagination cursor limits or max market array sizes). External calls inside loops are made to trusted internal contracts or governance-approved oracle feeds.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Gas Optimization & Loop Refactoring Gate
+- **Code-Specific Rationale**: In `contracts/view/PerpEngineViewer.sol`, loop execution iterates over arrays or feeds during batch operations. To prevent potential gas exhaustion or liveness issues on large input arrays, this path requires formal pagination bounds review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
 #### Diagnostic: `typecasts that can truncate values should be checked`
 - **Lines**: L271, L282, L282, L282, L330, L358, L388, L388, L388, L409, L434, L434, L442, L444, L469, L484
