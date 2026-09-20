@@ -1,22 +1,39 @@
 import { spawnSync } from "child_process";
 import fs from "fs";
+import path from "path";
+import { pathToFileURL } from "url";
 
 const BASELINE_FILE = "warnings-baseline.json";
+
+function logDirect(msg) {
+  fs.writeSync(1, msg + "\n");
+}
+
+export const VALID_CATEGORIES = [
+  "THIRD_PARTY_PINNED",
+  "TEST_ONLY",
+  "MOCK_ONLY",
+  "LEGACY_QUARANTINED",
+  "PRODUCTION_WARNING_DEBT",
+  "UNRESOLVED_SECURITY_DEBT",
+  "TOOLCHAIN_ENVIRONMENT",
+];
 
 function stripAnsi(str) {
   return str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, "").replace(/\x1B\([^B][B]/g, "");
 }
 
-function loadBaseline() {
-  if (!fs.existsSync(BASELINE_FILE)) {
-    console.error(`❌ Baseline file ${BASELINE_FILE} does not exist!`);
+export function loadBaseline(filePath = BASELINE_FILE) {
+  if (!fs.existsSync(filePath)) {
+    console.error(`❌ Baseline file ${filePath} does not exist!`);
     process.exit(1);
   }
-  const raw = fs.readFileSync(BASELINE_FILE, "utf-8");
+  const raw = fs.readFileSync(filePath, "utf-8");
   return JSON.parse(raw);
 }
 
 function normalizePath(p) {
+  if (!p) return "";
   return p.replace(/^(\.\/)+/, "").replace(/\\/g, "/");
 }
 
@@ -30,10 +47,6 @@ function isFalsePositive(line) {
   return false;
 }
 
-function isKnownBenignSubmoduleNotice(line) {
-  return /^Warning:\s*lib\/(forge-std|openzeppelin-contracts|solmate): expected [0-9a-f]{40}, found [0-9a-f]{40}/i.test(line.trim());
-}
-
 export function parseWarningsFromText(rawText) {
   const cleanText = stripAnsi(rawText);
   const lines = cleanText.split("\n");
@@ -45,10 +58,6 @@ export function parseWarningsFromText(rawText) {
     const line = rawLine.trim();
 
     if (isFalsePositive(line)) {
-      continue;
-    }
-
-    if (isKnownBenignSubmoduleNotice(line)) {
       continue;
     }
 
@@ -105,76 +114,7 @@ export function parseWarningsFromText(rawText) {
   return uniqueList;
 }
 
-export function runWarningBaselineCheck(customOutput = null) {
-  const baselineEntries = loadBaseline();
-
-  const unjustifiedBaseline = baselineEntries.filter(
-    (b) => !b.justification || b.justification.trim().length === 0
-  );
-  if (unjustifiedBaseline.length > 0) {
-    console.error(`❌ ${unjustifiedBaseline.length} baseline entries lack justification!`);
-    return { success: false, code: 1, reason: "Unjustified baseline entries" };
-  }
-
-  let fullOutput = "";
-
-  if (customOutput !== null) {
-    fullOutput = customOutput;
-  } else {
-    console.log("=== Running Core Gate Steps and Checking Warnings ===");
-    const env = {
-      ...process.env,
-      PATH: `${process.env.HOME}/.foundry/bin:${process.env.PATH || ""}`,
-    };
-
-    const steps = [
-      { name: "install:frozen", cmd: "pnpm run install:frozen", checkWarnings: false },
-      { name: "compile:hardhat", cmd: "pnpm exec hardhat compile --force", checkWarnings: true },
-      { name: "check:contract-size", cmd: "node scripts/check-contract-size.mjs", checkWarnings: false },
-      { name: "compile:forge", cmd: "forge build --force", checkWarnings: true },
-      { name: "test:unit", cmd: "pnpm run test:unit", checkWarnings: false },
-      { name: "test:forge", cmd: "forge test --offline --summary", checkWarnings: false },
-      { name: "build:packages", cmd: "pnpm run build:packages", checkWarnings: false },
-      { name: "test:math", cmd: "pnpm run test:math", checkWarnings: false },
-    ];
-
-    for (const step of steps) {
-      console.log(`\n---> [STEP] ${step.name}`);
-      const res = spawnSync(step.cmd, {
-        shell: true,
-        encoding: "utf-8",
-        maxBuffer: 100 * 1024 * 1024,
-        env,
-      });
-
-      if (res.stdout) process.stdout.write(res.stdout);
-      if (res.stderr) process.stderr.write(res.stderr);
-
-      if (step.checkWarnings) {
-        fullOutput += (res.stdout || "") + "\n" + (res.stderr || "") + "\n";
-      }
-
-      if (res.error) {
-        console.error(`\n❌ ERROR: Step ${step.name} child process error: ${res.error}`);
-        return { success: false, code: 1, reason: `Step ${step.name} process error` };
-      }
-      if (res.status !== 0 && res.status !== null) {
-        console.error(`\n❌ ERROR: Step ${step.name} failed with status code ${res.status}`);
-        return { success: false, code: res.status, reason: `Step ${step.name} failed with status ${res.status}` };
-      }
-      if (res.signal) {
-        console.error(`\n❌ ERROR: Step ${step.name} terminated by signal ${res.signal}`);
-        return { success: false, code: 1, reason: `Step ${step.name} signal ${res.signal}` };
-      }
-    }
-  }
-
-  const actualWarnings = parseWarningsFromText(fullOutput);
-
-  console.log(`\n=== Core Warning Baseline Gate Verification ===`);
-  console.log(`Baseline contains ${baselineEntries.length} tolerated warnings.`);
-  console.log(`Actual execution produced ${actualWarnings.length} unique warnings.`);
-
+export function compareWarnings(actualWarnings, baselineEntries) {
   const unmatchedBaseline = [...baselineEntries];
   const unexpectedWarnings = [];
 
@@ -206,36 +146,203 @@ export function runWarningBaselineCheck(customOutput = null) {
     }
   }
 
-  let failed = false;
-
-  if (unexpectedWarnings.length > 0) {
-    console.error(`\n❌ ERROR: Found ${unexpectedWarnings.length} NEW or UNAPPROVED warnings!`);
-    unexpectedWarnings.forEach((w) => {
-      console.error(`  - [${w.file}:${w.line}:${w.column}] ${w.raw_warning}`);
-    });
-    failed = true;
-  }
-
-  if (unmatchedBaseline.length > 0) {
-    console.error(
-      `\n❌ ERROR: ${unmatchedBaseline.length} baseline warnings were NOT emitted during execution (stale baseline)!`
-    );
-    unmatchedBaseline.forEach((b) => {
-      console.error(`  - [${b.file}:${b.line}:${b.column}] ${b.raw_warning}`);
-    });
-    failed = true;
-  }
-
-  if (failed) {
-    console.error("\n❌ Core Warning Baseline Gate FAILED.");
-    return { success: false, code: 1, reason: "Warning baseline mismatch" };
-  }
-
-  console.log("✅ Core Warning Baseline Gate PASSED: All warnings match tolerated baseline exactly with valid justifications.");
-  return { success: true, code: 0 };
+  return {
+    unexpectedWarnings,
+    unmatchedBaseline,
+    success: unexpectedWarnings.length === 0 && unmatchedBaseline.length === 0,
+  };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+export function parseJustificationCategory(justification) {
+  if (!justification) return null;
+  const trimmed = justification.trim();
+  const match = trimmed.match(/^\[([A-Z_]+)\]/);
+  if (!match) return null;
+  return match[1];
+}
+
+export function validateBaselineJustifications(baselineEntries) {
+  const invalid = [];
+
+  for (let i = 0; i < baselineEntries.length; i++) {
+    const b = baselineEntries[i];
+    const j = b.justification ? b.justification.trim() : "";
+
+    if (!j) {
+      invalid.push({ index: i, entry: b, reason: "Missing justification" });
+      continue;
+    }
+
+    if (j.toLowerCase().includes("required for baseline gate")) {
+      invalid.push({ index: i, entry: b, reason: "Generic circular justification" });
+      continue;
+    }
+
+    const categoryToken = parseJustificationCategory(j);
+    if (!categoryToken) {
+      invalid.push({ index: i, entry: b, reason: "Missing explicit bracketed category token" });
+      continue;
+    }
+
+    if (!VALID_CATEGORIES.includes(categoryToken)) {
+      invalid.push({ index: i, entry: b, reason: `Unknown bracketed category token [${categoryToken}]` });
+    }
+  }
+
+  return invalid;
+}
+
+export function getCoreGateSteps() {
+  return [
+    { name: "install:frozen", cmd: "pnpm run install:frozen", checkWarnings: false },
+    { name: "compile:hardhat", cmd: "pnpm exec hardhat compile --force", checkWarnings: true },
+    { name: "check:contract-size", cmd: "node scripts/check-contract-size.mjs", checkWarnings: false },
+    { name: "compile:forge", cmd: "forge build --force", checkWarnings: true },
+    { name: "test:unit", cmd: "pnpm run test:unit", checkWarnings: false },
+    { name: "test:forge", cmd: "forge test --offline --summary", checkWarnings: false },
+    { name: "build:packages", cmd: "pnpm run build:packages", checkWarnings: false },
+    { name: "test:math", cmd: "pnpm run test:math", checkWarnings: false },
+  ];
+}
+
+export function defaultExecutor(cmd, env) {
+  return spawnSync(cmd, {
+    shell: true,
+    encoding: "utf-8",
+    maxBuffer: 100 * 1024 * 1024,
+    env,
+  });
+}
+
+export function runWarningBaselineCheck(
+  customOutput = null,
+  customBaseline = null,
+  customExecutor = defaultExecutor
+) {
+  const baselineEntries = customBaseline !== null ? customBaseline : loadBaseline();
+
+  const invalidJustifications = validateBaselineJustifications(baselineEntries);
+  if (invalidJustifications.length > 0) {
+    logDirect(`❌ ${invalidJustifications.length} baseline entries have invalid justifications!`);
+    invalidJustifications.slice(0, 5).forEach((inv) => {
+      logDirect(`  - Entry [${inv.entry.file}:${inv.entry.line}:${inv.entry.column}]: ${inv.reason}`);
+    });
+    return {
+      success: false,
+      code: 1,
+      reason: "Invalid baseline justifications",
+      invalidJustifications,
+    };
+  }
+
+  let fullOutput = "";
+
+  if (customOutput !== null) {
+    fullOutput = customOutput;
+  } else {
+    logDirect("=== Running Core Gate Steps and Checking Warnings ===");
+    const env = {
+      ...process.env,
+      PATH: `${process.env.HOME}/.foundry/bin:${process.env.PATH || ""}`,
+    };
+
+    const steps = getCoreGateSteps();
+
+    for (const step of steps) {
+      logDirect(`\n---> [STEP START] ${step.name}`);
+      const t0 = Date.now();
+      const res = customExecutor(step.cmd, env, step);
+      logDirect(`---> [STEP END] ${step.name} in ${(Date.now() - t0) / 1000}s, status: ${res ? res.status : "unknown"}`);
+
+      if (res && res.stdout) process.stdout.write(res.stdout);
+      if (res && res.stderr) process.stderr.write(res.stderr);
+
+      if (step.checkWarnings && res) {
+        fullOutput += (res.stdout || "") + "\n" + (res.stderr || "") + "\n";
+      }
+
+      if (res && res.error) {
+        logDirect(`\n❌ ERROR: Step ${step.name} child process error: ${res.error}`);
+        return {
+          success: false,
+          code: 1,
+          reason: `Step ${step.name} process error: ${res.error.message || res.error}`,
+          step: step.name,
+          error: res.error,
+        };
+      }
+      if (res && res.status !== 0 && res.status !== null && res.status !== undefined) {
+        logDirect(`\n❌ ERROR: Step ${step.name} failed with status code ${res.status}`);
+        return {
+          success: false,
+          code: res.status,
+          reason: `Step ${step.name} failed with status ${res.status}`,
+          step: step.name,
+          status: res.status,
+        };
+      }
+      if (res && res.signal) {
+        logDirect(`\n❌ ERROR: Step ${step.name} terminated by signal ${res.signal}`);
+        return {
+          success: false,
+          code: 1,
+          reason: `Step ${step.name} terminated by signal ${res.signal}`,
+          step: step.name,
+          signal: res.signal,
+        };
+      }
+    }
+  }
+
+  const actualWarnings = parseWarningsFromText(fullOutput);
+
+  logDirect(`\n=== Core Warning Baseline Gate Verification ===`);
+  logDirect(`Baseline contains ${baselineEntries.length} tolerated warnings.`);
+  logDirect(`Actual execution produced ${actualWarnings.length} unique warnings.`);
+
+  const comparison = compareWarnings(actualWarnings, baselineEntries);
+
+  if (comparison.unexpectedWarnings.length > 0) {
+    logDirect(`\n❌ ERROR: Found ${comparison.unexpectedWarnings.length} NEW or UNAPPROVED warnings!`);
+    comparison.unexpectedWarnings.forEach((w) => {
+      logDirect(`  - [${w.file}:${w.line}:${w.column}] ${w.raw_warning}`);
+    });
+  }
+
+  if (comparison.unmatchedBaseline.length > 0) {
+    logDirect(
+      `\n❌ ERROR: ${comparison.unmatchedBaseline.length} baseline warnings were NOT emitted during execution (stale baseline)!`
+    );
+    comparison.unmatchedBaseline.forEach((b) => {
+      logDirect(`  - [${b.file}:${b.line}:${b.column}] ${b.raw_warning}`);
+    });
+  }
+
+  if (!comparison.success) {
+    logDirect("\n❌ Core Warning Baseline Gate FAILED.");
+    return {
+      success: false,
+      code: 1,
+      reason: "Warning baseline mismatch",
+      unexpectedWarnings: comparison.unexpectedWarnings,
+      unmatchedBaseline: comparison.unmatchedBaseline,
+    };
+  }
+
+  logDirect("✅ Core Warning Baseline Gate PASSED: All warnings match tolerated baseline exactly with valid justifications.");
+  return {
+    success: true,
+    code: 0,
+    unexpectedWarnings: comparison.unexpectedWarnings,
+    unmatchedBaseline: comparison.unmatchedBaseline,
+  };
+}
+
+const isDirectRun =
+  process.argv[1] &&
+  pathToFileURL(fs.realpathSync(process.argv[1])).href === import.meta.url;
+
+if (isDirectRun) {
   const result = runWarningBaselineCheck();
   if (!result.success) {
     process.exit(result.code || 1);
