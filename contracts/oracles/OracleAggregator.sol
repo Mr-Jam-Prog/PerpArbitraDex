@@ -339,7 +339,7 @@ contract OracleAggregator is IOracleAggregator, Ownable, Pausable {
     /// True TWAP implementation is pending.
     /// Returns current aggregated price as approximation.
     /// Do not rely on this for time-sensitive calculations.
-    function getTWAP(bytes32 feedId, uint256 period)
+    function getTWAP(bytes32 feedId, uint256 /* period */)
         external
         view
         override

@@ -111,7 +111,6 @@ contract PerpDexTimelock is OZTimelock {
 
     /**
      * @notice Update minimum delay
-     * @param newDelay New minimum delay
      */
     function updateMinDelay(uint256 newDelay) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(newDelay >= MIN_MIN_DELAY, "Delay too low");

@@ -187,7 +187,6 @@ contract CircuitBreaker {
 
     /**
      * @notice Trigger global circuit breaker
-     * @param reason Reason for global trigger
      */
     function triggerGlobalBreaker(string calldata reason) external onlyGuardian {
         require(!globalTriggered, "Already triggered");

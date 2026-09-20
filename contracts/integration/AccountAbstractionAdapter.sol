@@ -116,6 +116,7 @@ contract AccountAbstractionAdapter is EIP712, ReentrancyGuard {
      * @notice Execute a user operation
      * @param op User operation to execute
      * @param requestId Operation request ID
+     * @param maxCost Maximum gas cost
      */
     function executeUserOp(
         IEntryPoint.UserOperation calldata op,
@@ -240,6 +241,7 @@ contract AccountAbstractionAdapter is EIP712, ReentrancyGuard {
      * @notice Validate a user operation
      * @param op User operation to validate
      * @param requestId Operation request ID
+     * @param maxCost Maximum gas cost
      */
     function validateUserOp(
         IEntryPoint.UserOperation calldata op,
