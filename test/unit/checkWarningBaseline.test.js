@@ -310,9 +310,9 @@ Internal solc crash after warning emission
   });
 
   describe("Repository Baseline Integrity Check", () => {
-    it("should validate that all 850 entries in warnings-baseline.json have valid justifications with exact category tokens", () => {
+    it("should validate that all entries in warnings-baseline.json have valid justifications with exact category tokens", () => {
       const baseline = loadBaseline();
-      expect(baseline).to.have.lengthOf(850);
+      expect(baseline).to.have.lengthOf(801);
       const invalid = validateBaselineJustifications(baseline);
       expect(invalid).to.have.lengthOf(0);
     });
