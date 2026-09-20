@@ -11,31 +11,40 @@
 - **Start Unresolved Security Debt**: 282
 - **Final Unresolved Security Debt**: 450 (168 security-sensitive entries reclassified)
 
-### Categorical Disposition Totals (Security Baseline)
-- `CONTEXTUAL_ACCEPTED`: 321
-- `SECURITY_REVIEW_REQUIRED`: 101
-- `SECURITY_BLOCKER`: 22
-- `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`: 6
-
 ---
 
-## Critical Findings & Blockers Summary
+## Dispositions Breakdown
 
-### SECURITY_BLOCKER Findings (6 Items)
-1. **FlashLiquidator.sol** (`reentrancy`): ReentrancyGuard lock collision between `executeFlashLiquidation` and Aave callback `executeOperation`. Gate: *Dedicated Flash Loan Reentrancy & Callback Architecture Remediation Gate*.
-2. **Treasury.sol** (`scheduledWithdrawals`): Operation hash mismatch between `scheduleWithdrawal` and `executeWithdrawal` (`salt` vs `bytes32(0)`). Gate: *Dedicated Treasury Timelock Hash Alignment Remediation Gate*.
-3. **UpgradeExecutor.sol** (`lastUpgradeTime`): `rollbackBatch` trusts calldata `originalImplementations` without checking persisted state. Gate: *Dedicated Upgrade Governance & Implementation Verification Remediation Gate*.
-4. **LidoStETHIntegrator.sol** (`transfer`): Unchecked `IStETH.transferFrom` return value before crediting collateral shares. Gate: *Dedicated StETH Transfer Return Value Verification Remediation Gate*.
-5. **PythOracle.sol** (`typecast`): `_normalizePythPrice` fails to normalize price to 8 decimals for standard Pyth exponents. Gate: *Dedicated Pyth Exponent & Decimal Normalization Remediation Gate*.
-6. **CrossChainMessenger.sol** (`typecast`): `uint16(block.chainid)` truncation mismatches LayerZero endpoint chain IDs. Gate: *Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate*.
+### Section A. Diagnostic-Level Disposition Totals
+The sum of diagnostic-level dispositions equals exactly 450 `UNRESOLVED_SECURITY_DEBT` entries in `warnings-baseline.json`:
 
-### ECONOMIC_OR_LOGIC_CHANGE_REQUIRED Findings (1 Item)
-1. **VotingEscrow.sol** (`typecast`): `int128` narrowing casts on user-controlled lock amounts without explicit bounds assertions. Gate: *Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate*.
+- `CONTEXTUAL_ACCEPTED`: 319
+- `SECURITY_REVIEW_REQUIRED`: 101
+- `SECURITY_BLOCKER`: 23
+- `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`: 7
+- **Total Diagnostics**: 450
 
-### SECURITY_REVIEW_REQUIRED Highlights
-- **TransparentUpgradeableProxy.sol**: Unchecked constructor `admin_` zero-address assignment.
-- **AMMPool.sol**: `timeToNextFunding` timestamp modulo variance in mark price calculation.
-- **PositionManager.sol**: Unpaginated loop over NFT supply making external engine calls.
+### Section B. Root Security Findings Summary
+Root causes after grouping related static analyzer diagnostics into unique protocol vulnerabilities:
+
+#### SECURITY_BLOCKER Root Findings (7 Items)
+1. **EmissionController.sol** (`claim`): Permissionless emission claim / treasury allowance drain (`external caller -> EmissionController.claim() -> _calculateAvailable(scheduleId, msg.sender) -> schedule-wide available amount -> token.safeTransferFrom(treasury, msg.sender, amount)`). Gate: *Emission Claim Entitlement & Treasury Authorization Remediation Gate*.
+2. **FlashLiquidator.sol** (`reentrancy`): ReentrancyGuard lock collision between `executeFlashLiquidation` and Aave callback `executeOperation`. Gate: *Dedicated Flash Loan Reentrancy & Callback Architecture Remediation Gate*.
+3. **Treasury.sol** (`scheduledWithdrawals`): Operation hash mismatch between `scheduleWithdrawal` and `executeWithdrawal` (`salt` vs `bytes32(0)`). Gate: *Dedicated Treasury Timelock Hash Alignment Remediation Gate*.
+4. **UpgradeExecutor.sol** (`lastUpgradeTime`): `rollbackBatch` trusts calldata `originalImplementations` without checking persisted state. Gate: *Dedicated Upgrade Governance & Implementation Verification Remediation Gate*.
+5. **LidoStETHIntegrator.sol** (`transfer`): Unchecked `IStETH.transferFrom` return value before crediting collateral shares. Gate: *Dedicated StETH Transfer Return Value Verification Remediation Gate*.
+6. **PythOracle.sol** (`typecast`): `_normalizePythPrice` fails to normalize price to 8 decimals for standard Pyth exponents. Gate: *Dedicated Pyth Exponent & Decimal Normalization Remediation Gate*.
+7. **CrossChainMessenger.sol** (`typecast`): `uint16(block.chainid)` truncation mismatches LayerZero endpoint chain IDs. Gate: *Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate*.
+
+#### ECONOMIC_OR_LOGIC_CHANGE_REQUIRED Root Findings (2 Items)
+1. **LiquidationQueue.sol** (`randomness`): Blockhash/timestamp entropy controls liquidation grace period timing and MEV resistance. Gate: *Liquidation Timing Randomness & MEV Remediation Gate*.
+2. **VotingEscrow.sol** (`typecast`): `int128` narrowing casts on user-controlled lock amounts without explicit bounds assertions. Gate: *Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate*.
+
+#### SECURITY_REVIEW_REQUIRED Highlights (4 Root Items)
+1. **ProtocolConfig.sol** (`setTimelockController`): Unobservable timelock authority rotation lacking event emissions. Gate: *ProtocolConfig Timelock Authority Rotation & Observability Gate*.
+2. **TransparentUpgradeableProxy.sol**: Unchecked constructor `admin_` zero-address assignment. Gate: *Dedicated Proxy Deployment & Admin Validation Audit Gate*.
+3. **AMMPool.sol**: `timeToNextFunding` timestamp modulo variance in mark price calculation. Gate: *Dedicated AMM Mark Price & Funding Interval Audit Gate*.
+4. **PositionManager.sol**: Unpaginated loop over NFT supply making external engine calls. Gate: *Dedicated PositionManager Pagination & Gas Limits Remediation Gate*.
 
 ---
 
@@ -336,13 +345,13 @@
 - **Lines**: L150
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: External ERC20 Token Interactions
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Domains Involved**: Governance, Emission Claims, Treasury Token Transfer
+- **Classification**: `SECURITY_BLOCKER`
 - **Code Path & Reachability**: Production path in `contracts/governance/EmissionController.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/governance/EmissionController.sol`, ERC20 interactions use OpenZeppelin `SafeERC20` wrapper functions (`safeTransfer`, `safeTransferFrom`), reverting atomically on failed token transfers.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: SafeERC20 Audit Gate
+- **Code-Specific Rationale**: In `contracts/governance/EmissionController.sol`, `claim(uint256 scheduleId, uint256 amount)` derives available claims via `_calculateAvailable(scheduleId, msg.sender)` based on schedule-wide vesting without beneficiary entitlement checks. An arbitrary caller can claim vested tokens directly from the Treasury via `token.safeTransferFrom(treasury, msg.sender, amount)`.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Emission Claim Entitlement & Treasury Authorization Remediation Gate
 
 #### Diagnostic: `multiplication should occur before division to avoid loss of precision`
 - **Lines**: L224, L331
@@ -1178,13 +1187,13 @@
 - **Lines**: L293
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Liquidation Queue, Randomness
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Domains Involved**: Liquidation Grace Period, Randomness, MEV
+- **Classification**: `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/liquidation/LiquidationQueue.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/liquidation/LiquidationQueue.sol`, pseudo-random ordering is used solely for non-critical tie-breaking in liquidation queue candidate selection, where cryptographic randomness is not required for protocol security.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Liquidation Queue Audit Gate
+- **Code-Specific Rationale**: In `contracts/liquidation/LiquidationQueue.sol`, blockhash/timestamp pseudo-randomness generates `randomSeed` to derive `gracePeriod` added to `queueTime`, determining when a position becomes executable for liquidation. Validator/timestamp manipulation affects liquidation timing and liquidator MEV competition.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` until ECONOMIC_OR_LOGIC_CHANGE_REQUIRED remediation.
+- **Follow-up Gate**: Liquidation Timing Randomness & MEV Remediation Gate
 
 ### File: `contracts/oracles/ChainlinkOracle.sol` (10 Diagnostics)
 
