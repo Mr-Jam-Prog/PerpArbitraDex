@@ -297,7 +297,7 @@ contract FlashLiquidator is IFlashLoanReceiver, ReentrancyGuard {
         uint256 loanAmount
     ) external view returns (bool profitable, uint256 estimatedProfit) {
         // Get liquidation reward estimate
-        uint256 marketId = perpEngine.getPosition(positionId).marketId;
+        // marketId lookup removed: value was unused; position size read below for estimate
         // bytes32 feedId = bytes32(marketId); // obsolete unused diagnostic cleanup
         
         // Simple estimation - in practice would use oracle price
