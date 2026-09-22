@@ -18,23 +18,26 @@
 ### Section A. Diagnostic-Level Disposition Totals
 The sum of diagnostic-level dispositions equals exactly 450 `UNRESOLVED_SECURITY_DEBT` entries in `warnings-baseline.json`:
 
-- `CONTEXTUAL_ACCEPTED`: 319
-- `SECURITY_REVIEW_REQUIRED`: 101
-- `SECURITY_BLOCKER`: 23
+- `CONTEXTUAL_ACCEPTED`: 314
+- `SECURITY_REVIEW_REQUIRED`: 100
+- `SECURITY_BLOCKER`: 29
 - `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`: 7
 - **Total Diagnostics**: 450
 
 ### Section B. Root Security Findings Summary
 Root causes after grouping related static analyzer diagnostics into unique protocol vulnerabilities:
 
-#### SECURITY_BLOCKER Root Findings (7 Items)
+#### SECURITY_BLOCKER Root Findings (10 Items)
 1. **EmissionController.sol** (`claim`): Permissionless emission claim / treasury allowance drain (`external caller -> EmissionController.claim() -> _calculateAvailable(scheduleId, msg.sender) -> schedule-wide available amount -> token.safeTransferFrom(treasury, msg.sender, amount)`). Gate: *Emission Claim Entitlement & Treasury Authorization Remediation Gate*.
-2. **FlashLiquidator.sol** (`reentrancy`): ReentrancyGuard lock collision between `executeFlashLiquidation` and Aave callback `executeOperation`. Gate: *Dedicated Flash Loan Reentrancy & Callback Architecture Remediation Gate*.
-3. **Treasury.sol** (`scheduledWithdrawals`): Operation hash mismatch between `scheduleWithdrawal` and `executeWithdrawal` (`salt` vs `bytes32(0)`). Gate: *Dedicated Treasury Timelock Hash Alignment Remediation Gate*.
-4. **UpgradeExecutor.sol** (`lastUpgradeTime`): `rollbackBatch` trusts calldata `originalImplementations` without checking persisted state. Gate: *Dedicated Upgrade Governance & Implementation Verification Remediation Gate*.
-5. **LidoStETHIntegrator.sol** (`transfer`): Unchecked `IStETH.transferFrom` return value before crediting collateral shares. Gate: *Dedicated StETH Transfer Return Value Verification Remediation Gate*.
-6. **PythOracle.sol** (`typecast`): `_normalizePythPrice` fails to normalize price to 8 decimals for standard Pyth exponents. Gate: *Dedicated Pyth Exponent & Decimal Normalization Remediation Gate*.
-7. **CrossChainMessenger.sol** (`typecast`): `uint16(block.chainid)` truncation mismatches LayerZero endpoint chain IDs. Gate: *Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate*.
+2. **FeeDistributor.sol** (`claimMultiple`): Duplicate distribution IDs permit repeated crediting of the same recipient share within one transaction (`claimMultiple -> loop over distributionIds -> credit share`). Gate: *Fee Distribution Claim Uniqueness & Per-Recipient Accounting Remediation Gate*.
+3. **AccountAbstractionAdapter.sol** (`_handlePaymaster`): Unauthenticated paymaster sponsorship consent (`_handlePaymaster -> paymasterAndData -> debit paymasterDeposits`). Gate: *Account Abstraction Paymaster Sponsorship Authentication Remediation Gate*.
+4. **AccessControlManager.sol** (`role expiry`): Ineffective role expiry enforcement in `hasRole()` / `onlyRole(...)` authorization checks (`isRoleExpired` is informational only). Gate: *Access Control Role Expiry Enforcement Remediation Gate*.
+5. **FlashLiquidator.sol** (`reentrancy`): ReentrancyGuard lock collision between `executeFlashLiquidation` and Aave callback `executeOperation`. Gate: *Dedicated Flash Loan Reentrancy & Callback Architecture Remediation Gate*.
+6. **Treasury.sol** (`scheduledWithdrawals`): Operation hash mismatch between `scheduleWithdrawal` and `executeWithdrawal` (`salt` vs `bytes32(0)`). Gate: *Dedicated Treasury Timelock Hash Alignment Remediation Gate*.
+7. **UpgradeExecutor.sol** (`lastUpgradeTime`): `rollbackBatch` trusts calldata `originalImplementations` without checking persisted state. Gate: *Dedicated Upgrade Governance & Implementation Verification Remediation Gate*.
+8. **LidoStETHIntegrator.sol** (`transfer`): Unchecked `IStETH.transferFrom` return value before crediting collateral shares. Gate: *Dedicated StETH Transfer Return Value Verification Remediation Gate*.
+9. **PythOracle.sol** (`typecast`): `_normalizePythPrice` fails to normalize price to 8 decimals for standard Pyth exponents. Gate: *Dedicated Pyth Exponent & Decimal Normalization Remediation Gate*.
+10. **CrossChainMessenger.sol** (`typecast`): `uint16(block.chainid)` truncation mismatches LayerZero endpoint chain IDs. Gate: *Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate*.
 
 #### ECONOMIC_OR_LOGIC_CHANGE_REQUIRED Root Findings (2 Items)
 1. **LiquidationQueue.sol** (`randomness`): Blockhash/timestamp entropy controls liquidation grace period timing and MEV resistance. Gate: *Liquidation Timing Randomness & MEV Remediation Gate*.
@@ -51,7 +54,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 ## Detailed Triage Inventory by Contract File
 ### File: `contracts/core/AMMPool.sol` (20 Diagnostics)
 
-#### Diagnostic: `multiplication should occur before division to avoid loss of precision`
+#### Diagnostic: `multiplication should occur before division to avoid loss of precision` (GENERAL)
 - **Lines**: L167
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -63,7 +66,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Dedicated Precision Refactoring Gate
 
-#### Diagnostic: `typecasts that can truncate values should be checked`
+#### Diagnostic: `typecasts that can truncate values should be checked` (GENERAL)
 - **Lines**: L93, L95, L99, L101, L106, L106, L158, L159, L160, L161, L165, L320, L321, L322, L323, L326
 - **Count**: 16
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -75,7 +78,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline until a dedicated type safety refactoring gate.
 - **Follow-up Gate**: Dedicated Math Precision & Safe Cast Refactoring Gate
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L143, L307
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -87,7 +90,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Dedicated AMM Mark Price & Funding Interval Audit Gate
 
-#### Diagnostic: `weak randomness derived from a predictable on-chain value`
+#### Diagnostic: `weak randomness derived from a predictable on-chain value` (GENERAL)
 - **Lines**: L215
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -101,7 +104,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/core/LiquidityVault.sol` (16 Diagnostics)
 
-#### Diagnostic: ``nonReentrant` should be the first modifier`
+#### Diagnostic: ``nonReentrant` should be the first modifier` (GENERAL)
 - **Lines**: L234, L246, L290, L324, L357, L395, L499, L533, L541
 - **Count**: 9
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -113,7 +116,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Reentrancy Formal Verification Gate
 
-#### Diagnostic: ``totalLpAssets` is changed without an event but is used in arithmetic`
+#### Diagnostic: ``totalLpAssets` is changed without an event but is used in arithmetic` (GENERAL)
 - **Lines**: L507
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -125,7 +128,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
-#### Diagnostic: ``transferFrom` uses an arbitrary `from`; require it to equal `msg.sender` or `address(this)``
+#### Diagnostic: ``transferFrom` uses an arbitrary `from`; require it to equal `msg.sender` or `address(this)`` (GENERAL)
 - **Lines**: L237
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -137,7 +140,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: SafeERC20 Audit Gate
 
-#### Diagnostic: `typecasts that can truncate values should be checked`
+#### Diagnostic: `typecasts that can truncate values should be checked` (GENERAL)
 - **Lines**: L396, L399, L405, L417, L464
 - **Count**: 5
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -151,7 +154,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/core/MarketRegistry.sol` (1 Diagnostics)
 
-#### Diagnostic: ``configRegistry` is changed without an event but is used for access control`
+#### Diagnostic: ``configRegistry` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L414
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -165,7 +168,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/core/PerpEngine.sol` (36 Diagnostics)
 
-#### Diagnostic: `Return value of an external call is not used`
+#### Diagnostic: `Return value of an external call is not used` (GENERAL)
 - **Lines**: L593, L1528
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -177,7 +180,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: SafeERC20 Audit Gate
 
-#### Diagnostic: ``governance` is changed without an event but is used for access control`
+#### Diagnostic: ``governance` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L230
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -189,7 +192,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
-#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on`
+#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on` (GENERAL)
 - **Lines**: L711, L824, L864, L902, L1024, L1369
 - **Count**: 6
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -201,7 +204,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Log Security Review Gate
 
-#### Diagnostic: `external call can be reentered before `_status` is updated`
+#### Diagnostic: `external call can be reentered before `_status` is updated` (GENERAL)
 - **Lines**: L1361
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -213,7 +216,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: General Security Review Gate
 
-#### Diagnostic: `external call inside a loop`
+#### Diagnostic: `external call inside a loop` (GENERAL)
 - **Lines**: L1226, L1271, L1285, L1361, L1362
 - **Count**: 5
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -225,7 +228,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
-#### Diagnostic: `typecasts that can truncate values should be checked`
+#### Diagnostic: `typecasts that can truncate values should be checked` (GENERAL)
 - **Lines**: L278, L280, L305, L327, L408, L411, L463, L491, L580, L678, L799, L869, L905, L946, L964, L993, L993, L993, L993, L1019
 - **Count**: 20
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -237,7 +240,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline until a dedicated type safety refactoring gate.
 - **Follow-up Gate**: Dedicated Math Precision & Safe Cast Refactoring Gate
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L619
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -251,7 +254,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/core/PositionManager.sol` (4 Diagnostics)
 
-#### Diagnostic: ``abi.encodePacked()` called with multiple dynamic type arguments; hash collisions possible`
+#### Diagnostic: ``abi.encodePacked()` called with multiple dynamic type arguments; hash collisions possible` (GENERAL)
 - **Lines**: L74
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -263,7 +266,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: ABI Encoding Standardization Gate
 
-#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on`
+#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on` (GENERAL)
 - **Lines**: L77, L271
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -275,7 +278,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Log Security Review Gate
 
-#### Diagnostic: `external call inside a loop`
+#### Diagnostic: `external call inside a loop` (GENERAL)
 - **Lines**: L212
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -289,7 +292,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/core/ProtocolConfig.sol` (3 Diagnostics)
 
-#### Diagnostic: ``timelockController` is changed without an event but is used for access control`
+#### Diagnostic: ``timelockController` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L468
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -301,7 +304,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L356, L378
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -315,7 +318,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/core/RiskManager.sol` (3 Diagnostics)
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L141, L266, L290
 - **Count**: 3
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -329,7 +332,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/governance/EmissionController.sol` (13 Diagnostics)
 
-#### Diagnostic: ``governor` is changed without an event but is used for access control`
+#### Diagnostic: ``governor` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L288
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -341,7 +344,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
-#### Diagnostic: ``transferFrom` uses an arbitrary `from`; require it to equal `msg.sender` or `address(this)``
+#### Diagnostic: ``transferFrom` uses an arbitrary `from`; require it to equal `msg.sender` or `address(this)`` (GENERAL)
 - **Lines**: L150
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -353,7 +356,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
 - **Follow-up Gate**: Emission Claim Entitlement & Treasury Authorization Remediation Gate
 
-#### Diagnostic: `multiplication should occur before division to avoid loss of precision`
+#### Diagnostic: `multiplication should occur before division to avoid loss of precision` (GENERAL)
 - **Lines**: L224, L331
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -365,7 +368,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Dedicated Precision Refactoring Gate
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L101, L138, L208, L212, L246, L273, L313, L319, L336
 - **Count**: 9
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -379,7 +382,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/governance/FeeDistributor.sol` (9 Diagnostics)
 
-#### Diagnostic: ``claimCooldown` is changed without an event but is used for access control`
+#### Diagnostic: ``claimCooldown` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L275
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -391,7 +394,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
-#### Diagnostic: ``lastClaimTime` is changed without an event but is used for access control`
+#### Diagnostic: ``lastClaimTime` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L135, L191
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -403,7 +406,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
-#### Diagnostic: ``nonReentrant` should be the first modifier`
+#### Diagnostic: ``nonReentrant` should be the first modifier` (GENERAL)
 - **Lines**: L84
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -415,19 +418,19 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Reentrancy Formal Verification Gate
 
-#### Diagnostic: ``require` or `revert` inside a loop`
+#### Diagnostic: ``require` or `revert` inside a loop` (GENERAL)
 - **Lines**: L172, L173
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Gas Consumption, External Calls, Batch Operations
-- **Classification**: `SECURITY_REVIEW_REQUIRED`
+- **Domains Involved**: Fee Distribution, Claim Accounting, Batch Processing
+- **Classification**: `SECURITY_BLOCKER`
 - **Code Path & Reachability**: Production path in `contracts/governance/FeeDistributor.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/governance/FeeDistributor.sol`, loop execution iterates over arrays or feeds during batch operations. To prevent potential gas exhaustion or liveness issues on large input arrays, this path requires formal pagination bounds review.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
-- **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
+- **Code-Specific Rationale**: In `contracts/governance/FeeDistributor.sol`, `claimMultiple(uint256[] calldata distributionIds)` iterates over `distributionIds` without verifying ID uniqueness or per-recipient claim state. An authorized recipient can submit duplicate distribution IDs in one batch call, repeatedly crediting their share and draining protocol fee distributions.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Fee Distribution Claim Uniqueness & Per-Recipient Accounting Remediation Gate
 
-#### Diagnostic: ``transferFrom` uses an arbitrary `from`; require it to equal `msg.sender` or `address(this)``
+#### Diagnostic: ``transferFrom` uses an arbitrary `from`; require it to equal `msg.sender` or `address(this)`` (GENERAL)
 - **Lines**: L90
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -439,7 +442,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: SafeERC20 Audit Gate
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L124, L164
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -453,7 +456,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/governance/PerpDexToken.sol` (1 Diagnostics)
 
-#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on`
+#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on` (GENERAL)
 - **Lines**: L86
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -467,7 +470,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/governance/TimelockController.sol` (2 Diagnostics)
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L93, L171
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -481,7 +484,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/governance/Treasury.sol` (9 Diagnostics)
 
-#### Diagnostic: `ETH is sent to a user-controlled destination; restrict the destination or the caller`
+#### Diagnostic: `ETH is sent to a user-controlled destination; restrict the destination or the caller` (GENERAL)
 - **Lines**: L163
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -493,7 +496,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: General Security Review Gate
 
-#### Diagnostic: `address parameter is used in a state write or value transfer without a zero-address check`
+#### Diagnostic: `address parameter is used in a state write or value transfer without a zero-address check` (GENERAL)
 - **Lines**: L152
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -505,7 +508,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Zero-Address Check Standardization Gate
 
-#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on`
+#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on` (GENERAL)
 - **Lines**: L139, L172, L214
 - **Count**: 3
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -517,7 +520,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Log Security Review Gate
 
-#### Diagnostic: `external call can be reentered before `scheduledWithdrawals` is updated`
+#### Diagnostic: `external call can be reentered before `scheduledWithdrawals` is updated` (GENERAL)
 - **Lines**: L135
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -529,7 +532,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: General Security Review Gate
 
-#### Diagnostic: `uncapped ETH transfer can be reentered before `scheduledWithdrawals` is updated`
+#### Diagnostic: `uncapped ETH transfer can be reentered before `scheduledWithdrawals` is updated` (GENERAL)
 - **Lines**: L163
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -541,7 +544,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: SafeERC20 Audit Gate
 
-#### Diagnostic: `weak randomness derived from a predictable on-chain value`
+#### Diagnostic: `weak randomness derived from a predictable on-chain value` (GENERAL)
 - **Lines**: L121, L155
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -555,7 +558,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/governance/VotingEscrow.sol` (17 Diagnostics)
 
-#### Diagnostic: ``tx.origin` should not be used for authorization`
+#### Diagnostic: ``tx.origin` should not be used for authorization` (GENERAL)
 - **Lines**: L73
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -567,7 +570,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: General Security Review Gate
 
-#### Diagnostic: `typecasts that can truncate values should be checked`
+#### Diagnostic: `typecasts that can truncate values should be checked` (GENERAL)
 - **Lines**: L353, L353, L354, L354, L370, L370
 - **Count**: 6
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -579,7 +582,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` until ECONOMIC_OR_LOGIC_CHANGE_REQUIRED remediation.
 - **Follow-up Gate**: Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L115, L116, L156, L197, L226, L263, L295, L331, L351, L386
 - **Count**: 10
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -593,7 +596,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/integration/AaveFlashLoanIntegrator.sol` (5 Diagnostics)
 
-#### Diagnostic: `Return value of an external call is not used`
+#### Diagnostic: `Return value of an external call is not used` (GENERAL)
 - **Lines**: L358
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -605,7 +608,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: SafeERC20 Audit Gate
 
-#### Diagnostic: ``nonReentrant` should be the first modifier`
+#### Diagnostic: ``nonReentrant` should be the first modifier` (GENERAL)
 - **Lines**: L197
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -617,7 +620,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Reentrancy Formal Verification Gate
 
-#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on`
+#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on` (GENERAL)
 - **Lines**: L177, L225
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -629,7 +632,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Log Security Review Gate
 
-#### Diagnostic: `weak randomness derived from a predictable on-chain value`
+#### Diagnostic: `weak randomness derived from a predictable on-chain value` (GENERAL)
 - **Lines**: L138
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -643,7 +646,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/integration/AccountAbstractionAdapter.sol` (7 Diagnostics)
 
-#### Diagnostic: ``nonReentrant` should be the first modifier`
+#### Diagnostic: ``nonReentrant` should be the first modifier` (GENERAL)
 - **Lines**: L125
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -655,33 +658,81 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Reentrancy Formal Verification Gate
 
-#### Diagnostic: ``paymasterDeposits` is changed without an event but is used for access control`
-- **Lines**: L177, L195, L232, L359, L454
-- **Count**: 5
+#### Diagnostic: ``paymasterDeposits` is changed without an event but is used for access control` (L454)
+- **Lines**: L454
+- **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Governance, Access Control, Observability
+- **Domains Involved**: Account Abstraction, Paymaster Sponsorship, Gas Payment
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/integration/AccountAbstractionAdapter.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, `_handlePaymaster` deducts actual gas costs from `paymasterDeposits[paymaster]` based on `op.paymasterAndData` without requiring an explicit paymaster sponsorship signature or policy approval, allowing unauthenticated paymaster deposit debits.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Account Abstraction Paymaster Sponsorship Authentication Remediation Gate
+
+#### Diagnostic: ``paymasterDeposits` is changed without an event but is used for access control` (L177)
+- **Lines**: L177
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Account Abstraction, Paymaster Balance Accounting
 - **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/integration/AccountAbstractionAdapter.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
+- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, `registerPaymaster` credits `paymasterDeposits[msg.sender]` after receiving `quoteToken.safeTransferFrom(msg.sender, address(this), deposit)` and emits `PaymasterRegistered`.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Follow-up Gate**: Paymaster Accounting Audit Gate
 
-#### Diagnostic: ``paymasterStakeRequired` is changed without an event but is used for access control`
+#### Diagnostic: ``paymasterDeposits` is changed without an event but is used for access control` (L195)
+- **Lines**: L195
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Account Abstraction, Paymaster Balance Accounting
+- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Code Path & Reachability**: Production path in `contracts/integration/AccountAbstractionAdapter.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, `unregisterPaymaster` clears `paymasterDeposits[msg.sender]` prior to transferring deposit refund back to `msg.sender` and emits `PaymasterUnregistered`.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Follow-up Gate**: Paymaster Accounting Audit Gate
+
+#### Diagnostic: ``paymasterDeposits` is changed without an event but is used for access control` (L232)
+- **Lines**: L232
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Account Abstraction, Paymaster Balance Accounting
+- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Code Path & Reachability**: Production path in `contracts/integration/AccountAbstractionAdapter.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, `withdrawPaymasterFunds` deducts `paymasterDeposits[msg.sender]` after enforcing minimum stake bounds and emitting `PaymasterWithdrawn`.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Follow-up Gate**: Paymaster Accounting Audit Gate
+
+#### Diagnostic: ``paymasterDeposits` is changed without an event but is used for access control` (L359)
+- **Lines**: L359
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Account Abstraction, Emergency Admin Functions
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/integration/AccountAbstractionAdapter.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, `emergencyRefundPaymaster` allows `perpEngine` to debit `paymasterDeposits` and refund quote tokens to a registered paymaster without a explicit paymaster request.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Emergency Admin Refund Audit Gate
+
+#### Diagnostic: ``paymasterStakeRequired` is changed without an event but is used for access control` (L343)
 - **Lines**: L343
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Governance, Access Control, Observability
+- **Domains Involved**: Account Abstraction, Admin Governance
 - **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/integration/AccountAbstractionAdapter.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
+- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, `updateStakeRequirement` is restricted to `onlyPerpEngine` and emits `StakeRequirementUpdated`.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
 ### File: `contracts/integration/CrossChainMessenger.sol` (10 Diagnostics)
 
-#### Diagnostic: ``gasBuffer` is changed without an event but is used in arithmetic`
+#### Diagnostic: ``gasBuffer` is changed without an event but is used in arithmetic` (GENERAL)
 - **Lines**: L353
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -693,7 +744,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
-#### Diagnostic: ``nonReentrant` should be the first modifier`
+#### Diagnostic: ``nonReentrant` should be the first modifier` (GENERAL)
 - **Lines**: L149, L248
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -705,7 +756,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Reentrancy Formal Verification Gate
 
-#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on`
+#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on` (GENERAL)
 - **Lines**: L547
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -717,7 +768,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Log Security Review Gate
 
-#### Diagnostic: `typecasts that can truncate values should be checked`
+#### Diagnostic: `typecasts that can truncate values should be checked` (GENERAL)
 - **Lines**: L160, L171, L298, L402, L550
 - **Count**: 5
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -729,7 +780,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
 - **Follow-up Gate**: Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L404
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -743,7 +794,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/integration/LidoStETHIntegrator.sol` (18 Diagnostics)
 
-#### Diagnostic: `ERC20 'transfer' and 'transferFrom' calls should check the return value`
+#### Diagnostic: `ERC20 'transfer' and 'transferFrom' calls should check the return value` (GENERAL)
 - **Lines**: L181, L203
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -755,7 +806,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
 - **Follow-up Gate**: Dedicated StETH Transfer Return Value Verification Remediation Gate
 
-#### Diagnostic: `Return value of an external call is not used`
+#### Diagnostic: `Return value of an external call is not used` (GENERAL)
 - **Lines**: L381, L395
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -767,7 +818,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: SafeERC20 Audit Gate
 
-#### Diagnostic: ``userShares` is changed without an event but is used for access control`
+#### Diagnostic: ``userShares` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L223
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -779,7 +830,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
-#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on`
+#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on` (GENERAL)
 - **Lines**: L138, L149, L174, L186, L212, L234
 - **Count**: 6
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -791,7 +842,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Log Security Review Gate
 
-#### Diagnostic: `external call can be reentered before `_status` is updated`
+#### Diagnostic: `external call can be reentered before `_status` is updated` (GENERAL)
 - **Lines**: L147, L181, L203, L231, L395
 - **Count**: 5
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -803,7 +854,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: General Security Review Gate
 
-#### Diagnostic: `uncapped ETH transfer can be reentered before `_status` is updated`
+#### Diagnostic: `uncapped ETH transfer can be reentered before `_status` is updated` (GENERAL)
 - **Lines**: L171
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -815,7 +866,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
 - **Follow-up Gate**: Dedicated StETH Transfer Return Value Verification Remediation Gate
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L242
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -829,7 +880,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/libraries/BitPacking.sol` (5 Diagnostics)
 
-#### Diagnostic: `typecasts that can truncate values should be checked`
+#### Diagnostic: `typecasts that can truncate values should be checked` (GENERAL)
 - **Lines**: L124, L125, L127, L286, L322
 - **Count**: 5
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -843,7 +894,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/libraries/FundingRateCalculator.sol` (27 Diagnostics)
 
-#### Diagnostic: ``require` or `revert` inside a loop`
+#### Diagnostic: ``require` or `revert` inside a loop` (GENERAL)
 - **Lines**: L239
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -855,7 +906,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
-#### Diagnostic: `local variable is read before being initialized`
+#### Diagnostic: `local variable is read before being initialized` (GENERAL)
 - **Lines**: L63
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -867,7 +918,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: General Security Review Gate
 
-#### Diagnostic: `typecasts that can truncate values should be checked`
+#### Diagnostic: `typecasts that can truncate values should be checked` (GENERAL)
 - **Lines**: L49, L49, L54, L63, L63, L63, L95, L157, L163, L179, L180, L181, L182, L219, L219, L220, L220, L236, L236, L237, L237, L237, L240, L246, L246
 - **Count**: 25
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -881,7 +932,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/libraries/L2GasOptimized.sol` (4 Diagnostics)
 
-#### Diagnostic: ``require` or `revert` inside a loop`
+#### Diagnostic: ``require` or `revert` inside a loop` (GENERAL)
 - **Lines**: L101, L123
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -893,7 +944,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
-#### Diagnostic: `external call inside a loop`
+#### Diagnostic: `external call inside a loop` (GENERAL)
 - **Lines**: L96
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -905,7 +956,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
-#### Diagnostic: `local variable is read before being initialized`
+#### Diagnostic: `local variable is read before being initialized` (GENERAL)
 - **Lines**: L124
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -919,7 +970,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/libraries/PositionMath.sol` (31 Diagnostics)
 
-#### Diagnostic: ``require` or `revert` inside a loop`
+#### Diagnostic: ``require` or `revert` inside a loop` (GENERAL)
 - **Lines**: L540, L541, L542, L550, L551, L552, L561, L569, L570, L579
 - **Count**: 10
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -931,7 +982,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
-#### Diagnostic: `typecasts that can truncate values should be checked`
+#### Diagnostic: `typecasts that can truncate values should be checked` (GENERAL)
 - **Lines**: L225, L269, L269, L275, L284, L284, L288, L339, L340, L354, L355, L401, L459, L465, L479, L485, L502, L503, L518, L519, L530
 - **Count**: 21
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -945,7 +996,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/libraries/SafeDecimalMath.sol` (3 Diagnostics)
 
-#### Diagnostic: ``require` or `revert` inside a loop`
+#### Diagnostic: ``require` or `revert` inside a loop` (GENERAL)
 - **Lines**: L23
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -957,7 +1008,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
-#### Diagnostic: `typecasts that can truncate values should be checked`
+#### Diagnostic: `typecasts that can truncate values should be checked` (GENERAL)
 - **Lines**: L64, L64
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -971,7 +1022,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/liquidation/FlashLiquidator.sol` (8 Diagnostics)
 
-#### Diagnostic: ``approvedLiquidators` is changed without an event but is used for access control`
+#### Diagnostic: ``approvedLiquidators` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L259
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -983,7 +1034,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
-#### Diagnostic: ``flashLoanRequests` is changed without an event but is used for access control`
+#### Diagnostic: ``flashLoanRequests` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L106
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -995,7 +1046,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
-#### Diagnostic: ``nonReentrant` should be the first modifier`
+#### Diagnostic: ``nonReentrant` should be the first modifier` (GENERAL)
 - **Lines**: L157
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1007,7 +1058,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Reentrancy Formal Verification Gate
 
-#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on`
+#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on` (GENERAL)
 - **Lines**: L199, L212
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1019,7 +1070,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
 - **Follow-up Gate**: Dedicated Flash Loan Reentrancy & Callback Architecture Remediation Gate
 
-#### Diagnostic: `external call can be reentered before `_status` is updated`
+#### Diagnostic: `external call can be reentered before `_status` is updated` (GENERAL)
 - **Lines**: L181
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1031,7 +1082,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: General Security Review Gate
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L166
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1043,7 +1094,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Time Oracle Audit Gate
 
-#### Diagnostic: `weak randomness derived from a predictable on-chain value`
+#### Diagnostic: `weak randomness derived from a predictable on-chain value` (GENERAL)
 - **Lines**: L105
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1057,7 +1108,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/liquidation/IncentiveDistributor.sol` (4 Diagnostics)
 
-#### Diagnostic: ``liquidationEngine` is changed without an event but is used for access control`
+#### Diagnostic: ``liquidationEngine` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L397
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1069,7 +1120,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
-#### Diagnostic: `address parameter is used in a state write or value transfer without a zero-address check`
+#### Diagnostic: `address parameter is used in a state write or value transfer without a zero-address check` (GENERAL)
 - **Lines**: L98, L99, L100
 - **Count**: 3
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1083,7 +1134,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/liquidation/LiquidationEngine.sol` (21 Diagnostics)
 
-#### Diagnostic: ``require` or `revert` inside a loop`
+#### Diagnostic: ``require` or `revert` inside a loop` (GENERAL)
 - **Lines**: L441, L445, L446
 - **Count**: 3
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1095,7 +1146,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
-#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on`
+#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on` (GENERAL)
 - **Lines**: L118, L186, L240, L526
 - **Count**: 4
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1107,7 +1158,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Log Security Review Gate
 
-#### Diagnostic: `external call can be reentered before `_status` is updated`
+#### Diagnostic: `external call can be reentered before `_status` is updated` (GENERAL)
 - **Lines**: L227
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1119,7 +1170,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: General Security Review Gate
 
-#### Diagnostic: `external call inside a loop`
+#### Diagnostic: `external call inside a loop` (GENERAL)
 - **Lines**: L227, L263, L267, L272, L273, L274, L278, L439, L444, L446
 - **Count**: 10
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1131,7 +1182,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
-#### Diagnostic: `multiplication should occur before division to avoid loss of precision`
+#### Diagnostic: `multiplication should occur before division to avoid loss of precision` (GENERAL)
 - **Lines**: L405
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1143,7 +1194,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Dedicated Precision Refactoring Gate
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L134, L267
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1157,7 +1208,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/liquidation/LiquidationEstimator.sol` (1 Diagnostics)
 
-#### Diagnostic: `Return value of an external call is not used`
+#### Diagnostic: `Return value of an external call is not used` (GENERAL)
 - **Lines**: L21
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1171,7 +1222,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/liquidation/LiquidationQueue.sol` (5 Diagnostics)
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L136, L227, L256, L395
 - **Count**: 4
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1183,7 +1234,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Time Oracle Audit Gate
 
-#### Diagnostic: `weak randomness derived from a predictable on-chain value`
+#### Diagnostic: `weak randomness derived from a predictable on-chain value` (GENERAL)
 - **Lines**: L293
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1197,7 +1248,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/oracles/ChainlinkOracle.sol` (10 Diagnostics)
 
-#### Diagnostic: `typecasts that can truncate values should be checked`
+#### Diagnostic: `typecasts that can truncate values should be checked` (GENERAL)
 - **Lines**: L117, L175, L259, L345
 - **Count**: 4
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1209,7 +1260,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline until a dedicated type safety refactoring gate.
 - **Follow-up Gate**: Dedicated Math Precision & Safe Cast Refactoring Gate
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L110, L122, L124, L134, L170, L252
 - **Count**: 6
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1223,7 +1274,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/oracles/OracleAggregator.sol` (12 Diagnostics)
 
-#### Diagnostic: ``oracleSecurity` is changed without an event but is used for access control`
+#### Diagnostic: ``oracleSecurity` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L726
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1235,7 +1286,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
-#### Diagnostic: ``require` or `revert` inside a loop`
+#### Diagnostic: ``require` or `revert` inside a loop` (GENERAL)
 - **Lines**: L284
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1247,7 +1298,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
-#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on`
+#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on` (GENERAL)
 - **Lines**: L258
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1259,7 +1310,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Log Security Review Gate
 
-#### Diagnostic: `external call inside a loop`
+#### Diagnostic: `external call inside a loop` (GENERAL)
 - **Lines**: L457, L461, L465
 - **Count**: 3
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1271,7 +1322,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L129, L135, L521, L680, L840, L842
 - **Count**: 6
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1285,7 +1336,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/oracles/OracleSecurity.sol` (10 Diagnostics)
 
-#### Diagnostic: ``oracleAggregator` is changed without an event but is used for access control`
+#### Diagnostic: ``oracleAggregator` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L400
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1297,7 +1348,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
-#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on`
+#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on` (GENERAL)
 - **Lines**: L241
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1309,7 +1360,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Log Security Review Gate
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L123, L260, L282, L292, L326, L334, L361, L374
 - **Count**: 8
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1323,7 +1374,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/oracles/PythOracle.sol` (15 Diagnostics)
 
-#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on`
+#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on` (GENERAL)
 - **Lines**: L175
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1335,7 +1386,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Log Security Review Gate
 
-#### Diagnostic: `typecasts that can truncate values should be checked`
+#### Diagnostic: `typecasts that can truncate values should be checked` (GENERAL)
 - **Lines**: L222, L222, L261, L261, L261, L264, L264, L264, L288, L290
 - **Count**: 10
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1347,7 +1398,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
 - **Follow-up Gate**: Dedicated Pyth Exponent & Decimal Normalization Remediation Gate
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L106, L123, L212, L378
 - **Count**: 4
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1361,7 +1412,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/oracles/RWAOracleAdapter.sol` (6 Diagnostics)
 
-#### Diagnostic: ``_authorizedUpdaters` is changed without an event but is used for access control`
+#### Diagnostic: ``_authorizedUpdaters` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L262
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1373,7 +1424,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L125, L136, L162, L167, L357
 - **Count**: 5
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1387,7 +1438,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/oracles/TWAPOracle.sol` (1 Diagnostics)
 
-#### Diagnostic: ``lastUpdate` is changed without an event but is used in arithmetic`
+#### Diagnostic: ``lastUpdate` is changed without an event but is used in arithmetic` (GENERAL)
 - **Lines**: L158
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1401,21 +1452,21 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/security/AccessControlManager.sol` (3 Diagnostics)
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L127, L148, L245
 - **Count**: 3
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Oracle Integrity, Time-based Logic, Funding Accumulation
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Domains Involved**: Access Control, Role Expiry, Governance Privilege
+- **Classification**: `SECURITY_BLOCKER`
 - **Code Path & Reachability**: Production path in `contracts/security/AccessControlManager.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Usage of `block.timestamp` in `contracts/security/AccessControlManager.sol` compares against explicit block epoch intervals or TWAP windows. Validator timestamp manipulation is strictly bounded by EVM/consensus constraints (max ~12 seconds in post-Merge Ethereum/L2s), which is orders of magnitude smaller than protocol settlement/funding intervals (e.g. 1 hour/8 hours).
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Time Oracle Audit Gate
+- **Code-Specific Rationale**: In `contracts/security/AccessControlManager.sol`, role expiry checks (`isRoleExpired`, `revokeExpiredRoles`) are informational/cleanup-only and do not participate in inherited OpenZeppelin `hasRole()` or `onlyRole(...)` authorization checks. Expired privileged accounts retain active permissions until explicit revocation.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Access Control Role Expiry Enforcement Remediation Gate
 
 ### File: `contracts/security/CircuitBreaker.sol` (6 Diagnostics)
 
-#### Diagnostic: ``abi.encodePacked()` called with multiple dynamic type arguments; hash collisions possible`
+#### Diagnostic: ``abi.encodePacked()` called with multiple dynamic type arguments; hash collisions possible` (GENERAL)
 - **Lines**: L118, L123
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1427,7 +1478,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: ABI Encoding Standardization Gate
 
-#### Diagnostic: ``guardian` is changed without an event but is used for access control`
+#### Diagnostic: ``guardian` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L295
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1439,7 +1490,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L178, L257, L386
 - **Count**: 3
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1453,7 +1504,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/security/EmergencyGuardian.sol` (9 Diagnostics)
 
-#### Diagnostic: ``activeSession` is changed without an event but is used for access control`
+#### Diagnostic: ``activeSession` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L112, L133
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1465,7 +1516,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L74, L104, L108, L190, L200, L233, L256
 - **Count**: 7
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1479,7 +1530,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/security/PausableController.sol` (2 Diagnostics)
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L129, L195
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1493,7 +1544,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/security/RateLimiter.sol` (5 Diagnostics)
 
-#### Diagnostic: ``admin` is changed without an event but is used for access control`
+#### Diagnostic: ``admin` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L205
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1505,7 +1556,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
-#### Diagnostic: `multiplication should occur before division to avoid loss of precision`
+#### Diagnostic: `multiplication should occur before division to avoid loss of precision` (GENERAL)
 - **Lines**: L345
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1517,7 +1568,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Dedicated Precision Refactoring Gate
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L118, L291, L311
 - **Count**: 3
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1531,7 +1582,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/tokens/CollateralWrapper.sol` (5 Diagnostics)
 
-#### Diagnostic: ``oracleDeviationThreshold` is changed without an event but is used for access control`
+#### Diagnostic: ``oracleDeviationThreshold` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L331
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1543,7 +1594,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
-#### Diagnostic: ``redemptionDelay` is changed without an event but is used for access control`
+#### Diagnostic: ``redemptionDelay` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L320
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1555,7 +1606,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
-#### Diagnostic: ``redemptionDelay` is changed without an event but is used in arithmetic`
+#### Diagnostic: ``redemptionDelay` is changed without an event but is used in arithmetic` (GENERAL)
 - **Lines**: L320
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1567,7 +1618,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L180, L271
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1581,7 +1632,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/upgradeability/ProxyAdmin.sol` (9 Diagnostics)
 
-#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on`
+#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on` (GENERAL)
 - **Lines**: L78, L91, L106, L123, L124, L142, L161
 - **Count**: 7
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1593,7 +1644,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Log Security Review Gate
 
-#### Diagnostic: `external call inside a loop`
+#### Diagnostic: `external call inside a loop` (GENERAL)
 - **Lines**: L141, L160
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1607,7 +1658,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/upgradeability/TransparentUpgradeableProxy.sol` (7 Diagnostics)
 
-#### Diagnostic: `address parameter is used in a state write or value transfer without a zero-address check`
+#### Diagnostic: `address parameter is used in a state write or value transfer without a zero-address check` (GENERAL)
 - **Lines**: L38, L103
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1619,7 +1670,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Dedicated Proxy Deployment & Admin Validation Audit Gate
 
-#### Diagnostic: `delegatecall target is not provably trusted`
+#### Diagnostic: `delegatecall target is not provably trusted` (GENERAL)
 - **Lines**: L47, L108
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1631,7 +1682,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Proxy Architecture Audit Gate
 
-#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on`
+#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on` (GENERAL)
 - **Lines**: L88, L178
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1643,7 +1694,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Log Security Review Gate
 
-#### Diagnostic: `modifier can finish without executing the modified function`
+#### Diagnostic: `modifier can finish without executing the modified function` (GENERAL)
 - **Lines**: L29
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1657,7 +1708,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/upgradeability/UpgradeExecutor.sol` (23 Diagnostics)
 
-#### Diagnostic: `ETH is sent to a user-controlled destination; restrict the destination or the caller`
+#### Diagnostic: `ETH is sent to a user-controlled destination; restrict the destination or the caller` (GENERAL)
 - **Lines**: L195
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1669,7 +1720,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: General Security Review Gate
 
-#### Diagnostic: ``batches` is changed without an event but is used for access control`
+#### Diagnostic: ``batches` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L141
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1681,7 +1732,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
-#### Diagnostic: ``nonReentrant` should be the first modifier`
+#### Diagnostic: ``nonReentrant` should be the first modifier` (GENERAL)
 - **Lines**: L167, L237
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1693,7 +1744,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Reentrancy Formal Verification Gate
 
-#### Diagnostic: ``require` or `revert` inside a loop`
+#### Diagnostic: ``require` or `revert` inside a loop` (GENERAL)
 - **Lines**: L187, L213, L255, L393, L394, L395
 - **Count**: 6
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1705,7 +1756,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
-#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on`
+#### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on` (GENERAL)
 - **Lines**: L226, L264
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1717,7 +1768,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Log Security Review Gate
 
-#### Diagnostic: `external call can be reentered before `_status` is updated`
+#### Diagnostic: `external call can be reentered before `_status` is updated` (GENERAL)
 - **Lines**: L251
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1729,7 +1780,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
 - **Follow-up Gate**: Dedicated Upgrade Governance & Implementation Verification Remediation Gate
 
-#### Diagnostic: `external call can be reentered before `lastUpgradeTime` is updated`
+#### Diagnostic: `external call can be reentered before `lastUpgradeTime` is updated` (GENERAL)
 - **Lines**: L202
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1741,7 +1792,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
 - **Follow-up Gate**: Dedicated Upgrade Governance & Implementation Verification Remediation Gate
 
-#### Diagnostic: `external call inside a loop`
+#### Diagnostic: `external call inside a loop` (GENERAL)
 - **Lines**: L195, L202, L251, L403
 - **Count**: 4
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1753,7 +1804,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
-#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators`
+#### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L173, L188, L307, L319
 - **Count**: 4
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1765,7 +1816,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Time Oracle Audit Gate
 
-#### Diagnostic: `weak randomness derived from a predictable on-chain value`
+#### Diagnostic: `weak randomness derived from a predictable on-chain value` (GENERAL)
 - **Lines**: L136
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1779,7 +1830,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 
 ### File: `contracts/view/PerpEngineViewer.sol` (44 Diagnostics)
 
-#### Diagnostic: `Return value of an external call is not used`
+#### Diagnostic: `Return value of an external call is not used` (GENERAL)
 - **Lines**: L456, L533
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1791,7 +1842,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: SafeERC20 Audit Gate
 
-#### Diagnostic: ``require` or `revert` inside a loop`
+#### Diagnostic: ``require` or `revert` inside a loop` (GENERAL)
 - **Lines**: L316, L319, L549
 - **Count**: 3
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1803,7 +1854,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
-#### Diagnostic: `external call inside a loop`
+#### Diagnostic: `external call inside a loop` (GENERAL)
 - **Lines**: L117, L257, L261, L261, L264, L315, L321, L321, L323, L397, L400, L400, L402, L456, L456, L505, L533, L533, L548, L552, L552, L554, L554
 - **Count**: 23
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
@@ -1815,7 +1866,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
-#### Diagnostic: `typecasts that can truncate values should be checked`
+#### Diagnostic: `typecasts that can truncate values should be checked` (GENERAL)
 - **Lines**: L271, L282, L282, L282, L330, L358, L388, L388, L388, L409, L434, L434, L442, L444, L469, L484
 - **Count**: 16
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
