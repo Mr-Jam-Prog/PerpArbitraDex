@@ -18,9 +18,9 @@
 ### Section A. Diagnostic-Level Disposition Totals
 The sum of diagnostic-level dispositions equals exactly 450 `UNRESOLVED_SECURITY_DEBT` entries in `warnings-baseline.json`:
 
-- `CONTEXTUAL_ACCEPTED`: 314
-- `SECURITY_REVIEW_REQUIRED`: 100
-- `SECURITY_BLOCKER`: 29
+- `CONTEXTUAL_ACCEPTED`: 310
+- `SECURITY_REVIEW_REQUIRED`: 101
+- `SECURITY_BLOCKER`: 32
 - `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`: 7
 - **Total Diagnostics**: 450
 
@@ -82,25 +82,25 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Lines**: L143, L307
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: AMM Mark Price, Funding Interval
+- **Domains Involved**: AMM Mark Price, Funding Interval, Timestamp Dependence
 - **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/core/AMMPool.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: `(block.timestamp - state.lastFundingTime) % config.fundingInterval` calculates `timeToNextFunding` for mark price adjustments; validator timestamp drift may introduce minor mark price variance near funding epoch boundaries.
+- **Code-Specific Rationale**: In `contracts/core/AMMPool.sol`, `(block.timestamp - state.lastFundingTime) % config.fundingInterval` calculates `timeToNextFunding` for mark price adjustments; validator timestamp drift near epoch boundaries requires formal mark price sensitivity review.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Dedicated AMM Mark Price & Funding Interval Audit Gate
 
-#### Diagnostic: `weak randomness derived from a predictable on-chain value` (GENERAL)
+#### Diagnostic: `weak randomness derived from a predictable on-chain value` (L215)
 - **Lines**: L215
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Liquidation Queue, Randomness
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Domains Involved**: AMM Mark Price, Funding Interval, Timestamp Dependence
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/core/AMMPool.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/core/AMMPool.sol`, pseudo-random ordering is used solely for non-critical tie-breaking in liquidation queue candidate selection, where cryptographic randomness is not required for protocol security.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Liquidation Queue Audit Gate
+- **Code-Specific Rationale**: In `contracts/core/AMMPool.sol`, `timeToNextFunding = config.fundingInterval - (block.timestamp - state.lastFundingTime) % config.fundingInterval` derives mark price via `FundingRateCalculator.calculateMarkPrice`. Validator timestamp drift may introduce mark price variance near funding epoch boundaries.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Dedicated AMM Mark Price & Funding Interval Audit Gate
 
 ### File: `contracts/core/LiquidityVault.sol` (16 Diagnostics)
 
@@ -544,17 +544,29 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: SafeERC20 Audit Gate
 
-#### Diagnostic: `weak randomness derived from a predictable on-chain value` (GENERAL)
-- **Lines**: L121, L155
-- **Count**: 2
+#### Diagnostic: `weak randomness derived from a predictable on-chain value` (L121)
+- **Lines**: L121
+- **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Liquidation Queue, Randomness
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Domains Involved**: Governance, Timelock, Treasury Operation Hash
+- **Classification**: `SECURITY_BLOCKER`
 - **Code Path & Reachability**: Production path in `contracts/governance/Treasury.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/governance/Treasury.sol`, pseudo-random ordering is used solely for non-critical tie-breaking in liquidation queue candidate selection, where cryptographic randomness is not required for protocol security.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Liquidation Queue Audit Gate
+- **Code-Specific Rationale**: In `contracts/governance/Treasury.sol`, `scheduleWithdrawal` constructs `operationId = keccak256(abi.encode(token, to, amount, salt, block.timestamp))` using `salt`, whereas `executeWithdrawal` constructs `operationId = keccak256(abi.encode(token, to, amount, bytes32(0), block.timestamp))` using `bytes32(0)`. This operation hash mismatch prevents scheduled withdrawals from executing.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Dedicated Treasury Timelock Hash Alignment Remediation Gate
+
+#### Diagnostic: `weak randomness derived from a predictable on-chain value` (L155)
+- **Lines**: L155
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Governance, Timelock, Treasury Operation Hash
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/governance/Treasury.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/governance/Treasury.sol`, `executeWithdrawal` constructs `operationId` with `bytes32(0)` instead of `salt`, causing operation ID mismatch against `scheduleWithdrawal`.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Dedicated Treasury Timelock Hash Alignment Remediation Gate
 
 ### File: `contracts/governance/VotingEscrow.sol` (17 Diagnostics)
 
@@ -714,7 +726,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/integration/AccountAbstractionAdapter.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, `emergencyRefundPaymaster` allows `perpEngine` to debit `paymasterDeposits` and refund quote tokens to a registered paymaster without a explicit paymaster request.
+- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, `emergencyRefundPaymaster` allows `perpEngine` to debit `paymasterDeposits` and refund quote tokens to a registered paymaster without an explicit paymaster request.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Emergency Admin Refund Audit Gate
 
@@ -1046,17 +1058,17 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Governance Event Standardization Gate
 
-#### Diagnostic: ``nonReentrant` should be the first modifier` (GENERAL)
+#### Diagnostic: ``nonReentrant` should be the first modifier` (L157)
 - **Lines**: L157
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: External Calls, Reentrancy Guard, Settlement
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Domains Involved**: External Calls, Reentrancy Guard, Flash Loans
+- **Classification**: `SECURITY_BLOCKER`
 - **Code Path & Reachability**: Production path in `contracts/liquidation/FlashLiquidator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/liquidation/FlashLiquidator.sol`, state mutations and reentrancy status updates are synchronized around external ERC20/vault calls. OpenZeppelin `ReentrancyGuard` or custom state check locks prevent cross-function reentrancy vectors.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Reentrancy Formal Verification Gate
+- **Code-Specific Rationale**: In `contracts/liquidation/FlashLiquidator.sol`, `executeFlashLiquidation` (guarded by `nonReentrant`) calls `aavePool.flashLoan`, which synchronously invokes callback `FlashLiquidator.executeOperation` (also guarded by `nonReentrant`), causing an immediate atomic reentrancy revert.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Dedicated Flash Loan Reentrancy & Callback Architecture Remediation Gate
 
 #### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on` (GENERAL)
 - **Lines**: L199, L212
@@ -1066,7 +1078,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Classification**: `SECURITY_BLOCKER`
 - **Code Path & Reachability**: Production path in `contracts/liquidation/FlashLiquidator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: `executeFlashLiquidation` calls `IAavePool.flashLoan` inside a `nonReentrant` modifier, which synchronously invokes callback `FlashLiquidator.executeOperation` (also guarded by `nonReentrant`), causing an immediate atomic reentrancy revert.
+- **Code-Specific Rationale**: In `contracts/liquidation/FlashLiquidator.sol`, `executeFlashLiquidation` calls `IAavePool.flashLoan` inside a `nonReentrant` modifier, which synchronously invokes callback `FlashLiquidator.executeOperation` (also guarded by `nonReentrant`), causing an immediate atomic reentrancy revert.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
 - **Follow-up Gate**: Dedicated Flash Loan Reentrancy & Callback Architecture Remediation Gate
 
