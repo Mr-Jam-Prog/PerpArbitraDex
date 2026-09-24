@@ -1274,7 +1274,7 @@
     {
         "file": "contracts/governance/TimelockController.sol",
         "line": 232,
-        "column": 84,
+        "column": 72,
         "message": "empty function body",
         "raw_warning": "warning[empty-block]: empty function body",
         "justification": "[UNRESOLVED_SECURITY_DEBT] Unresolved security-sensitive diagnostic in production contract; frozen for baseline gate."
