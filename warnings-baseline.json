@@ -433,7 +433,7 @@
     },
     {
         "file": "contracts/security/CircuitBreaker.sol",
-        "line": 374,
+        "line": 375,
         "column": 5,
         "message": "Function state mutability can be restricted to view",
         "raw_warning": "Warning: Function state mutability can be restricted to view",
@@ -4169,7 +4169,7 @@
     },
     {
         "file": "contracts/security/CircuitBreaker.sol",
-        "line": 258,
+        "line": 259,
         "column": 25,
         "message": "misuse of a boolean constant",
         "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
@@ -4177,7 +4177,7 @@
     },
     {
         "file": "contracts/security/CircuitBreaker.sol",
-        "line": 262,
+        "line": 263,
         "column": 17,
         "message": "misuse of a boolean constant",
         "raw_warning": "warning[boolean-cst]: misuse of a boolean constant",
@@ -4185,7 +4185,7 @@
     },
     {
         "file": "contracts/security/CircuitBreaker.sol",
-        "line": 295,
+        "line": 296,
         "column": 9,
         "message": "`guardian` is changed without an event but is used for access control",
         "raw_warning": "warning[missing-events-access-control]: `guardian` is changed without an event but is used for access control",
@@ -4209,7 +4209,7 @@
     },
     {
         "file": "contracts/security/CircuitBreaker.sol",
-        "line": 178,
+        "line": 179,
         "column": 13,
         "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
         "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
@@ -4217,7 +4217,7 @@
     },
     {
         "file": "contracts/security/CircuitBreaker.sol",
-        "line": 257,
+        "line": 258,
         "column": 17,
         "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
         "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
@@ -4225,7 +4225,7 @@
     },
     {
         "file": "contracts/security/CircuitBreaker.sol",
-        "line": 386,
+        "line": 387,
         "column": 13,
         "message": "usage of `block.timestamp` in a comparison may be manipulated by validators",
         "raw_warning": "warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators",
