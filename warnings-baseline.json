@@ -6742,5 +6742,21 @@
         "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
         "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
         "justification": "[UNRESOLVED_SECURITY_DEBT] Unresolved security-sensitive diagnostic in production contract; frozen for baseline gate."
+    },
+    {
+        "file": "contracts/oracles/OracleAggregator.sol",
+        "line": 342,
+        "column": 38,
+        "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+        "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+        "justification": "[UNRESOLVED_SECURITY_DEBT] Unresolved security-sensitive diagnostic in production contract; frozen for baseline gate."
+    },
+    {
+        "file": "contracts/security/CircuitBreaker.sol",
+        "line": 156,
+        "column": 47,
+        "message": "Unused function parameter. Remove or comment out the variable name to silence this warning.",
+        "raw_warning": "Warning: Unused function parameter. Remove or comment out the variable name to silence this warning.",
+        "justification": "[UNRESOLVED_SECURITY_DEBT] Unresolved security-sensitive diagnostic in production contract; frozen for baseline gate."
     }
 ]

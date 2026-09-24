@@ -4,25 +4,25 @@
 
 - **Repository Base SHA**: `a19a55107f480754d8916432a3ca95cde936abb2`
 - **Start Baseline Total**: 850
-- **Final Baseline Total**: 843
-- **Baseline Reduction**: 7 (Mechanically safe compiler warnings eliminated; 4 restored as unresolved security debt)
+- **Final Baseline Total**: 845
+- **Baseline Reduction**: 5 (Mechanically safe compiler warnings eliminated; 6 restored as unresolved security debt)
 - **Start Production Warning Debt**: 341
 - **Final Production Warning Debt**: 161
 - **Start Unresolved Security Debt**: 282
-- **Final Unresolved Security Debt**: 455 (168 reclassified + 1 Timelock reclassified + 4 restored compiler diagnostics)
+- **Final Unresolved Security Debt**: 457 (168 reclassified + 1 Timelock reclassified + 6 restored compiler diagnostics)
 
 ---
 
 ## Dispositions Breakdown
 
 ### Section A. Diagnostic-Level Disposition Totals
-The sum of diagnostic-level dispositions equals exactly 455 `UNRESOLVED_SECURITY_DEBT` entries in `warnings-baseline.json`:
+The sum of diagnostic-level dispositions equals exactly 457 `UNRESOLVED_SECURITY_DEBT` entries in `warnings-baseline.json`:
 
-- `CONTEXTUAL_ACCEPTED`: 310
-- `SECURITY_REVIEW_REQUIRED`: 101
+- `CONTEXTUAL_ACCEPTED`: 285
+- `SECURITY_REVIEW_REQUIRED`: 127
 - `SECURITY_BLOCKER`: 35
-- `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`: 9
-- **Total Diagnostics**: 455
+- `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`: 10
+- **Total Diagnostics**: 457
 
 ### Section B. Root Security Findings Summary
 Root causes after grouping related static analyzer diagnostics into unique protocol vulnerabilities:
@@ -41,17 +41,19 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 11. **PythOracle.sol** (`typecast`): `_normalizePythPrice` fails to normalize price to 8 decimals for standard Pyth exponents. Gate: *Dedicated Pyth Exponent & Decimal Normalization Remediation Gate*.
 12. **CrossChainMessenger.sol** (`typecast`): `uint16(block.chainid)` truncation mismatches LayerZero endpoint chain IDs. Gate: *Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate*.
 
-#### ECONOMIC_OR_LOGIC_CHANGE_REQUIRED Root Findings (3 Items)
+#### ECONOMIC_OR_LOGIC_CHANGE_REQUIRED Root Findings (4 Items)
 1. **LiquidationQueue.sol** (`randomness / starvation`): Blockhash/timestamp entropy controls liquidation grace period timing and MEV resistance; head starvation occurs when candidate execution reverts. Gate: *Liquidation Timing Randomness & MEV Remediation Gate*.
 2. **OracleSanityChecker.sol** (`checkPriceVolatility`): Volatility check method is a dummy implementation returning `true`, bypassing volatility validation. Gate: *Oracle Volatility Validation Model & Consumer Integration Remediation Gate*.
-3. **VotingEscrow.sol** (`typecast`): `int128` narrowing casts on user-controlled lock amounts without explicit bounds assertions. Gate: *Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate*.
+3. **OracleAggregator.sol** (`getTWAP`): TWAP method returns current spot aggregated price, bypassing time-weighted averaging. Gate: *Oracle Aggregator Historical TWAP Semantics & Consumer Integration Remediation Gate*.
+4. **VotingEscrow.sol** (`typecast`): `int128` narrowing casts on user-controlled lock amounts without explicit bounds assertions. Gate: *Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate*.
 
-#### SECURITY_REVIEW_REQUIRED Highlights (5 Root Items)
+#### SECURITY_REVIEW_REQUIRED Highlights (6 Root Items)
 1. **Critical Authority Rotation Observability Gaps**: Unobservable authority rotation lacking old/new event emissions across `PerpEngine.setGovernance`, `MarketRegistry.setConfigRegistry`, `OracleAggregator.setSecurityModule`, `OracleSecurity.updateAggregator`, `IncentiveDistributor.setLiquidationEngine`, and `ProtocolConfig.setTimelockController`. Gate: *Critical Authority Rotation & Governance Observability Remediation Gate*.
-2. **TransparentUpgradeableProxy.sol**: Unchecked constructor `admin_` zero-address assignment. Gate: *Dedicated Proxy Deployment & Admin Validation Audit Gate*.
-3. **AMMPool.sol**: `timeToNextFunding` timestamp modulo variance in mark price calculation. Gate: *Dedicated AMM Mark Price & Funding Interval Audit Gate*.
-4. **PositionManager.sol**: Unpaginated loop over NFT supply making external engine calls. Gate: *Dedicated PositionManager Pagination & Gas Limits Remediation Gate*.
-5. **Treasury.sol** (`raw ETH call`): Uncapped raw ETH call before deleting scheduled withdrawal entry. Gate: *Dedicated Treasury ETH-Transfer & Reentrancy Audit Gate*.
+2. **CircuitBreaker.sol** (`triggerBreaker`): Manual trigger reason parameter is discarded and omitted from events. Gate: *Circuit Breaker Incident Reason & Emergency Auditability Remediation Gate*.
+3. **TransparentUpgradeableProxy.sol**: Unchecked constructor `admin_` zero-address assignment. Gate: *Dedicated Proxy Deployment & Admin Validation Audit Gate*.
+4. **AMMPool.sol**: `timeToNextFunding` timestamp modulo variance in mark price calculation. Gate: *Dedicated AMM Mark Price & Funding Interval Audit Gate*.
+5. **PositionManager.sol**: Unpaginated loop over NFT supply making external engine calls. Gate: *Dedicated PositionManager Pagination & Gas Limits Remediation Gate*.
+6. **Treasury.sol** (`raw ETH call`): Uncapped raw ETH call before deleting scheduled withdrawal entry. Gate: *Dedicated Treasury ETH-Transfer & Reentrancy Audit Gate*.
 
 ---
 
@@ -125,12 +127,12 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/core/LiquidityVault.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/core/LiquidityVault.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/core/LiquidityVault.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 #### Diagnostic: ``transferFrom` uses an arbitrary `from`; require it to equal `msg.sender` or `address(this)`` (GENERAL)
 - **Lines**: L237
@@ -163,12 +165,12 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/core/MarketRegistry.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/core/MarketRegistry.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/core/MarketRegistry.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 ### File: `contracts/core/PerpEngine.sol` (36 Diagnostics)
 
@@ -189,12 +191,12 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/core/PerpEngine.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/core/PerpEngine.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/core/PerpEngine.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 #### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on` (GENERAL)
 - **Lines**: L711, L824, L864, L902, L1024, L1369
@@ -301,12 +303,12 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/core/ProtocolConfig.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/core/ProtocolConfig.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/core/ProtocolConfig.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L356, L378
@@ -341,12 +343,12 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/governance/EmissionController.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/governance/EmissionController.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/governance/EmissionController.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 #### Diagnostic: ``transferFrom` uses an arbitrary `from`; require it to equal `msg.sender` or `address(this)`` (GENERAL)
 - **Lines**: L150
@@ -391,24 +393,24 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/governance/FeeDistributor.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/governance/FeeDistributor.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/governance/FeeDistributor.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 #### Diagnostic: ``lastClaimTime` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L135, L191
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/governance/FeeDistributor.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/governance/FeeDistributor.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/governance/FeeDistributor.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 #### Diagnostic: ``nonReentrant` should be the first modifier` (GENERAL)
 - **Lines**: L84
@@ -777,12 +779,12 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/integration/CrossChainMessenger.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/integration/CrossChainMessenger.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/integration/CrossChainMessenger.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 #### Diagnostic: ``nonReentrant` should be the first modifier` (GENERAL)
 - **Lines**: L149, L248
@@ -863,12 +865,12 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/integration/LidoStETHIntegrator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/integration/LidoStETHIntegrator.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/integration/LidoStETHIntegrator.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 #### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on` (GENERAL)
 - **Lines**: L138, L149, L174, L186, L212, L234
@@ -1067,24 +1069,24 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/liquidation/FlashLiquidator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/liquidation/FlashLiquidator.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/liquidation/FlashLiquidator.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 #### Diagnostic: ``flashLoanRequests` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L106
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/liquidation/FlashLiquidator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/liquidation/FlashLiquidator.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/liquidation/FlashLiquidator.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 #### Diagnostic: ``nonReentrant` should be the first modifier` (L157)
 - **Lines**: L157
@@ -1153,12 +1155,12 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/liquidation/IncentiveDistributor.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/liquidation/IncentiveDistributor.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/liquidation/IncentiveDistributor.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 #### Diagnostic: `address parameter is used in a state write or value transfer without a zero-address check` (GENERAL)
 - **Lines**: L98, L99, L100
@@ -1312,19 +1314,31 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Time Oracle Audit Gate
 
-### File: `contracts/oracles/OracleAggregator.sol` (12 Diagnostics)
+### File: `contracts/oracles/OracleAggregator.sol` (13 Diagnostics)
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L342)
+- **Lines**: L342
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Oracle Aggregator, Historical TWAP, Spot Fallback
+- **Classification**: `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/oracles/OracleAggregator.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/oracles/OracleAggregator.sol`, unused parameter `period` in `getTWAP` exposes the pending TWAP implementation fallback to spot price.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` until ECONOMIC_OR_LOGIC_CHANGE_REQUIRED remediation.
+- **Follow-up Gate**: Oracle Aggregator Historical TWAP Semantics & Consumer Integration Remediation Gate
 
 #### Diagnostic: ``oracleSecurity` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L726
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/oracles/OracleAggregator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/oracles/OracleAggregator.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/oracles/OracleAggregator.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 #### Diagnostic: ``require` or `revert` inside a loop` (GENERAL)
 - **Lines**: L284
@@ -1395,12 +1409,12 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/oracles/OracleSecurity.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/oracles/OracleSecurity.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/oracles/OracleSecurity.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 #### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on` (GENERAL)
 - **Lines**: L241
@@ -1471,12 +1485,12 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/oracles/RWAOracleAdapter.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/oracles/RWAOracleAdapter.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/oracles/RWAOracleAdapter.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L125, L136, L162, L167, L357
@@ -1497,12 +1511,12 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/oracles/TWAPOracle.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/oracles/TWAPOracle.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/oracles/TWAPOracle.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 ### File: `contracts/security/AccessControlManager.sol` (3 Diagnostics)
 
@@ -1518,7 +1532,19 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
 - **Follow-up Gate**: Access Control Role Expiry Enforcement Remediation Gate
 
-### File: `contracts/security/CircuitBreaker.sol` (6 Diagnostics)
+### File: `contracts/security/CircuitBreaker.sol` (7 Diagnostics)
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L156)
+- **Lines**: L156
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Circuit Breaker, Emergency Auditability, Incident Reason
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/security/CircuitBreaker.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/security/CircuitBreaker.sol`, unused parameter `reason` in `triggerBreaker` indicates discarded manual trigger context.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Circuit Breaker Incident Reason & Emergency Auditability Remediation Gate
 
 #### Diagnostic: ``abi.encodePacked()` called with multiple dynamic type arguments; hash collisions possible` (GENERAL)
 - **Lines**: L118, L123
@@ -1537,12 +1563,12 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/security/CircuitBreaker.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/security/CircuitBreaker.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/security/CircuitBreaker.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L178, L257, L386
@@ -1563,12 +1589,12 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/security/EmergencyGuardian.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/security/EmergencyGuardian.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/security/EmergencyGuardian.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L74, L104, L108, L190, L200, L233, L256
@@ -1603,12 +1629,12 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/security/RateLimiter.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/security/RateLimiter.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/security/RateLimiter.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 #### Diagnostic: `multiplication should occur before division to avoid loss of precision` (GENERAL)
 - **Lines**: L345
@@ -1641,36 +1667,36 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/tokens/CollateralWrapper.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/tokens/CollateralWrapper.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/tokens/CollateralWrapper.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 #### Diagnostic: ``redemptionDelay` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L320
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/tokens/CollateralWrapper.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/tokens/CollateralWrapper.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/tokens/CollateralWrapper.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 #### Diagnostic: ``redemptionDelay` is changed without an event but is used in arithmetic` (GENERAL)
 - **Lines**: L320
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/tokens/CollateralWrapper.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/tokens/CollateralWrapper.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/tokens/CollateralWrapper.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L180, L271
@@ -1779,12 +1805,12 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/upgradeability/UpgradeExecutor.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/upgradeability/UpgradeExecutor.sol`, state configuration updates are executed via governance timelock or admin functions. Off-chain observability is maintained via timelock event emissions or transaction logs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/upgradeability/UpgradeExecutor.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 #### Diagnostic: ``nonReentrant` should be the first modifier` (GENERAL)
 - **Lines**: L167, L237

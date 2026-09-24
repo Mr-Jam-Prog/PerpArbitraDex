@@ -151,8 +151,9 @@ contract CircuitBreaker {
     /**
      * @notice Manually trigger circuit breaker
      * @param marketId Market ID
+     * @param reason Reason for manual trigger
      */
-    function triggerBreaker(uint256 marketId, string calldata /* reason */)
+    function triggerBreaker(uint256 marketId, string calldata reason)
         external 
         onlyGuardian 
     {
