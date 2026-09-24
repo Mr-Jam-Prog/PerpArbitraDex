@@ -4,50 +4,54 @@
 
 - **Repository Base SHA**: `a19a55107f480754d8916432a3ca95cde936abb2`
 - **Start Baseline Total**: 850
-- **Final Baseline Total**: 839
-- **Baseline Reduction**: 11 (Mechanically safe compiler warnings eliminated)
+- **Final Baseline Total**: 843
+- **Baseline Reduction**: 7 (Mechanically safe compiler warnings eliminated; 4 restored as unresolved security debt)
 - **Start Production Warning Debt**: 341
-- **Final Production Warning Debt**: 162
+- **Final Production Warning Debt**: 161
 - **Start Unresolved Security Debt**: 282
-- **Final Unresolved Security Debt**: 450 (168 security-sensitive entries reclassified)
+- **Final Unresolved Security Debt**: 455 (168 reclassified + 1 Timelock reclassified + 4 restored compiler diagnostics)
 
 ---
 
 ## Dispositions Breakdown
 
 ### Section A. Diagnostic-Level Disposition Totals
-The sum of diagnostic-level dispositions equals exactly 450 `UNRESOLVED_SECURITY_DEBT` entries in `warnings-baseline.json`:
+The sum of diagnostic-level dispositions equals exactly 455 `UNRESOLVED_SECURITY_DEBT` entries in `warnings-baseline.json`:
 
 - `CONTEXTUAL_ACCEPTED`: 310
 - `SECURITY_REVIEW_REQUIRED`: 101
-- `SECURITY_BLOCKER`: 32
-- `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`: 7
-- **Total Diagnostics**: 450
+- `SECURITY_BLOCKER`: 35
+- `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`: 9
+- **Total Diagnostics**: 455
 
 ### Section B. Root Security Findings Summary
 Root causes after grouping related static analyzer diagnostics into unique protocol vulnerabilities:
 
-#### SECURITY_BLOCKER Root Findings (10 Items)
-1. **EmissionController.sol** (`claim`): Permissionless emission claim / treasury allowance drain (`external caller -> EmissionController.claim() -> _calculateAvailable(scheduleId, msg.sender) -> schedule-wide available amount -> token.safeTransferFrom(treasury, msg.sender, amount)`). Gate: *Emission Claim Entitlement & Treasury Authorization Remediation Gate*.
-2. **FeeDistributor.sol** (`claimMultiple`): Duplicate distribution IDs permit repeated crediting of the same recipient share within one transaction (`claimMultiple -> loop over distributionIds -> credit share`). Gate: *Fee Distribution Claim Uniqueness & Per-Recipient Accounting Remediation Gate*.
-3. **AccountAbstractionAdapter.sol** (`_handlePaymaster`): Unauthenticated paymaster sponsorship consent (`_handlePaymaster -> paymasterAndData -> debit paymasterDeposits`). Gate: *Account Abstraction Paymaster Sponsorship Authentication Remediation Gate*.
-4. **AccessControlManager.sol** (`role expiry`): Ineffective role expiry enforcement in `hasRole()` / `onlyRole(...)` authorization checks (`isRoleExpired` is informational only). Gate: *Access Control Role Expiry Enforcement Remediation Gate*.
-5. **FlashLiquidator.sol** (`reentrancy`): ReentrancyGuard lock collision between `executeFlashLiquidation` and Aave callback `executeOperation`. Gate: *Dedicated Flash Loan Reentrancy & Callback Architecture Remediation Gate*.
-6. **Treasury.sol** (`scheduledWithdrawals`): Operation hash mismatch between `scheduleWithdrawal` and `executeWithdrawal` (`salt` vs `bytes32(0)`). Gate: *Dedicated Treasury Timelock Hash Alignment Remediation Gate*.
-7. **UpgradeExecutor.sol** (`lastUpgradeTime`): `rollbackBatch` trusts calldata `originalImplementations` without checking persisted state. Gate: *Dedicated Upgrade Governance & Implementation Verification Remediation Gate*.
-8. **LidoStETHIntegrator.sol** (`transfer`): Unchecked `IStETH.transferFrom` return value before crediting collateral shares. Gate: *Dedicated StETH Transfer Return Value Verification Remediation Gate*.
-9. **PythOracle.sol** (`typecast`): `_normalizePythPrice` fails to normalize price to 8 decimals for standard Pyth exponents. Gate: *Dedicated Pyth Exponent & Decimal Normalization Remediation Gate*.
-10. **CrossChainMessenger.sol** (`typecast`): `uint16(block.chainid)` truncation mismatches LayerZero endpoint chain IDs. Gate: *Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate*.
+#### SECURITY_BLOCKER Root Findings (12 Items)
+1. **TimelockController.sol** (`_isCriticalOperation`): Critical operation classification is disabled (returns `false`), bypassing critical operation grace period enforcement. Gate: *Timelock Critical Operation Classification & Grace Enforcement Remediation Gate*.
+2. **TimelockController.sol** (`_updateDelay`): Minimum delay update has an empty body, causing `updateMinDelay` to emit `MinDelayUpdated` without mutating the underlying timelock delay. Gate: *Timelock Minimum Delay State & Event Consistency Remediation Gate*.
+3. **EmissionController.sol** (`claim`): Permissionless emission claim / treasury allowance drain (`external caller -> EmissionController.claim() -> _calculateAvailable(scheduleId, msg.sender) -> schedule-wide available amount -> token.safeTransferFrom(treasury, msg.sender, amount)`). Gate: *Emission Claim Entitlement & Treasury Authorization Remediation Gate*.
+4. **FeeDistributor.sol** (`claimMultiple`): Duplicate distribution IDs permit repeated crediting of the same recipient share within one transaction (`claimMultiple -> loop over distributionIds -> credit share`). Gate: *Fee Distribution Claim Uniqueness & Per-Recipient Accounting Remediation Gate*.
+5. **AccountAbstractionAdapter.sol** (`_handlePaymaster`): Unauthenticated paymaster sponsorship consent (`_handlePaymaster -> paymasterAndData -> debit paymasterDeposits`). Gate: *Account Abstraction Paymaster Sponsorship Authentication Remediation Gate*.
+6. **AccessControlManager.sol** (`role expiry`): Ineffective role expiry enforcement in `hasRole()` / `onlyRole(...)` authorization checks (`isRoleExpired` is informational only). Gate: *Access Control Role Expiry Enforcement Remediation Gate*.
+7. **FlashLiquidator.sol** (`reentrancy`): ReentrancyGuard lock collision between `executeFlashLiquidation` and Aave callback `executeOperation`. Gate: *Dedicated Flash Loan Reentrancy & Callback Architecture Remediation Gate*.
+8. **Treasury.sol** (`scheduledWithdrawals`): Operation hash mismatch between `scheduleWithdrawal` and `executeWithdrawal` (`salt` vs `bytes32(0)`). Gate: *Dedicated Treasury Timelock Hash Alignment Remediation Gate*.
+9. **UpgradeExecutor.sol** (`lastUpgradeTime`): `rollbackBatch` trusts calldata `originalImplementations` without checking persisted state. Gate: *Dedicated Upgrade Governance & Implementation Verification Remediation Gate*.
+10. **LidoStETHIntegrator.sol** (`transfer`): Unchecked `IStETH.transferFrom` return value before crediting collateral shares. Gate: *Dedicated StETH Transfer Return Value Verification Remediation Gate*.
+11. **PythOracle.sol** (`typecast`): `_normalizePythPrice` fails to normalize price to 8 decimals for standard Pyth exponents. Gate: *Dedicated Pyth Exponent & Decimal Normalization Remediation Gate*.
+12. **CrossChainMessenger.sol** (`typecast`): `uint16(block.chainid)` truncation mismatches LayerZero endpoint chain IDs. Gate: *Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate*.
 
-#### ECONOMIC_OR_LOGIC_CHANGE_REQUIRED Root Findings (2 Items)
-1. **LiquidationQueue.sol** (`randomness`): Blockhash/timestamp entropy controls liquidation grace period timing and MEV resistance. Gate: *Liquidation Timing Randomness & MEV Remediation Gate*.
-2. **VotingEscrow.sol** (`typecast`): `int128` narrowing casts on user-controlled lock amounts without explicit bounds assertions. Gate: *Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate*.
+#### ECONOMIC_OR_LOGIC_CHANGE_REQUIRED Root Findings (3 Items)
+1. **LiquidationQueue.sol** (`randomness / starvation`): Blockhash/timestamp entropy controls liquidation grace period timing and MEV resistance; head starvation occurs when candidate execution reverts. Gate: *Liquidation Timing Randomness & MEV Remediation Gate*.
+2. **OracleSanityChecker.sol** (`checkPriceVolatility`): Volatility check method is a dummy implementation returning `true`, bypassing volatility validation. Gate: *Oracle Volatility Validation Model & Consumer Integration Remediation Gate*.
+3. **VotingEscrow.sol** (`typecast`): `int128` narrowing casts on user-controlled lock amounts without explicit bounds assertions. Gate: *Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate*.
 
-#### SECURITY_REVIEW_REQUIRED Highlights (4 Root Items)
-1. **ProtocolConfig.sol** (`setTimelockController`): Unobservable timelock authority rotation lacking event emissions. Gate: *ProtocolConfig Timelock Authority Rotation & Observability Gate*.
+#### SECURITY_REVIEW_REQUIRED Highlights (5 Root Items)
+1. **Critical Authority Rotation Observability Gaps**: Unobservable authority rotation lacking old/new event emissions across `PerpEngine.setGovernance`, `MarketRegistry.setConfigRegistry`, `OracleAggregator.setSecurityModule`, `OracleSecurity.updateAggregator`, `IncentiveDistributor.setLiquidationEngine`, and `ProtocolConfig.setTimelockController`. Gate: *Critical Authority Rotation & Governance Observability Remediation Gate*.
 2. **TransparentUpgradeableProxy.sol**: Unchecked constructor `admin_` zero-address assignment. Gate: *Dedicated Proxy Deployment & Admin Validation Audit Gate*.
 3. **AMMPool.sol**: `timeToNextFunding` timestamp modulo variance in mark price calculation. Gate: *Dedicated AMM Mark Price & Funding Interval Audit Gate*.
 4. **PositionManager.sol**: Unpaginated loop over NFT supply making external engine calls. Gate: *Dedicated PositionManager Pagination & Gas Limits Remediation Gate*.
+5. **Treasury.sol** (`raw ETH call`): Uncapped raw ETH call before deleting scheduled withdrawal entry. Gate: *Dedicated Treasury ETH-Transfer & Reentrancy Audit Gate*.
 
 ---
 
@@ -468,7 +472,31 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Log Security Review Gate
 
-### File: `contracts/governance/TimelockController.sol` (2 Diagnostics)
+### File: `contracts/governance/TimelockController.sol` (5 Diagnostics)
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L211)
+- **Lines**: L211, L211
+- **Count**: 2
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Governance, Timelock, Critical Operation Classification
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/governance/TimelockController.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/governance/TimelockController.sol`, unused parameters in `_isCriticalOperation` reflect an incomplete critical operation classification check.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Timelock Critical Operation Classification & Grace Enforcement Remediation Gate
+
+#### Diagnostic: `empty function body` (L232)
+- **Lines**: L232
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Governance, Timelock Minimum Delay
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/governance/TimelockController.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/governance/TimelockController.sol`, `_updateDelay(uint256 oldDelay, uint256 newDelay)` has an empty function body. Calling `updateMinDelay` emits `MinDelayUpdated` without updating the underlying OpenZeppelin timelock delay, creating a governance observability defect.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Timelock Minimum Delay State & Event Consistency Remediation Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L93, L171
@@ -1345,6 +1373,20 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Code-Specific Rationale**: Usage of `block.timestamp` in `contracts/oracles/OracleAggregator.sol` compares against explicit block epoch intervals or TWAP windows. Validator timestamp manipulation is strictly bounded by EVM/consensus constraints (max ~12 seconds in post-Merge Ethereum/L2s), which is orders of magnitude smaller than protocol settlement/funding intervals (e.g. 1 hour/8 hours).
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Time Oracle Audit Gate
+
+### File: `contracts/oracles/OracleSanityChecker.sol` (2 Diagnostics)
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L378)
+- **Lines**: L378, L378
+- **Count**: 2
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Oracle Integrity, Volatility Validation
+- **Classification**: `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/oracles/OracleSanityChecker.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/oracles/OracleSanityChecker.sol`, unused parameters in `checkPriceVolatility` highlight the dummy implementation of the volatility sanity check.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` until ECONOMIC_OR_LOGIC_CHANGE_REQUIRED remediation.
+- **Follow-up Gate**: Oracle Volatility Validation Model & Consumer Integration Remediation Gate
 
 ### File: `contracts/oracles/OracleSecurity.sol` (10 Diagnostics)
 

@@ -208,7 +208,7 @@ contract PerpDexTimelock is OZTimelock {
      * @dev Check if operation is critical
      * @return critical True if critical
      */
-    function _isCriticalOperation(address /* target */, bytes calldata /* data */)
+    function _isCriticalOperation(address target, bytes calldata data)
         internal 
         pure 
         returns (bool) 
@@ -229,7 +229,7 @@ contract PerpDexTimelock is OZTimelock {
     /**
      * @dev Update delay
      */
-    function _updateDelay(uint256 /* oldDelay */, uint256 /* newDelay */) internal {
+    function _updateDelay(uint256 oldDelay, uint256 newDelay) internal {
         // This would update the delay in the base contract
         // Implementation depends on OpenZeppelin version
         // For now, we emit event but don't modify
