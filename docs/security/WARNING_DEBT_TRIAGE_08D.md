@@ -5,24 +5,24 @@
 - **Repository Base SHA**: `a19a55107f480754d8916432a3ca95cde936abb2`
 - **Start Baseline Total**: 850
 - **Final Baseline Total**: 845
-- **Baseline Reduction**: 5 (Mechanically safe compiler warnings eliminated; 6 restored as unresolved security debt)
+- **Baseline Reduction**: 5 (Mechanically safe compiler warnings eliminated; 7 restored as unresolved security debt)
 - **Start Production Warning Debt**: 341
-- **Final Production Warning Debt**: 161
+- **Final Production Warning Debt**: 160
 - **Start Unresolved Security Debt**: 282
-- **Final Unresolved Security Debt**: 457 (168 reclassified + 1 Timelock reclassified + 6 restored compiler diagnostics)
+- **Final Unresolved Security Debt**: 458 (168 reclassified + 1 Timelock reclassified + 7 restored compiler diagnostics)
 
 ---
 
 ## Dispositions Breakdown
 
 ### Section A. Diagnostic-Level Disposition Totals
-The sum of diagnostic-level dispositions equals exactly 457 `UNRESOLVED_SECURITY_DEBT` entries in `warnings-baseline.json`:
+The sum of diagnostic-level dispositions equals exactly 458 `UNRESOLVED_SECURITY_DEBT` entries in `warnings-baseline.json`:
 
 - `CONTEXTUAL_ACCEPTED`: 285
 - `SECURITY_REVIEW_REQUIRED`: 127
 - `SECURITY_BLOCKER`: 35
-- `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`: 10
-- **Total Diagnostics**: 457
+- `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`: 11
+- **Total Diagnostics**: 458
 
 ### Section B. Root Security Findings Summary
 Root causes after grouping related static analyzer diagnostics into unique protocol vulnerabilities:
@@ -41,11 +41,12 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 11. **PythOracle.sol** (`typecast`): `_normalizePythPrice` fails to normalize price to 8 decimals for standard Pyth exponents. Gate: *Dedicated Pyth Exponent & Decimal Normalization Remediation Gate*.
 12. **CrossChainMessenger.sol** (`typecast`): `uint16(block.chainid)` truncation mismatches LayerZero endpoint chain IDs. Gate: *Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate*.
 
-#### ECONOMIC_OR_LOGIC_CHANGE_REQUIRED Root Findings (4 Items)
+#### ECONOMIC_OR_LOGIC_CHANGE_REQUIRED Root Findings (5 Items)
 1. **LiquidationQueue.sol** (`randomness / starvation`): Blockhash/timestamp entropy controls liquidation grace period timing and MEV resistance; head starvation occurs when candidate execution reverts. Gate: *Liquidation Timing Randomness & MEV Remediation Gate*.
 2. **OracleSanityChecker.sol** (`checkPriceVolatility`): Volatility check method is a dummy implementation returning `true`, bypassing volatility validation. Gate: *Oracle Volatility Validation Model & Consumer Integration Remediation Gate*.
 3. **OracleAggregator.sol** (`getTWAP`): TWAP method returns current spot aggregated price, bypassing time-weighted averaging. Gate: *Oracle Aggregator Historical TWAP Semantics & Consumer Integration Remediation Gate*.
-4. **VotingEscrow.sol** (`typecast`): `int128` narrowing casts on user-controlled lock amounts without explicit bounds assertions. Gate: *Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate*.
+4. **AMMPool.sol** (`getTWAFundingRate`): TWA funding rate method returns current funding rate, bypassing historical rate averaging. Gate: *AMM Historical Funding Rate & TWA Semantics Remediation Gate*.
+5. **VotingEscrow.sol** (`typecast`): `int128` narrowing casts on user-controlled lock amounts without explicit bounds assertions. Gate: *Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate*.
 
 #### SECURITY_REVIEW_REQUIRED Highlights (6 Root Items)
 1. **Critical Authority Rotation Observability Gaps**: Unobservable authority rotation lacking old/new event emissions across `PerpEngine.setGovernance`, `MarketRegistry.setConfigRegistry`, `OracleAggregator.setSecurityModule`, `OracleSecurity.updateAggregator`, `IncentiveDistributor.setLiquidationEngine`, and `ProtocolConfig.setTimelockController`. Gate: *Critical Authority Rotation & Governance Observability Remediation Gate*.
@@ -58,7 +59,19 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 ---
 
 ## Detailed Triage Inventory by Contract File
-### File: `contracts/core/AMMPool.sol` (20 Diagnostics)
+### File: `contracts/core/AMMPool.sol` (21 Diagnostics)
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L333)
+- **Lines**: L333
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: AMM Pool, Historical Funding Rate, TWAP
+- **Classification**: `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/core/AMMPool.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/core/AMMPool.sol`, unused parameter `period` in `getTWAFundingRate` exposes the pending historical funding rate averaging implementation fallback to current rate.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` until ECONOMIC_OR_LOGIC_CHANGE_REQUIRED remediation.
+- **Follow-up Gate**: AMM Historical Funding Rate & TWA Semantics Remediation Gate
 
 #### Diagnostic: `multiplication should occur before division to avoid loss of precision` (GENERAL)
 - **Lines**: L167
@@ -1559,7 +1572,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Follow-up Gate**: ABI Encoding Standardization Gate
 
 #### Diagnostic: ``guardian` is changed without an event but is used for access control` (GENERAL)
-- **Lines**: L295
+- **Lines**: L296
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Governance, Access Control, Observability
@@ -1571,7 +1584,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
-- **Lines**: L178, L257, L386
+- **Lines**: L179, L258, L387
 - **Count**: 3
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Oracle Integrity, Time-based Logic, Funding Accumulation
