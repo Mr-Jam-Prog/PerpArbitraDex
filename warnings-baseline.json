@@ -336,14 +336,6 @@
         "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
     },
     {
-        "file": "contracts/core/AMMPool.sol",
-        "line": 333,
-        "column": 5,
-        "message": "Function state mutability can be restricted to view",
-        "raw_warning": "Warning: Function state mutability can be restricted to view",
-        "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
-    },
-    {
         "file": "contracts/core/PositionManager.sol",
         "line": 291,
         "column": 5,

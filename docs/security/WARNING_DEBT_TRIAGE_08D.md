@@ -4,12 +4,12 @@
 
 - **Repository Base SHA**: `a19a55107f480754d8916432a3ca95cde936abb2`
 - **Start Baseline Total**: 850
-- **Final Baseline Total**: 847
-- **Baseline Reduction**: 3 (Mechanically safe compiler warnings eliminated; 8 restored as unresolved security debt)
+- **Final Baseline Total**: 846
+- **Baseline Reduction**: 4 (Mechanically safe compiler warnings eliminated; 7 restored as unresolved security debt)
 - **Start Production Warning Debt**: 341
-- **Final Production Warning Debt**: 162
+- **Final Production Warning Debt**: 160
 - **Start Unresolved Security Debt**: 282
-- **Final Unresolved Security Debt**: 458 (168 reclassified + 1 Timelock reclassified + 8 restored compiler diagnostics)
+- **Final Unresolved Security Debt**: 458 (168 reclassified + 1 Timelock reclassified + 7 restored compiler diagnostics)
 
 ---
 
