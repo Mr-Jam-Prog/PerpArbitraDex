@@ -7,7 +7,7 @@
 - **Final Baseline Total**: 846
 - **Baseline Reduction**: 4 (Mechanically safe compiler warnings eliminated; 7 restored as unresolved security debt)
 - **Start Production Warning Debt**: 341
-- **Final Production Warning Debt**: 160
+- **Final Production Warning Debt**: 161
 - **Start Unresolved Security Debt**: 282
 - **Final Unresolved Security Debt**: 458 (168 reclassified + 1 Timelock reclassified + 7 restored compiler diagnostics)
 
@@ -18,16 +18,16 @@
 ### Section A. Diagnostic-Level Disposition Totals
 The sum of diagnostic-level dispositions equals exactly 458 `UNRESOLVED_SECURITY_DEBT` entries in `warnings-baseline.json`:
 
-- `CONTEXTUAL_ACCEPTED`: 285
+- `CONTEXTUAL_ACCEPTED`: 284
 - `SECURITY_REVIEW_REQUIRED`: 127
-- `SECURITY_BLOCKER`: 35
+- `SECURITY_BLOCKER`: 36
 - `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`: 11
 - **Total Diagnostics**: 458
 
 ### Section B. Root Security Findings Summary
 Root causes after grouping related static analyzer diagnostics into unique protocol vulnerabilities:
 
-#### SECURITY_BLOCKER Root Findings (12 Items)
+#### SECURITY_BLOCKER Root Findings (13 Items)
 1. **TimelockController.sol** (`_isCriticalOperation`): Critical operation classification is disabled (returns `false`), bypassing critical operation grace period enforcement. Gate: *Timelock Critical Operation Classification & Grace Enforcement Remediation Gate*.
 2. **TimelockController.sol** (`_updateDelay`): Minimum delay update has an empty body, causing `updateMinDelay` to emit `MinDelayUpdated` without mutating the underlying timelock delay. Gate: *Timelock Minimum Delay State & Event Consistency Remediation Gate*.
 3. **EmissionController.sol** (`claim`): Permissionless emission claim / treasury allowance drain (`external caller -> EmissionController.claim() -> _calculateAvailable(scheduleId, msg.sender) -> schedule-wide available amount -> token.safeTransferFrom(treasury, msg.sender, amount)`). Gate: *Emission Claim Entitlement & Treasury Authorization Remediation Gate*.
@@ -37,9 +37,10 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 7. **FlashLiquidator.sol** (`reentrancy`): ReentrancyGuard lock collision between `executeFlashLiquidation` and Aave callback `executeOperation`. Gate: *Dedicated Flash Loan Reentrancy & Callback Architecture Remediation Gate*.
 8. **Treasury.sol** (`scheduledWithdrawals`): Operation hash mismatch between `scheduleWithdrawal` and `executeWithdrawal` (`salt` vs `bytes32(0)`). Gate: *Dedicated Treasury Timelock Hash Alignment Remediation Gate*.
 9. **UpgradeExecutor.sol** (`lastUpgradeTime`): `rollbackBatch` trusts calldata `originalImplementations` without checking persisted state. Gate: *Dedicated Upgrade Governance & Implementation Verification Remediation Gate*.
-10. **LidoStETHIntegrator.sol** (`transfer`): Unchecked `IStETH.transferFrom` return value before crediting collateral shares. Gate: *Dedicated StETH Transfer Return Value Verification Remediation Gate*.
-11. **PythOracle.sol** (`typecast`): `_normalizePythPrice` fails to normalize price to 8 decimals for standard Pyth exponents. Gate: *Dedicated Pyth Exponent & Decimal Normalization Remediation Gate*.
-12. **CrossChainMessenger.sol** (`typecast`): `uint16(block.chainid)` truncation mismatches LayerZero endpoint chain IDs. Gate: *Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate*.
+10. **LidoStETHIntegrator.sol** (`stETH.transferFrom`): Unchecked `IStETH.transferFrom` return value before crediting collateral shares. Gate: *Dedicated StETH Transfer Return Value Verification Remediation Gate*.
+11. **LidoStETHIntegrator.sol** (`_stETHToWstETH`): Broken wstETH conversion placeholder breaks collateral conservation (`wrapETH(useWstETH=true) -> _submitToLido() -> receive stETH -> _stETHToWstETH(stETHAmount) -> raw stETH.approve() -> NO wstETH.wrap() -> returns stETHAmount as fake wstETH -> wstETH.safeTransfer(msg.sender, amount)`). Causes reverts when no wstETH inventory exists or transfers pre-existing wstETH collateral held for other depositors. Gate: *Lido wstETH Wrap, Approval & Collateral Conservation Remediation Gate*.
+12. **PythOracle.sol** (`typecast`): `_normalizePythPrice` fails to normalize price to 8 decimals for standard Pyth exponents. Gate: *Dedicated Pyth Exponent & Decimal Normalization Remediation Gate*.
+13. **CrossChainMessenger.sol** (`typecast`): `uint16(block.chainid)` truncation mismatches LayerZero endpoint chain IDs. Gate: *Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate*.
 
 #### ECONOMIC_OR_LOGIC_CHANGE_REQUIRED Root Findings (5 Items)
 1. **LiquidationQueue.sol** (`randomness / starvation`): Blockhash/timestamp entropy controls liquidation grace period timing and MEV resistance; head starvation occurs when candidate execution reverts. Gate: *Liquidation Timing Randomness & MEV Remediation Gate*.
@@ -857,21 +858,33 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Classification**: `SECURITY_BLOCKER`
 - **Code Path & Reachability**: Production path in `contracts/integration/LidoStETHIntegrator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Direct `IStETH.transferFrom` return values are not validated before crediting user collateral shares, permitting share minting without confirmed token transfers if a non-reverting transfer failure occurs.
+- **Code-Specific Rationale**: Direct raw `IStETH.transferFrom` calls in `LidoStETHIntegrator` fail to validate return values before crediting user collateral shares, permitting share minting without confirmed token transfers if a non-reverting transfer failure occurs.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
 - **Follow-up Gate**: Dedicated StETH Transfer Return Value Verification Remediation Gate
 
-#### Diagnostic: `Return value of an external call is not used` (GENERAL)
-- **Lines**: L381, L395
-- **Count**: 2
+#### Diagnostic: `Return value of an external call is not used` (L381)
+- **Lines**: L381
+- **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: External ERC20 Token Interactions
+- **Domains Involved**: External Call, Lido Staking, Balance Delta Measurement
 - **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/integration/LidoStETHIntegrator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/integration/LidoStETHIntegrator.sol`, ERC20 interactions use OpenZeppelin `SafeERC20` wrapper functions (`safeTransfer`, `safeTransferFrom`), reverting atomically on failed token transfers.
+- **Code-Specific Rationale**: In `contracts/integration/LidoStETHIntegrator.sol`, `_submitToLido` ignores the `uint256` shares return value of `stETH.submit{value: msg.value}(referral)`. Submission failure reverts atomically in the Lido contract. The integrator measures actual received stETH via balance delta (`stETH.balanceOf(address(this))` after minus before), ensuring accuracy without relying on unvalidated return values.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: SafeERC20 Audit Gate
+- **Follow-up Gate**: Lido Integration Audit Gate
+
+#### Diagnostic: `Return value of an external call is not used` (L395)
+- **Lines**: L395
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: External Collateral Integration, Asset Conservation, wstETH Wrapping
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/integration/LidoStETHIntegrator.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/integration/LidoStETHIntegrator.sol`, `_stETHToWstETH` executes raw `stETH.approve(address(wstETH), stETHAmount)` without checking return values, without invoking `wstETH.wrap(stETHAmount)`, and returning `stETHAmount` as a fake 1:1 wstETH conversion placeholder. Calling `wrapETH(useWstETH=true)` then attempts `wstETH.safeTransfer(msg.sender, wstETHAmount)`, causing reverts if no wstETH balance exists, or transferring pre-existing wstETH collateral held for other depositors, violating collateral conservation.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Lido wstETH Wrap, Approval & Collateral Conservation Remediation Gate
 
 #### Diagnostic: ``userShares` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L223
@@ -917,7 +930,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Classification**: `SECURITY_BLOCKER`
 - **Code Path & Reachability**: Production path in `contracts/integration/LidoStETHIntegrator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Direct `IStETH.transferFrom` return values are not validated before crediting user collateral shares, permitting share minting without confirmed token transfers if a non-reverting transfer failure occurs.
+- **Code-Specific Rationale**: Direct raw `IStETH.transferFrom` calls in `LidoStETHIntegrator` fail to validate return values before crediting user collateral shares, permitting share minting without confirmed token transfers if a non-reverting transfer failure occurs.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
 - **Follow-up Gate**: Dedicated StETH Transfer Return Value Verification Remediation Gate
 
