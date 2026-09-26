@@ -18,8 +18,8 @@
 ### Section A. Diagnostic-Level Disposition Totals
 The sum of diagnostic-level dispositions equals exactly 458 `UNRESOLVED_SECURITY_DEBT` entries in `warnings-baseline.json`:
 
-- `CONTEXTUAL_ACCEPTED`: 284
-- `SECURITY_REVIEW_REQUIRED`: 127
+- `CONTEXTUAL_ACCEPTED`: 283
+- `SECURITY_REVIEW_REQUIRED`: 128
 - `SECURITY_BLOCKER`: 36
 - `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`: 11
 - **Total Diagnostics**: 458
@@ -49,13 +49,14 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 4. **AMMPool.sol** (`getTWAFundingRate`): TWA funding rate method returns current funding rate, bypassing historical rate averaging. Gate: *AMM Historical Funding Rate & TWA Semantics Remediation Gate*.
 5. **VotingEscrow.sol** (`typecast`): `int128` narrowing casts on user-controlled lock amounts without explicit bounds assertions. Gate: *Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate*.
 
-#### SECURITY_REVIEW_REQUIRED Highlights (6 Root Items)
-1. **Critical Authority Rotation Observability Gaps**: Unobservable authority rotation lacking old/new event emissions across `PerpEngine.setGovernance`, `MarketRegistry.setConfigRegistry`, `OracleAggregator.setSecurityModule`, `OracleSecurity.updateAggregator`, `IncentiveDistributor.setLiquidationEngine`, and `ProtocolConfig.setTimelockController`. Gate: *Critical Authority Rotation & Governance Observability Remediation Gate*.
-2. **CircuitBreaker.sol** (`triggerBreaker`): Manual trigger reason parameter is discarded and omitted from events. Gate: *Circuit Breaker Incident Reason & Emergency Auditability Remediation Gate*.
-3. **TransparentUpgradeableProxy.sol**: Unchecked constructor `admin_` zero-address assignment. Gate: *Dedicated Proxy Deployment & Admin Validation Audit Gate*.
-4. **AMMPool.sol**: `timeToNextFunding` timestamp modulo variance in mark price calculation. Gate: *Dedicated AMM Mark Price & Funding Interval Audit Gate*.
-5. **PositionManager.sol**: Unpaginated loop over NFT supply making external engine calls. Gate: *Dedicated PositionManager Pagination & Gas Limits Remediation Gate*.
-6. **Treasury.sol** (`raw ETH call`): Uncapped raw ETH call before deleting scheduled withdrawal entry. Gate: *Dedicated Treasury ETH-Transfer & Reentrancy Audit Gate*.
+#### SECURITY_REVIEW_REQUIRED Root Findings (7 Items)
+1. **AaveFlashLoanIntegrator.sol** (`_createRequestId`): Request identity hash `keccak256(abi.encodePacked(positionId, msg.sender, block.timestamp, loanAmount))` lacks nonce and excludes `minReward`. Same-block requests with identical parameters from `flashLiquidator` collide and overwrite `activeRequests[requestId]`. Gate: *Aave Flash Loan Request Identity, Replay & Lifecycle Remediation Gate*.
+2. **Critical Authority Rotation Observability Gaps**: Unobservable authority rotation lacking old/new event emissions across `PerpEngine.setGovernance`, `MarketRegistry.setConfigRegistry`, `OracleAggregator.setSecurityModule`, `OracleSecurity.updateAggregator`, `IncentiveDistributor.setLiquidationEngine`, and `ProtocolConfig.setTimelockController`. Gate: *Critical Authority Rotation & Governance Observability Remediation Gate*.
+3. **CircuitBreaker.sol** (`triggerBreaker`): Manual trigger reason parameter is discarded and omitted from events. Gate: *Circuit Breaker Incident Reason & Emergency Auditability Remediation Gate*.
+4. **TransparentUpgradeableProxy.sol**: Unchecked constructor `admin_` zero-address assignment. Gate: *Dedicated Proxy Deployment & Admin Validation Audit Gate*.
+5. **AMMPool.sol**: `timeToNextFunding` timestamp modulo variance in mark price calculation. Gate: *Dedicated AMM Mark Price & Funding Interval Audit Gate*.
+6. **PositionManager.sol**: Unpaginated loop over NFT supply making external engine calls. Gate: *Dedicated PositionManager Pagination & Gas Limits Remediation Gate*.
+7. **Treasury.sol** (`raw ETH call`): Uncapped raw ETH call before deleting scheduled withdrawal entry. Gate: *Dedicated Treasury ETH-Transfer & Reentrancy Audit Gate*.
 
 ---
 
@@ -510,7 +511,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Classification**: `SECURITY_BLOCKER`
 - **Code Path & Reachability**: Production path in `contracts/governance/TimelockController.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/governance/TimelockController.sol`, `_updateDelay(uint256 oldDelay, uint256 newDelay)` has an empty function body. Calling `updateMinDelay` emits `MinDelayUpdated` without updating the underlying OpenZeppelin timelock delay, creating a governance observability defect.
+- **Code-Specific Rationale**: In `contracts/governance/TimelockController.sol`, `_updateDelay(uint256 oldDelay, uint256 newDelay)` has an empty function body. Calling `updateMinDelay` emits `MinDelayUpdated` without mutating the underlying OpenZeppelin timelock delay, creating a governance observability defect.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
 - **Follow-up Gate**: Timelock Minimum Delay State & Event Consistency Remediation Gate
 
@@ -688,17 +689,17 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Log Security Review Gate
 
-#### Diagnostic: `weak randomness derived from a predictable on-chain value` (GENERAL)
+#### Diagnostic: `weak randomness derived from a predictable on-chain value` (L138)
 - **Lines**: L138
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Liquidation Queue, Randomness
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Domains Involved**: Flash Loan Request Identity, Replay Protection, Request Lifecycle, Auditability
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/integration/AaveFlashLoanIntegrator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/integration/AaveFlashLoanIntegrator.sol`, pseudo-random ordering is used solely for non-critical tie-breaking in liquidation queue candidate selection, where cryptographic randomness is not required for protocol security.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Liquidation Queue Audit Gate
+- **Code-Specific Rationale**: In `contracts/integration/AaveFlashLoanIntegrator.sol`, `initiateFlashLoan` calculates `requestId = keccak256(abi.encodePacked(positionId, msg.sender, block.timestamp, loanAmount))` where `msg.sender` is the fixed `onlyFlashLiquidator`. Same-block requests with equal `positionId` and `loanAmount` generate the same `requestId`, overwriting `activeRequests[requestId]`. `minReward` is also omitted from the hash.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Aave Flash Loan Request Identity, Replay & Lifecycle Remediation Gate
 
 ### File: `contracts/integration/AccountAbstractionAdapter.sol` (7 Diagnostics)
 
@@ -1382,13 +1383,13 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Lines**: L258
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Events, Off-chain Indexing, Logging
+- **Domains Involved**: Oracle Aggregator, Static Calls, Read-only Oracles, Log Ordering
 - **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/oracles/OracleAggregator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/oracles/OracleAggregator.sol`, event emissions occur after successful external state transitions (e.g. ERC20 transfer completion or vault settlement). Reentrancy protection prevents reordering of log events, and off-chain indexers receive atomic state change logs.
+- **Code-Specific Rationale**: In `contracts/oracles/OracleAggregator.sol`, `updatePrice()` performs external price reads via `_fetchSourcePrice()` (which invokes view functions on Chainlink, Pyth, or TWAP feeds), `OracleSanityChecker.validatePrice()`, and `IOracleSecurity.shouldFreeze()`. All external interactions preceding the `PriceUpdated` event are read-only view calls executed with EVM `STATICCALL` semantics, which propagate a static execution context and prevent callees from mutating state.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Log Security Review Gate
+- **Follow-up Gate**: Oracle Aggregator Read-only Static Call Audit Gate
 
 #### Diagnostic: `external call inside a loop` (GENERAL)
 - **Lines**: L457, L461, L465
