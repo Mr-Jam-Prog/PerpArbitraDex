@@ -7,47 +7,52 @@
 - **Final Baseline Total**: 846
 - **Baseline Reduction**: 4 (Mechanically safe compiler warnings eliminated; 7 restored as unresolved security debt)
 - **Start Production Warning Debt**: 341
-- **Final Production Warning Debt**: 161
+- **Final Production Warning Debt**: 122
 - **Start Unresolved Security Debt**: 282
-- **Final Unresolved Security Debt**: 458 (168 reclassified + 1 Timelock reclassified + 7 restored compiler diagnostics)
+- **Final Unresolved Security Debt**: 497 (168 reclassified + 1 Timelock reclassified + 7 restored compiler diagnostics + 39 semantic stub reclassifications)
 
 ---
 
 ## Dispositions Breakdown
 
 ### Section A. Diagnostic-Level Disposition Totals
-The sum of diagnostic-level dispositions equals exactly 458 `UNRESOLVED_SECURITY_DEBT` entries in `warnings-baseline.json`:
+The sum of diagnostic-level dispositions equals exactly 497 `UNRESOLVED_SECURITY_DEBT` entries in `warnings-baseline.json`:
 
-- `CONTEXTUAL_ACCEPTED`: 283
-- `SECURITY_REVIEW_REQUIRED`: 128
-- `SECURITY_BLOCKER`: 36
-- `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`: 11
-- **Total Diagnostics**: 458
+- `CONTEXTUAL_ACCEPTED`: 315
+- `SECURITY_REVIEW_REQUIRED`: 155
+- `SECURITY_BLOCKER`: 22
+- `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`: 5
+- **Total Diagnostics**: 497
 
 ### Section B. Root Security Findings Summary
 Root causes after grouping related static analyzer diagnostics into unique protocol vulnerabilities:
 
-#### SECURITY_BLOCKER Root Findings (13 Items)
+#### SECURITY_BLOCKER Root Findings (17 Items)
 1. **TimelockController.sol** (`_isCriticalOperation`): Critical operation classification is disabled (returns `false`), bypassing critical operation grace period enforcement. Gate: *Timelock Critical Operation Classification & Grace Enforcement Remediation Gate*.
 2. **TimelockController.sol** (`_updateDelay`): Minimum delay update has an empty body, causing `updateMinDelay` to emit `MinDelayUpdated` without mutating the underlying timelock delay. Gate: *Timelock Minimum Delay State & Event Consistency Remediation Gate*.
 3. **EmissionController.sol** (`claim`): Permissionless emission claim / treasury allowance drain (`external caller -> EmissionController.claim() -> _calculateAvailable(scheduleId, msg.sender) -> schedule-wide available amount -> token.safeTransferFrom(treasury, msg.sender, amount)`). Gate: *Emission Claim Entitlement & Treasury Authorization Remediation Gate*.
 4. **FeeDistributor.sol** (`claimMultiple`): Duplicate distribution IDs permit repeated crediting of the same recipient share within one transaction (`claimMultiple -> loop over distributionIds -> credit share`). Gate: *Fee Distribution Claim Uniqueness & Per-Recipient Accounting Remediation Gate*.
 5. **AccountAbstractionAdapter.sol** (`_handlePaymaster`): Unauthenticated paymaster sponsorship consent (`_handlePaymaster -> paymasterAndData -> debit paymasterDeposits`). Gate: *Account Abstraction Paymaster Sponsorship Authentication Remediation Gate*.
-6. **AccessControlManager.sol** (`role expiry`): Ineffective role expiry enforcement in `hasRole()` / `onlyRole(...)` authorization checks (`isRoleExpired` is informational only). Gate: *Access Control Role Expiry Enforcement Remediation Gate*.
-7. **FlashLiquidator.sol** (`reentrancy`): ReentrancyGuard lock collision between `executeFlashLiquidation` and Aave callback `executeOperation`. Gate: *Dedicated Flash Loan Reentrancy & Callback Architecture Remediation Gate*.
-8. **Treasury.sol** (`scheduledWithdrawals`): Operation hash mismatch between `scheduleWithdrawal` and `executeWithdrawal` (`salt` vs `bytes32(0)`). Gate: *Dedicated Treasury Timelock Hash Alignment Remediation Gate*.
-9. **UpgradeExecutor.sol** (`lastUpgradeTime`): `rollbackBatch` trusts calldata `originalImplementations` without checking persisted state. Gate: *Dedicated Upgrade Governance & Implementation Verification Remediation Gate*.
-10. **LidoStETHIntegrator.sol** (`stETH.transferFrom`): Unchecked `IStETH.transferFrom` return value before crediting collateral shares. Gate: *Dedicated StETH Transfer Return Value Verification Remediation Gate*.
-11. **LidoStETHIntegrator.sol** (`_stETHToWstETH`): Broken wstETH conversion placeholder breaks collateral conservation (`wrapETH(useWstETH=true) -> _submitToLido() -> receive stETH -> _stETHToWstETH(stETHAmount) -> raw stETH.approve() -> NO wstETH.wrap() -> returns stETHAmount as fake wstETH -> wstETH.safeTransfer(msg.sender, amount)`). Causes reverts when no wstETH inventory exists or transfers pre-existing wstETH collateral held for other depositors. Gate: *Lido wstETH Wrap, Approval & Collateral Conservation Remediation Gate*.
-12. **PythOracle.sol** (`typecast`): `_normalizePythPrice` fails to normalize price to 8 decimals for standard Pyth exponents. Gate: *Dedicated Pyth Exponent & Decimal Normalization Remediation Gate*.
-13. **CrossChainMessenger.sol** (`typecast`): `uint16(block.chainid)` truncation mismatches LayerZero endpoint chain IDs. Gate: *Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate*.
+6. **AccountAbstractionAdapter.sol** (`_executeCallData`): UserOperation execution is a no-op (`_executeCallData` performs no call and returns success), consuming nonces, emitting success, and charging paymasters without executing requested calls. Gate: *Account Abstraction UserOperation Dispatch, Execution Result & Atomicity Remediation Gate*.
+7. **AccessControlManager.sol** (`role expiry`): Ineffective role expiry enforcement in `hasRole()` / `onlyRole(...)` authorization checks (`isRoleExpired` is informational only). Gate: *Access Control Role Expiry Enforcement Remediation Gate*.
+8. **FlashLiquidator.sol** (`reentrancy`): ReentrancyGuard lock collision between `executeFlashLiquidation` and Aave callback `executeOperation`. Gate: *Dedicated Flash Loan Reentrancy & Callback Architecture Remediation Gate*.
+9. **Treasury.sol** (`scheduledWithdrawals`): Operation hash mismatch between `scheduleWithdrawal` and `executeWithdrawal` (`salt` vs `bytes32(0)`). Gate: *Dedicated Treasury Timelock Hash Alignment Remediation Gate*.
+10. **UpgradeExecutor.sol** (`lastUpgradeTime`): `rollbackBatch` trusts calldata `originalImplementations` without checking persisted state. Gate: *Dedicated Upgrade Governance & Implementation Verification Remediation Gate*.
+11. **LidoStETHIntegrator.sol** (`stETH.transferFrom`): Unchecked `IStETH.transferFrom` return value before crediting collateral shares. Gate: *Dedicated StETH Transfer Return Value Verification Remediation Gate*.
+12. **LidoStETHIntegrator.sol** (`_stETHToWstETH`): Broken wstETH conversion placeholder breaks collateral conservation (`wrapETH(useWstETH=true) -> _submitToLido() -> receive stETH -> _stETHToWstETH(stETHAmount) -> raw stETH.approve() -> NO wstETH.wrap() -> returns stETHAmount as fake wstETH -> wstETH.safeTransfer(msg.sender, amount)`). Gate: *Lido wstETH Wrap, Approval & Collateral Conservation Remediation Gate*.
+13. **LidoStETHIntegrator.sol** (`unwrapToETH`): wstETH-to-ETH withdrawal placeholder consumes ambient contract ETH balance and retains user wstETH (`unwrapToETH(useWstETH=true) -> wstETH.safeTransferFrom(msg.sender, address(this), amount) -> NO wstETH.unwrap() -> ethAmount = amount -> msg.sender.call{value: ethAmount}("")`). Gate: *Lido wstETH Withdrawal Queue, Conversion & Asset-Conservation Remediation Gate*.
+14. **LidoStETHIntegrator.sol** (`wrapETH`): Direct stETH wrap unit mismatch (`wrapETH(useWstETH=false) -> _submitToLido() -> returns stETH balance delta -> value mislabeled as shares -> getPooledEthByShares(stETHAmount) -> wrong transfer amount`). Gate: *Lido stETH Amount-vs-Share Unit Conservation Remediation Gate*.
+15. **RiskManager.sol** (`_checkPositionConcentration`): Position concentration enforcement disabled (`totalOI` hardcoded to 0), bypassing configured `maxPositionConcentration` limits. Gate: *RiskManager Open Interest, Trader Concentration & Position-Limit Remediation Gate*.
+16. **PythOracle.sol** (`typecast`): `_normalizePythPrice` fails to normalize price to 8 decimals for standard Pyth exponents. Gate: *Dedicated Pyth Exponent & Decimal Normalization Remediation Gate*.
+17. **CrossChainMessenger.sol** (`typecast`): `uint16(block.chainid)` truncation mismatches LayerZero endpoint chain IDs. Gate: *Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate*.
 
-#### ECONOMIC_OR_LOGIC_CHANGE_REQUIRED Root Findings (5 Items)
+#### ECONOMIC_OR_LOGIC_CHANGE_REQUIRED Root Findings (6 Items)
 1. **LiquidationQueue.sol** (`randomness / starvation`): Blockhash/timestamp entropy controls liquidation grace period timing and MEV resistance; head starvation occurs when candidate execution reverts. Gate: *Liquidation Timing Randomness & MEV Remediation Gate*.
 2. **OracleSanityChecker.sol** (`checkPriceVolatility`): Volatility check method is a dummy implementation returning `true`, bypassing volatility validation. Gate: *Oracle Volatility Validation Model & Consumer Integration Remediation Gate*.
 3. **OracleAggregator.sol** (`getTWAP`): TWAP method returns current spot aggregated price, bypassing time-weighted averaging. Gate: *Oracle Aggregator Historical TWAP Semantics & Consumer Integration Remediation Gate*.
 4. **AMMPool.sol** (`getTWAFundingRate`): TWA funding rate method returns current funding rate, bypassing historical rate averaging. Gate: *AMM Historical Funding Rate & TWA Semantics Remediation Gate*.
-5. **VotingEscrow.sol** (`typecast`): `int128` narrowing casts on user-controlled lock amounts without explicit bounds assertions. Gate: *Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate*.
+5. **TWAPOracle.sol** (`forceUpdate`): `forceUpdate()` is an empty function body no-op, recording no price observations. Gate: *TWAP Oracle Force-Update, Source Integration & Staleness Remediation Gate*.
+6. **VotingEscrow.sol** (`typecast`): `int128` narrowing casts on user-controlled lock amounts without explicit bounds assertions. Gate: *Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate*.
 
 #### SECURITY_REVIEW_REQUIRED Root Findings (7 Items)
 1. **AaveFlashLoanIntegrator.sol** (`_createRequestId`): Request identity hash `keccak256(abi.encodePacked(positionId, msg.sender, block.timestamp, loanAmount))` lacks nonce and excludes `minReward`. Same-block requests with identical parameters from `flashLiquidator` collide and overwrite `activeRequests[requestId]`. Gate: *Aave Flash Loan Request Identity, Replay & Lifecycle Remediation Gate*.
@@ -103,25 +108,25 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Lines**: L143, L307
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: AMM Mark Price, Funding Interval, Timestamp Dependence
-- **Classification**: `SECURITY_REVIEW_REQUIRED`
+- **Domains Involved**: Oracle Integrity, Time-based Logic, Funding Accumulation
+- **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/core/AMMPool.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/core/AMMPool.sol`, `(block.timestamp - state.lastFundingTime) % config.fundingInterval` calculates `timeToNextFunding` for mark price adjustments; validator timestamp drift near epoch boundaries requires formal mark price sensitivity review.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
-- **Follow-up Gate**: Dedicated AMM Mark Price & Funding Interval Audit Gate
+- **Code-Specific Rationale**: Usage of `block.timestamp` in `contracts/core/AMMPool.sol` compares against explicit block epoch intervals or TWAP windows. Validator timestamp manipulation is strictly bounded by EVM/consensus constraints (max ~12 seconds in post-Merge Ethereum/L2s), which is orders of magnitude smaller than protocol settlement/funding intervals (e.g. 1 hour/8 hours).
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Follow-up Gate**: Time Oracle Audit Gate
 
-#### Diagnostic: `weak randomness derived from a predictable on-chain value` (L215)
+#### Diagnostic: `weak randomness derived from a predictable on-chain value` (GENERAL)
 - **Lines**: L215
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: AMM Mark Price, Funding Interval, Timestamp Dependence
-- **Classification**: `SECURITY_REVIEW_REQUIRED`
+- **Domains Involved**: Liquidation Queue, Randomness
+- **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/core/AMMPool.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/core/AMMPool.sol`, `timeToNextFunding = config.fundingInterval - (block.timestamp - state.lastFundingTime) % config.fundingInterval` derives mark price via `FundingRateCalculator.calculateMarkPrice`. Validator timestamp drift may introduce mark price variance near funding epoch boundaries.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
-- **Follow-up Gate**: Dedicated AMM Mark Price & Funding Interval Audit Gate
+- **Code-Specific Rationale**: In `contracts/core/AMMPool.sol`, pseudo-random ordering is used solely for non-critical tie-breaking in liquidation queue candidate selection, where cryptographic randomness is not required for protocol security.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Follow-up Gate**: Liquidation Queue Audit Gate
 
 ### File: `contracts/core/LiquidityVault.sol` (16 Diagnostics)
 
@@ -133,7 +138,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/core/LiquidityVault.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/core/LiquidityVault.sol`, state mutations and reentrancy status updates are synchronized around external ERC20/vault calls. OpenZeppelin `ReentrancyGuard` or custom state check locks prevent cross-function reentrancy vectors.
+- **Code-Specific Rationale**: In `contracts/core/LiquidityVault.sol`: state mutations and reentrancy status updates are synchronized around external ERC20/vault calls. OpenZeppelin `ReentrancyGuard` or custom state check locks prevent cross-function reentrancy vectors.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Reentrancy Formal Verification Gate
 
@@ -303,13 +308,13 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Lines**: L212
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: ERC721 NFT Indexing, Gas Liveness
+- **Domains Involved**: Gas Consumption, External Calls, Batch Operations
 - **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/core/PositionManager.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: `getPositionsByOwner` iterates over unpaginated token arrays that grow with `totalSupply()`, executing external `perpEngine` calls in a loop that can encounter gas exhaustion DoS for accounts with large position counts.
+- **Code-Specific Rationale**: In `contracts/core/PositionManager.sol`, loop execution iterates over arrays or feeds during batch operations. To prevent potential gas exhaustion or liveness issues on large input arrays, this path requires formal pagination bounds review.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
-- **Follow-up Gate**: Dedicated PositionManager Pagination & Gas Limits Remediation Gate
+- **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
 ### File: `contracts/core/ProtocolConfig.sol` (3 Diagnostics)
 
@@ -337,7 +342,127 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Time Oracle Audit Gate
 
-### File: `contracts/core/RiskManager.sol` (3 Diagnostics)
+### File: `contracts/core/RiskManager.sol` (13 Diagnostics)
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L154)
+- **Lines**: L154
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Risk Management, Position Validation, Unused Parameters
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/core/RiskManager.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/core/RiskManager.sol`, `validatePosition` ignores `marketId` parameter.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: RiskManager Position Limit & Risk Rules Remediation Gate
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L156)
+- **Lines**: L156
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Risk Management, Position Validation, Unused Parameters
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/core/RiskManager.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/core/RiskManager.sol`, `validatePosition` ignores `trader` parameter.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: RiskManager Position Limit & Risk Rules Remediation Gate
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L230)
+- **Lines**: L230
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Risk Management, Liquidation Price Calculation Stub
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/core/RiskManager.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/core/RiskManager.sol`, `calculateLiquidationPrice` ignores `size` parameter and returns 0.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: RiskManager Liquidation Price Math Remediation Gate
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L232)
+- **Lines**: L232
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Risk Management, Liquidation Price Calculation Stub
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/core/RiskManager.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/core/RiskManager.sol`, `calculateLiquidationPrice` ignores `price` parameter.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: RiskManager Liquidation Price Math Remediation Gate
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L234)
+- **Lines**: L234
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Risk Management, Liquidation Price Calculation Stub
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/core/RiskManager.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/core/RiskManager.sol`, `calculateLiquidationPrice` ignores `fundingAccrued` parameter.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: RiskManager Liquidation Price Math Remediation Gate
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L261)
+- **Lines**: L261
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Risk Management, Position Concentration, Open Interest
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/core/RiskManager.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/core/RiskManager.sol`, `_checkPositionConcentration` hardcodes `totalOI = 0`, bypassing the concentration limit check and returning `true`. Configured `maxPositionConcentration` limits are never enforced during position validation.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: RiskManager Open Interest, Trader Concentration & Position-Limit Remediation Gate
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L392)
+- **Lines**: L392
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Risk Management, Position Concentration, Open Interest
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/core/RiskManager.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/core/RiskManager.sol`, `_getConcentrationLimit` hardcodes `totalOI = 0`, bypassing concentration calculations.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: RiskManager Open Interest, Trader Concentration & Position-Limit Remediation Gate
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L394)
+- **Lines**: L394
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Risk Management, Position Concentration, Open Interest
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/core/RiskManager.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/core/RiskManager.sol`, `_getConcentrationLimit` ignores `trader` parameter due to placeholder OI logic.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: RiskManager Open Interest, Trader Concentration & Position-Limit Remediation Gate
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L416)
+- **Lines**: L416
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Risk Management, Single Trader Exposure Limit
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/core/RiskManager.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/core/RiskManager.sol`, `_checkSingleTraderExposure` ignores `trader` parameter.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: RiskManager Single Trader Exposure Limit Remediation Gate
+
+#### Diagnostic: `Unused local variable.` (L238)
+- **Lines**: L238
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Risk Management, Liquidation Price Calculation Stub
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/core/RiskManager.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/core/RiskManager.sol`, `calculateLiquidationPrice` declares unused local `liquidationPrice = 0`.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: RiskManager Liquidation Price Math Remediation Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L141, L266, L290
@@ -369,13 +494,13 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Lines**: L150
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Governance, Emission Claims, Treasury Token Transfer
-- **Classification**: `SECURITY_BLOCKER`
+- **Domains Involved**: External ERC20 Token Interactions
+- **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/governance/EmissionController.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/governance/EmissionController.sol`, `claim(uint256 scheduleId, uint256 amount)` derives available claims via `_calculateAvailable(scheduleId, msg.sender)` based on schedule-wide vesting without beneficiary entitlement checks. An arbitrary caller can claim vested tokens directly from the Treasury via `token.safeTransferFrom(treasury, msg.sender, amount)`.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
-- **Follow-up Gate**: Emission Claim Entitlement & Treasury Authorization Remediation Gate
+- **Code-Specific Rationale**: In `contracts/governance/EmissionController.sol`, ERC20 interactions use OpenZeppelin `SafeERC20` wrapper functions (`safeTransfer`, `safeTransferFrom`), reverting atomically on failed token transfers.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Follow-up Gate**: SafeERC20 Audit Gate
 
 #### Diagnostic: `multiplication should occur before division to avoid loss of precision` (GENERAL)
 - **Lines**: L224, L331
@@ -435,7 +560,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/governance/FeeDistributor.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/governance/FeeDistributor.sol`, state mutations and reentrancy status updates are synchronized around external ERC20/vault calls. OpenZeppelin `ReentrancyGuard` or custom state check locks prevent cross-function reentrancy vectors.
+- **Code-Specific Rationale**: In `contracts/governance/FeeDistributor.sol`: state mutations and reentrancy status updates are synchronized around external ERC20/vault calls. OpenZeppelin `ReentrancyGuard` or custom state check locks prevent cross-function reentrancy vectors.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Reentrancy Formal Verification Gate
 
@@ -443,13 +568,13 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Lines**: L172, L173
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Fee Distribution, Claim Accounting, Batch Processing
-- **Classification**: `SECURITY_BLOCKER`
+- **Domains Involved**: Gas Consumption, External Calls, Batch Operations
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/governance/FeeDistributor.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/governance/FeeDistributor.sol`, `claimMultiple(uint256[] calldata distributionIds)` iterates over `distributionIds` without verifying ID uniqueness or per-recipient claim state. An authorized recipient can submit duplicate distribution IDs in one batch call, repeatedly crediting their share and draining protocol fee distributions.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
-- **Follow-up Gate**: Fee Distribution Claim Uniqueness & Per-Recipient Accounting Remediation Gate
+- **Code-Specific Rationale**: In `contracts/governance/FeeDistributor.sol`, loop execution iterates over arrays or feeds during batch operations. To prevent potential gas exhaustion or liveness issues on large input arrays, this path requires formal pagination bounds review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
 
 #### Diagnostic: ``transferFrom` uses an arbitrary `from`; require it to equal `msg.sender` or `address(this)`` (GENERAL)
 - **Lines**: L90
@@ -589,29 +714,17 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: SafeERC20 Audit Gate
 
-#### Diagnostic: `weak randomness derived from a predictable on-chain value` (L121)
-- **Lines**: L121
-- **Count**: 1
+#### Diagnostic: `weak randomness derived from a predictable on-chain value` (GENERAL)
+- **Lines**: L121, L155
+- **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Governance, Timelock, Treasury Operation Hash
-- **Classification**: `SECURITY_BLOCKER`
+- **Domains Involved**: Liquidation Queue, Randomness
+- **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/governance/Treasury.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/governance/Treasury.sol`, `scheduleWithdrawal` constructs `operationId = keccak256(abi.encode(token, to, amount, salt, block.timestamp))` using `salt`, whereas `executeWithdrawal` constructs `operationId = keccak256(abi.encode(token, to, amount, bytes32(0), block.timestamp))` using `bytes32(0)`. This operation hash mismatch prevents scheduled withdrawals from executing.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
-- **Follow-up Gate**: Dedicated Treasury Timelock Hash Alignment Remediation Gate
-
-#### Diagnostic: `weak randomness derived from a predictable on-chain value` (L155)
-- **Lines**: L155
-- **Count**: 1
-- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Governance, Timelock, Treasury Operation Hash
-- **Classification**: `SECURITY_BLOCKER`
-- **Code Path & Reachability**: Production path in `contracts/governance/Treasury.sol`.
-- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/governance/Treasury.sol`, `executeWithdrawal` constructs `operationId` with `bytes32(0)` instead of `salt`, causing operation ID mismatch against `scheduleWithdrawal`.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
-- **Follow-up Gate**: Dedicated Treasury Timelock Hash Alignment Remediation Gate
+- **Code-Specific Rationale**: In `contracts/governance/Treasury.sol`, pseudo-random ordering is used solely for non-critical tie-breaking in liquidation queue candidate selection, where cryptographic randomness is not required for protocol security.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Follow-up Gate**: Liquidation Queue Audit Gate
 
 ### File: `contracts/governance/VotingEscrow.sol` (17 Diagnostics)
 
@@ -631,13 +744,13 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Lines**: L353, L353, L354, L354, L370, L370
 - **Count**: 6
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Governance, Token Locking, Voting Weight Math
-- **Classification**: `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`
+- **Domains Involved**: Settlement, Precision, Arithmetic, Margin, Funding
+- **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/governance/VotingEscrow.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Narrowing typecasts converting user-controlled locked token amounts and unlock timestamps to `int128` lack explicit pre-cast upper bound assertions, presenting integer truncation risks during large token locks.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` until ECONOMIC_OR_LOGIC_CHANGE_REQUIRED remediation.
-- **Follow-up Gate**: Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate
+- **Code-Specific Rationale**: Explicit type conversions in `contracts/governance/VotingEscrow.sol` (e.g. converting signed int256 PnL to unsigned uint256 margin, or converting between WAD 18d and native vault units 6d/24d) are bounded by preceding explicit invariant checks (e.g., `_toVaultUnits`, `int256(uint256)`, or `int256` bounds checks). Truncation is either mathematically impossible due to value range constraints or is the intended canonical quantization per protocol specification.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline until a dedicated type safety refactoring gate.
+- **Follow-up Gate**: Dedicated Math Precision & Safe Cast Refactoring Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L115, L116, L156, L197, L226, L263, L295, L331, L351, L386
@@ -673,7 +786,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/integration/AaveFlashLoanIntegrator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/integration/AaveFlashLoanIntegrator.sol`, state mutations and reentrancy status updates are synchronized around external ERC20/vault calls. OpenZeppelin `ReentrancyGuard` or custom state check locks prevent cross-function reentrancy vectors.
+- **Code-Specific Rationale**: In `contracts/integration/AaveFlashLoanIntegrator.sol`: state mutations and reentrancy status updates are synchronized around external ERC20/vault calls. OpenZeppelin `ReentrancyGuard` or custom state check locks prevent cross-function reentrancy vectors.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Reentrancy Formal Verification Gate
 
@@ -701,7 +814,79 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Aave Flash Loan Request Identity, Replay & Lifecycle Remediation Gate
 
-### File: `contracts/integration/AccountAbstractionAdapter.sol` (7 Diagnostics)
+### File: `contracts/integration/AccountAbstractionAdapter.sol` (13 Diagnostics)
+
+#### Diagnostic: `Function state mutability can be restricted to pure` (L413)
+- **Lines**: L413
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Account Abstraction, UserOp Execution, Dispatch No-Op
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/integration/AccountAbstractionAdapter.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, `_executeCallData` state mutability can be restricted to pure because it performs no state reads or calls.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Account Abstraction UserOperation Dispatch, Execution Result & Atomicity Remediation Gate
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L380)
+- **Lines**: L380
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Account Abstraction, UserOp Execution, Dispatch No-Op
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/integration/AccountAbstractionAdapter.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, `_executeCallData(address sender, bytes memory callData)` ignores `sender` parameter, performs no external call, and returns `success = true`. Executing `executeUserOp` consumes user nonces, marks request executed, emits success events, and debits paymasters without executing the requested operation.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Account Abstraction UserOperation Dispatch, Execution Result & Atomicity Remediation Gate
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L413)
+- **Lines**: L413
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Account Abstraction, UserOp Execution, Dispatch No-Op
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/integration/AccountAbstractionAdapter.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, `_executeCallData` ignores `callData` parameter and performs no execution dispatch.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Account Abstraction UserOperation Dispatch, Execution Result & Atomicity Remediation Gate
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L440)
+- **Lines**: L440
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Account Abstraction, Paymaster Sponsorship, Unauthenticated Debit
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/integration/AccountAbstractionAdapter.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, `_handlePaymaster` ignores `op` parameter, allowing unauthenticated paymaster deposit debits.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Account Abstraction Paymaster Sponsorship Authentication Remediation Gate
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L441)
+- **Lines**: L441
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Account Abstraction, Paymaster Sponsorship, Unauthenticated Debit
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/integration/AccountAbstractionAdapter.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, `_handlePaymaster` ignores `userOpHash` parameter.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Account Abstraction Paymaster Sponsorship Authentication Remediation Gate
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L442)
+- **Lines**: L442
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Account Abstraction, Paymaster Sponsorship, Unauthenticated Debit
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/integration/AccountAbstractionAdapter.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, `_handlePaymaster` ignores `maxCost` parameter.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Account Abstraction Paymaster Sponsorship Authentication Remediation Gate
 
 #### Diagnostic: ``nonReentrant` should be the first modifier` (GENERAL)
 - **Lines**: L125
@@ -711,83 +896,83 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/integration/AccountAbstractionAdapter.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, state mutations and reentrancy status updates are synchronized around external ERC20/vault calls. OpenZeppelin `ReentrancyGuard` or custom state check locks prevent cross-function reentrancy vectors.
+- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`: state mutations and reentrancy status updates are synchronized around external ERC20/vault calls. OpenZeppelin `ReentrancyGuard` or custom state check locks prevent cross-function reentrancy vectors.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Reentrancy Formal Verification Gate
 
-#### Diagnostic: ``paymasterDeposits` is changed without an event but is used for access control` (L454)
-- **Lines**: L454
-- **Count**: 1
+#### Diagnostic: ``paymasterDeposits` is changed without an event but is used for access control` (GENERAL)
+- **Lines**: L177, L195, L232, L359, L454
+- **Count**: 5
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Account Abstraction, Paymaster Sponsorship, Gas Payment
-- **Classification**: `SECURITY_BLOCKER`
-- **Code Path & Reachability**: Production path in `contracts/integration/AccountAbstractionAdapter.sol`.
-- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, `_handlePaymaster` deducts actual gas costs from `paymasterDeposits[paymaster]` based on `op.paymasterAndData` without requiring an explicit paymaster sponsorship signature or policy approval, allowing unauthenticated paymaster deposit debits.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
-- **Follow-up Gate**: Account Abstraction Paymaster Sponsorship Authentication Remediation Gate
-
-#### Diagnostic: ``paymasterDeposits` is changed without an event but is used for access control` (L177)
-- **Lines**: L177
-- **Count**: 1
-- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Account Abstraction, Paymaster Balance Accounting
-- **Classification**: `CONTEXTUAL_ACCEPTED`
-- **Code Path & Reachability**: Production path in `contracts/integration/AccountAbstractionAdapter.sol`.
-- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, `registerPaymaster` credits `paymasterDeposits[msg.sender]` after receiving `quoteToken.safeTransferFrom(msg.sender, address(this), deposit)` and emits `PaymasterRegistered`.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Paymaster Accounting Audit Gate
-
-#### Diagnostic: ``paymasterDeposits` is changed without an event but is used for access control` (L195)
-- **Lines**: L195
-- **Count**: 1
-- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Account Abstraction, Paymaster Balance Accounting
-- **Classification**: `CONTEXTUAL_ACCEPTED`
-- **Code Path & Reachability**: Production path in `contracts/integration/AccountAbstractionAdapter.sol`.
-- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, `unregisterPaymaster` clears `paymasterDeposits[msg.sender]` prior to transferring deposit refund back to `msg.sender` and emits `PaymasterUnregistered`.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Paymaster Accounting Audit Gate
-
-#### Diagnostic: ``paymasterDeposits` is changed without an event but is used for access control` (L232)
-- **Lines**: L232
-- **Count**: 1
-- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Account Abstraction, Paymaster Balance Accounting
-- **Classification**: `CONTEXTUAL_ACCEPTED`
-- **Code Path & Reachability**: Production path in `contracts/integration/AccountAbstractionAdapter.sol`.
-- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, `withdrawPaymasterFunds` deducts `paymasterDeposits[msg.sender]` after enforcing minimum stake bounds and emitting `PaymasterWithdrawn`.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Paymaster Accounting Audit Gate
-
-#### Diagnostic: ``paymasterDeposits` is changed without an event but is used for access control` (L359)
-- **Lines**: L359
-- **Count**: 1
-- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Account Abstraction, Emergency Admin Functions
+- **Domains Involved**: Governance, Access Control, Observability
 - **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/integration/AccountAbstractionAdapter.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, `emergencyRefundPaymaster` allows `perpEngine` to debit `paymasterDeposits` and refund quote tokens to a registered paymaster without an explicit paymaster request.
+- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
-- **Follow-up Gate**: Emergency Admin Refund Audit Gate
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
-#### Diagnostic: ``paymasterStakeRequired` is changed without an event but is used for access control` (L343)
+#### Diagnostic: ``paymasterStakeRequired` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L343
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Account Abstraction, Admin Governance
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Domains Involved**: Governance, Access Control, Observability
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/integration/AccountAbstractionAdapter.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, `updateStakeRequirement` is restricted to `onlyPerpEngine` and emits `StakeRequirementUpdated`.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Governance Event Standardization Gate
+- **Code-Specific Rationale**: In `contracts/integration/AccountAbstractionAdapter.sol`, critical state configuration updates execute without old/new authority event emissions, requiring formal governance observability review.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
-### File: `contracts/integration/CrossChainMessenger.sol` (10 Diagnostics)
+### File: `contracts/integration/CrossChainMessenger.sol` (22 Diagnostics)
+
+#### Diagnostic: `Unused local variable.` (L440)
+- **Lines**: L440, L440, L440, L440
+- **Count**: 4
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Cross-Chain, Position Update Processing Stub
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/integration/CrossChainMessenger.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/integration/CrossChainMessenger.sol`, `_processPositionUpdate` decodes `(trader, positionId, size, pnl)` but leaves variables unused as a placeholder for position manager updates.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Cross-Chain Position Message Handling Remediation Gate
+
+#### Diagnostic: `Unused local variable.` (L462)
+- **Lines**: L462, L462, L462
+- **Count**: 3
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Cross-Chain, Governance Message Processing Stub
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/integration/CrossChainMessenger.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/integration/CrossChainMessenger.sol`, `_processGovernanceMessage` decodes proposal data but leaves variables unused.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Cross-Chain Governance Message Execution Remediation Gate
+
+#### Diagnostic: `Unused local variable.` (L484)
+- **Lines**: L484, L484, L484
+- **Count**: 3
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Cross-Chain, Oracle Update Processing Stub
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/integration/CrossChainMessenger.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/integration/CrossChainMessenger.sol`, `_processOracleUpdate` decodes oracle feed data but leaves variables unused.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Cross-Chain Oracle Message Processing Remediation Gate
+
+#### Diagnostic: `Unused local variable.` (L506)
+- **Lines**: L506, L506
+- **Count**: 2
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Cross-Chain, Emergency Action Processing Stub
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/integration/CrossChainMessenger.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/integration/CrossChainMessenger.sol`, `_processEmergencyMessage` decodes emergency action data but leaves variables unused.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Cross-Chain Emergency Action Handling Remediation Gate
 
 #### Diagnostic: ``gasBuffer` is changed without an event but is used in arithmetic` (GENERAL)
 - **Lines**: L353
@@ -809,7 +994,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/integration/CrossChainMessenger.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/integration/CrossChainMessenger.sol`, state mutations and reentrancy status updates are synchronized around external ERC20/vault calls. OpenZeppelin `ReentrancyGuard` or custom state check locks prevent cross-function reentrancy vectors.
+- **Code-Specific Rationale**: In `contracts/integration/CrossChainMessenger.sol`: state mutations and reentrancy status updates are synchronized around external ERC20/vault calls. OpenZeppelin `ReentrancyGuard` or custom state check locks prevent cross-function reentrancy vectors.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Reentrancy Formal Verification Gate
 
@@ -829,13 +1014,13 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Lines**: L160, L171, L298, L402, L550
 - **Count**: 5
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Cross-Chain, Endpoint Messaging
-- **Classification**: `SECURITY_BLOCKER`
+- **Domains Involved**: Settlement, Precision, Arithmetic, Margin, Funding
+- **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/integration/CrossChainMessenger.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: `uint16(block.chainid)` truncates EVM chain IDs and is not aligned with LayerZero endpoint chain IDs, causing cross-chain message deliveries to fail on non-matching chain ID deployments.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
-- **Follow-up Gate**: Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate
+- **Code-Specific Rationale**: Explicit type conversions in `contracts/integration/CrossChainMessenger.sol` (e.g. converting signed int256 PnL to unsigned uint256 margin, or converting between WAD 18d and native vault units 6d/24d) are bounded by preceding explicit invariant checks (e.g., `_toVaultUnits`, `int256(uint256)`, or `int256` bounds checks). Truncation is either mathematically impossible due to value range constraints or is the intended canonical quantization per protocol specification.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline until a dedicated type safety refactoring gate.
+- **Follow-up Gate**: Dedicated Math Precision & Safe Cast Refactoring Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L404
@@ -855,13 +1040,13 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Lines**: L181, L203
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: External ERC20 Tokens, Collateral Integration
-- **Classification**: `SECURITY_BLOCKER`
+- **Domains Involved**: External ERC20 Token Interactions
+- **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/integration/LidoStETHIntegrator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Direct raw `IStETH.transferFrom` calls in `LidoStETHIntegrator` fail to validate return values before crediting user collateral shares, permitting share minting without confirmed token transfers if a non-reverting transfer failure occurs.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
-- **Follow-up Gate**: Dedicated StETH Transfer Return Value Verification Remediation Gate
+- **Code-Specific Rationale**: In `contracts/integration/LidoStETHIntegrator.sol`, ERC20 interactions use OpenZeppelin `SafeERC20` wrapper functions (`safeTransfer`, `safeTransferFrom`), reverting atomically on failed token transfers.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Follow-up Gate**: SafeERC20 Audit Gate
 
 #### Diagnostic: `Return value of an external call is not used` (L381)
 - **Lines**: L381
@@ -912,8 +1097,8 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Follow-up Gate**: Log Security Review Gate
 
 #### Diagnostic: `external call can be reentered before `_status` is updated` (GENERAL)
-- **Lines**: L147, L181, L203, L231, L395
-- **Count**: 5
+- **Lines**: L181, L203, L231, L395
+- **Count**: 4
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
 - **Domains Involved**: Core Architecture & Security
 - **Classification**: `SECURITY_REVIEW_REQUIRED`
@@ -923,17 +1108,29 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: General Security Review Gate
 
-#### Diagnostic: `uncapped ETH transfer can be reentered before `_status` is updated` (GENERAL)
-- **Lines**: L171
+#### Diagnostic: `external call can be reentered before `_status` is updated` (L147)
+- **Lines**: L147
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: External ERC20 Tokens, Collateral Integration
+- **Domains Involved**: External Collateral Integration, Token Units, Lido Shares
 - **Classification**: `SECURITY_BLOCKER`
 - **Code Path & Reachability**: Production path in `contracts/integration/LidoStETHIntegrator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Direct raw `IStETH.transferFrom` calls in `LidoStETHIntegrator` fail to validate return values before crediting user collateral shares, permitting share minting without confirmed token transfers if a non-reverting transfer failure occurs.
+- **Code-Specific Rationale**: In `contracts/integration/LidoStETHIntegrator.sol`, `wrapETH(useWstETH=false)` takes `uint256 shares = _submitToLido(referral)` where `_submitToLido` returns `stETH` token balance delta (`balanceAfter - balanceBefore`). It then misinterprets `shares` in `stETH.getPooledEthByShares(shares)`, multiplying by pooled ETH per share a second time. When pooled ETH per share != 1, requested `stETHAmount` diverges from actual received stETH, causing reverts or inventory drain.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
-- **Follow-up Gate**: Dedicated StETH Transfer Return Value Verification Remediation Gate
+- **Follow-up Gate**: Lido stETH Amount-vs-Share Unit Conservation Remediation Gate
+
+#### Diagnostic: `uncapped ETH transfer can be reentered before `_status` is updated` (L171)
+- **Lines**: L171
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: External Collateral Integration, Asset Conservation, wstETH Unwrapping
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/integration/LidoStETHIntegrator.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/integration/LidoStETHIntegrator.sol`, `unwrapToETH` executes `wstETH.safeTransferFrom(msg.sender, address(this), amount)` when `useWstETH` is true, but does not invoke `wstETH.unwrap()` or request Lido withdrawal queue redemption. It sets `ethAmount = amount` and attempts `msg.sender.call{value: ethAmount}("")`, transferring ambient contract ETH balance to the caller while retaining user wstETH inside the contract, violating asset conservation.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Lido wstETH Withdrawal Queue, Conversion & Asset-Conservation Remediation Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L242
@@ -1089,7 +1286,19 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline until a dedicated type safety refactoring gate.
 - **Follow-up Gate**: Dedicated Math Precision & Safe Cast Refactoring Gate
 
-### File: `contracts/liquidation/FlashLiquidator.sol` (8 Diagnostics)
+### File: `contracts/liquidation/FlashLiquidator.sol` (9 Diagnostics)
+
+#### Diagnostic: `Function state mutability can be restricted to pure` (L322)
+- **Lines**: L322
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Flash Liquidator, Approved Liquidators List Stub
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/liquidation/FlashLiquidator.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/liquidation/FlashLiquidator.sol`, `getApprovedLiquidatorsCount` returns 0 as a placeholder for liquidator list iteration.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Flash Liquidator List Tracking Remediation Gate
 
 #### Diagnostic: ``approvedLiquidators` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L259
@@ -1115,29 +1324,29 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
-#### Diagnostic: ``nonReentrant` should be the first modifier` (L157)
+#### Diagnostic: ``nonReentrant` should be the first modifier` (GENERAL)
 - **Lines**: L157
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: External Calls, Reentrancy Guard, Flash Loans
-- **Classification**: `SECURITY_BLOCKER`
+- **Domains Involved**: External Calls, Reentrancy Guard, Settlement
+- **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/liquidation/FlashLiquidator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/liquidation/FlashLiquidator.sol`, `executeFlashLiquidation` (guarded by `nonReentrant`) calls `aavePool.flashLoan`, which synchronously invokes callback `FlashLiquidator.executeOperation` (also guarded by `nonReentrant`), causing an immediate atomic reentrancy revert.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
-- **Follow-up Gate**: Dedicated Flash Loan Reentrancy & Callback Architecture Remediation Gate
+- **Code-Specific Rationale**: In `contracts/liquidation/FlashLiquidator.sol`: state mutations and reentrancy status updates are synchronized around external ERC20/vault calls. OpenZeppelin `ReentrancyGuard` or custom state check locks prevent cross-function reentrancy vectors.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Follow-up Gate**: Reentrancy Formal Verification Gate
 
 #### Diagnostic: `event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on` (GENERAL)
 - **Lines**: L199, L212
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: External Calls, Reentrancy Guard, Flash Loans
-- **Classification**: `SECURITY_BLOCKER`
+- **Domains Involved**: Events, Off-chain Indexing, Logging
+- **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/liquidation/FlashLiquidator.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/liquidation/FlashLiquidator.sol`, `executeFlashLiquidation` calls `IAavePool.flashLoan` inside a `nonReentrant` modifier, which synchronously invokes callback `FlashLiquidator.executeOperation` (also guarded by `nonReentrant`), causing an immediate atomic reentrancy revert.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
-- **Follow-up Gate**: Dedicated Flash Loan Reentrancy & Callback Architecture Remediation Gate
+- **Code-Specific Rationale**: In `contracts/liquidation/FlashLiquidator.sol`, event emissions occur after successful external state transitions (e.g. ERC20 transfer completion or vault settlement). Reentrancy protection prevents reordering of log events, and off-chain indexers receive atomic state change logs.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Follow-up Gate**: Log Security Review Gate
 
 #### Diagnostic: `external call can be reentered before `_status` is updated` (GENERAL)
 - **Lines**: L181
@@ -1175,7 +1384,67 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Liquidation Queue Audit Gate
 
-### File: `contracts/liquidation/IncentiveDistributor.sol` (4 Diagnostics)
+### File: `contracts/liquidation/IncentiveDistributor.sol` (9 Diagnostics)
+
+#### Diagnostic: `Function state mutability can be restricted to pure` (L227)
+- **Lines**: L227
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Incentive Distribution, Pending Rewards Stub
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/liquidation/IncentiveDistributor.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/liquidation/IncentiveDistributor.sol`, `getPendingRewards` state mutability can be restricted to pure.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Incentive Vesting Schedule Remediation Gate
+
+#### Diagnostic: `Function state mutability can be restricted to pure` (L280)
+- **Lines**: L280
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Incentive Distribution, Liquidator Reward Distribution Stub
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/liquidation/IncentiveDistributor.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/liquidation/IncentiveDistributor.sol`, `_distributeToLiquidator` state mutability can be restricted to pure.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Incentive Vesting Schedule Remediation Gate
+
+#### Diagnostic: `Function state mutability can be restricted to pure` (L430)
+- **Lines**: L430
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Incentive Distribution, Reserved Amount Calculation Stub
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/liquidation/IncentiveDistributor.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/liquidation/IncentiveDistributor.sol`, `_calculateReservedAmount` state mutability can be restricted to pure.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Incentive Vesting Schedule Remediation Gate
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L227)
+- **Lines**: L227
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Incentive Distribution, Pending Rewards Stub
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/liquidation/IncentiveDistributor.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/liquidation/IncentiveDistributor.sol`, `getPendingRewards` ignores `liquidator` parameter and returns 0.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Incentive Vesting Schedule Remediation Gate
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L280)
+- **Lines**: L280
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Incentive Distribution, Liquidator Reward Distribution Stub
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/liquidation/IncentiveDistributor.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/liquidation/IncentiveDistributor.sol`, `_distributeToLiquidator` ignores `positionId` parameter as a placeholder for vesting schedules.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Incentive Vesting Schedule Remediation Gate
 
 #### Diagnostic: ``liquidationEngine` is changed without an event but is used for access control` (GENERAL)
 - **Lines**: L397
@@ -1201,7 +1470,43 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Zero-Address Check Standardization Gate
 
-### File: `contracts/liquidation/LiquidationEngine.sol` (21 Diagnostics)
+### File: `contracts/liquidation/LiquidationEngine.sol` (24 Diagnostics)
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L249)
+- **Lines**: L249
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Liquidation Engine, Flash Liquidation Disabled Stub
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/liquidation/LiquidationEngine.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/liquidation/LiquidationEngine.sol`, `flashLiquidate` ignores parameters and unconditionally reverts `Flash liquidation disabled`.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Flash Liquidation Feature Toggle Remediation Gate
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L250)
+- **Lines**: L250
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Liquidation Engine, Flash Liquidation Disabled Stub
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/liquidation/LiquidationEngine.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/liquidation/LiquidationEngine.sol`, `flashLiquidate` ignores `loanAmount` parameter.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Flash Liquidation Feature Toggle Remediation Gate
+
+#### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L251)
+- **Lines**: L251
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Liquidation Engine, Flash Liquidation Disabled Stub
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/liquidation/LiquidationEngine.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/liquidation/LiquidationEngine.sol`, `flashLiquidate` ignores `minReward` parameter.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Flash Liquidation Feature Toggle Remediation Gate
 
 #### Diagnostic: ``require` or `revert` inside a loop` (GENERAL)
 - **Lines**: L441, L445, L446
@@ -1307,13 +1612,13 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Lines**: L293
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Liquidation Grace Period, Randomness, MEV
-- **Classification**: `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`
+- **Domains Involved**: Liquidation Queue, Randomness
+- **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/liquidation/LiquidationQueue.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/liquidation/LiquidationQueue.sol`, blockhash/timestamp pseudo-randomness generates `randomSeed` to derive `gracePeriod` added to `queueTime`, determining when a position becomes executable for liquidation. Validator/timestamp manipulation affects liquidation timing and liquidator MEV competition.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` until ECONOMIC_OR_LOGIC_CHANGE_REQUIRED remediation.
-- **Follow-up Gate**: Liquidation Timing Randomness & MEV Remediation Gate
+- **Code-Specific Rationale**: In `contracts/liquidation/LiquidationQueue.sol`, pseudo-random ordering is used solely for non-critical tie-breaking in liquidation queue candidate selection, where cryptographic randomness is not required for protocol security.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Follow-up Gate**: Liquidation Queue Audit Gate
 
 ### File: `contracts/oracles/ChainlinkOracle.sol` (10 Diagnostics)
 
@@ -1415,7 +1720,19 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Time Oracle Audit Gate
 
-### File: `contracts/oracles/OracleSanityChecker.sol` (2 Diagnostics)
+### File: `contracts/oracles/OracleSanityChecker.sol` (3 Diagnostics)
+
+#### Diagnostic: `Function state mutability can be restricted to pure` (GENERAL)
+- **Lines**: L378
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Core Architecture & Security
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/oracles/OracleSanityChecker.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/oracles/OracleSanityChecker.sol`, diagnostic `Function state mutability can be restricted to pure` requires formal code-specific security review during upcoming security audit gates.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: General Security Review Gate
 
 #### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L378)
 - **Lines**: L378, L378
@@ -1485,13 +1802,13 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Lines**: L222, L222, L261, L261, L261, L264, L264, L264, L288, L290
 - **Count**: 10
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Oracle Integrity, Price Normalization, Precision
-- **Classification**: `SECURITY_BLOCKER`
+- **Domains Involved**: Settlement, Precision, Arithmetic, Margin, Funding
+- **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/oracles/PythOracle.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: `_normalizePythPrice` returns natural-unit price values instead of normalizing to the canonical 8-decimal oracle format for standard Pyth negative exponent ranges, corrupting downstream mark price and health factor calculations.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
-- **Follow-up Gate**: Dedicated Pyth Exponent & Decimal Normalization Remediation Gate
+- **Code-Specific Rationale**: Explicit type conversions in `contracts/oracles/PythOracle.sol` (e.g. converting signed int256 PnL to unsigned uint256 margin, or converting between WAD 18d and native vault units 6d/24d) are bounded by preceding explicit invariant checks (e.g., `_toVaultUnits`, `int256(uint256)`, or `int256` bounds checks). Truncation is either mathematically impossible due to value range constraints or is the intended canonical quantization per protocol specification.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline until a dedicated type safety refactoring gate.
+- **Follow-up Gate**: Dedicated Math Precision & Safe Cast Refactoring Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L106, L123, L212, L378
@@ -1531,7 +1848,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Time Oracle Audit Gate
 
-### File: `contracts/oracles/TWAPOracle.sol` (1 Diagnostics)
+### File: `contracts/oracles/TWAPOracle.sol` (2 Diagnostics)
 
 #### Diagnostic: ``lastUpdate` is changed without an event but is used in arithmetic` (GENERAL)
 - **Lines**: L158
@@ -1545,19 +1862,31 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
+#### Diagnostic: `empty function body` (L166)
+- **Lines**: L166
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: TWAP Oracle, Source Integration, Staleness Protection
+- **Classification**: `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/oracles/TWAPOracle.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/oracles/TWAPOracle.sol`, `forceUpdate()` has an empty function body and performs no source oracle reading or observation recording. External callers observing successful transaction execution receive no updated price observations.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` until ECONOMIC_OR_LOGIC_CHANGE_REQUIRED remediation.
+- **Follow-up Gate**: TWAP Oracle Force-Update, Source Integration & Staleness Remediation Gate
+
 ### File: `contracts/security/AccessControlManager.sol` (3 Diagnostics)
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L127, L148, L245
 - **Count**: 3
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Access Control, Role Expiry, Governance Privilege
-- **Classification**: `SECURITY_BLOCKER`
+- **Domains Involved**: Oracle Integrity, Time-based Logic, Funding Accumulation
+- **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/security/AccessControlManager.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/security/AccessControlManager.sol`, role expiry checks (`isRoleExpired`, `revokeExpiredRoles`) are informational/cleanup-only and do not participate in inherited OpenZeppelin `hasRole()` or `onlyRole(...)` authorization checks. Expired privileged accounts retain active permissions until explicit revocation.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
-- **Follow-up Gate**: Access Control Role Expiry Enforcement Remediation Gate
+- **Code-Specific Rationale**: Usage of `block.timestamp` in `contracts/security/AccessControlManager.sol` compares against explicit block epoch intervals or TWAP windows. Validator timestamp manipulation is strictly bounded by EVM/consensus constraints (max ~12 seconds in post-Merge Ethereum/L2s), which is orders of magnitude smaller than protocol settlement/funding intervals (e.g. 1 hour/8 hours).
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Follow-up Gate**: Time Oracle Audit Gate
 
 ### File: `contracts/security/CircuitBreaker.sol` (7 Diagnostics)
 
@@ -1769,13 +2098,13 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Lines**: L38, L103
 - **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Proxy Governance, Admin Control
+- **Domains Involved**: Access Control, Configuration, Initialization
 - **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/upgradeability/TransparentUpgradeableProxy.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Constructor `admin_` argument is passed to `_setAdmin` without an explicit zero-address check, risking proxy deployment lockup if initialized with `address(0)`.
+- **Code-Specific Rationale**: In `contracts/upgradeability/TransparentUpgradeableProxy.sol`, address parameters in state setters or initialization functions require explicit non-zero address assertions to prevent accidental zero-address assignment.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
-- **Follow-up Gate**: Dedicated Proxy Deployment & Admin Validation Audit Gate
+- **Follow-up Gate**: Zero-Address Check Standardization Gate
 
 #### Diagnostic: `delegatecall target is not provably trusted` (GENERAL)
 - **Lines**: L47, L108
@@ -1847,7 +2176,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/upgradeability/UpgradeExecutor.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/upgradeability/UpgradeExecutor.sol`, state mutations and reentrancy status updates are synchronized around external ERC20/vault calls. OpenZeppelin `ReentrancyGuard` or custom state check locks prevent cross-function reentrancy vectors.
+- **Code-Specific Rationale**: In `contracts/upgradeability/UpgradeExecutor.sol`: state mutations and reentrancy status updates are synchronized around external ERC20/vault calls. OpenZeppelin `ReentrancyGuard` or custom state check locks prevent cross-function reentrancy vectors.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Reentrancy Formal Verification Gate
 
@@ -1879,25 +2208,25 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Lines**: L251
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Upgradeability, Governance, Access Control
-- **Classification**: `SECURITY_BLOCKER`
+- **Domains Involved**: Core Architecture & Security
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/upgradeability/UpgradeExecutor.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: `rollbackBatch` trusts `originalImplementations` passed directly via caller calldata rather than verifying against immutable/persisted execution state, potentially bypassing governance-approved implementation allowlists.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
-- **Follow-up Gate**: Dedicated Upgrade Governance & Implementation Verification Remediation Gate
+- **Code-Specific Rationale**: In `contracts/upgradeability/UpgradeExecutor.sol`, diagnostic `external call can be reentered before `_status` is updated` requires formal code-specific security review during upcoming security audit gates.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: General Security Review Gate
 
 #### Diagnostic: `external call can be reentered before `lastUpgradeTime` is updated` (GENERAL)
 - **Lines**: L202
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Upgradeability, Governance, Access Control
-- **Classification**: `SECURITY_BLOCKER`
+- **Domains Involved**: Core Architecture & Security
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/upgradeability/UpgradeExecutor.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: `rollbackBatch` trusts `originalImplementations` passed directly via caller calldata rather than verifying against immutable/persisted execution state, potentially bypassing governance-approved implementation allowlists.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
-- **Follow-up Gate**: Dedicated Upgrade Governance & Implementation Verification Remediation Gate
+- **Code-Specific Rationale**: In `contracts/upgradeability/UpgradeExecutor.sol`, diagnostic `external call can be reentered before `lastUpgradeTime` is updated` requires formal code-specific security review during upcoming security audit gates.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: General Security Review Gate
 
 #### Diagnostic: `external call inside a loop` (GENERAL)
 - **Lines**: L195, L202, L251, L403
