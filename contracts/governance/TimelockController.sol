@@ -111,7 +111,6 @@ contract PerpDexTimelock is OZTimelock {
 
     /**
      * @notice Update minimum delay
-     * @param newDelay New minimum delay
      */
     function updateMinDelay(uint256 newDelay) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(newDelay >= MIN_MIN_DELAY, "Delay too low");
@@ -207,11 +206,9 @@ contract PerpDexTimelock is OZTimelock {
 
     /**
      * @dev Check if operation is critical
-     * @param target Target address
-     * @param data Calldata
      * @return critical True if critical
      */
-    function _isCriticalOperation(address target, bytes calldata data) 
+    function _isCriticalOperation(address target, bytes calldata data)
         internal 
         pure 
         returns (bool) 
@@ -231,8 +228,6 @@ contract PerpDexTimelock is OZTimelock {
 
     /**
      * @dev Update delay
-     * @param oldDelay Old delay
-     * @param newDelay New delay
      */
     function _updateDelay(uint256 oldDelay, uint256 newDelay) internal {
         // This would update the delay in the base contract

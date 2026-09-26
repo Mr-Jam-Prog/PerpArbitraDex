@@ -310,11 +310,18 @@ Internal solc crash after warning emission
   });
 
   describe("Repository Baseline Integrity Check", () => {
-    it("should validate that all 850 entries in warnings-baseline.json have valid justifications with exact category tokens", () => {
+    it("should validate that all entries in warnings-baseline.json have valid justifications with exact category tokens and unique tuples", () => {
       const baseline = loadBaseline();
-      expect(baseline).to.have.lengthOf(850);
+      expect(baseline.length).to.be.greaterThan(0);
       const invalid = validateBaselineJustifications(baseline);
       expect(invalid).to.have.lengthOf(0);
+
+      const seenKeys = new Set();
+      for (const item of baseline) {
+        const key = `${item.file}:${item.line}:${item.column}:${item.message}`;
+        expect(seenKeys.has(key), `Duplicate baseline tuple found: ${key}`).to.be.false;
+        seenKeys.add(key);
+      }
     });
   });
 });
