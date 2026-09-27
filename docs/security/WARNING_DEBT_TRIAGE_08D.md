@@ -7,22 +7,22 @@
 - **Final Baseline Total**: 846
 - **Baseline Reduction**: 4 (Mechanically safe compiler warnings eliminated; 7 restored as unresolved security debt)
 - **Start Production Warning Debt**: 341
-- **Final Production Warning Debt**: 119
+- **Final Production Warning Debt**: 118
 - **Start Unresolved Security Debt**: 282
-- **Final Unresolved Security Debt**: 500 (168 reclassified + 1 Timelock reclassified + 7 restored compiler diagnostics + 42 semantic stub reclassifications)
+- **Final Unresolved Security Debt**: 501 (168 reclassified + 1 Timelock reclassified + 7 restored compiler diagnostics + 43 semantic stub reclassifications)
 
 ---
 
 ## Dispositions Breakdown
 
 ### Section A. Diagnostic-Level Disposition Totals
-The sum of diagnostic-level dispositions equals exactly 500 `UNRESOLVED_SECURITY_DEBT` entries in `warnings-baseline.json`:
+The sum of diagnostic-level dispositions equals exactly 501 `UNRESOLVED_SECURITY_DEBT` entries in `warnings-baseline.json`:
 
-- `CONTEXTUAL_ACCEPTED`: 301
+- `CONTEXTUAL_ACCEPTED`: 295
 - `SECURITY_REVIEW_REQUIRED`: 144
-- `SECURITY_BLOCKER`: 42
-- `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`: 13
-- **Total Diagnostics**: 500
+- `SECURITY_BLOCKER`: 47
+- `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`: 15
+- **Total Diagnostics**: 501
 
 ### Section B. Root Security Findings Summary
 Root causes after grouping related static analyzer diagnostics into unique protocol vulnerabilities:
@@ -38,26 +38,28 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 8. **AccessControlManager.sol** (`role expiry`): Ineffective role expiry enforcement in `hasRole()` / `onlyRole(...)` authorization checks (`isRoleExpired` is informational only). Gate: *Access Control Role Expiry Enforcement Remediation Gate*.
 9. **FlashLiquidator.sol** (`reentrancy`): ReentrancyGuard lock collision between `executeFlashLiquidation` and Aave callback `executeOperation`. Gate: *Dedicated Flash Loan Reentrancy & Callback Architecture Remediation Gate*.
 10. **AaveFlashLoanIntegrator.sol** (`executeOperation`): Callback ABI mismatch against `FlashLiquidator.executeFlashLiquidation` (5 args returning `(uint256,bool)` vs 3 args returning `bool`), causing all flash liquidations to revert deterministically. Gate: *Aave Flash Liquidator Typed ABI & Callback Integration Remediation Gate*.
-11. **Treasury.sol** (`scheduledWithdrawals`): Operation hash mismatch between `scheduleWithdrawal` and `executeWithdrawal` (`salt` vs `bytes32(0)`). Gate: *Dedicated Treasury Timelock Hash Alignment Remediation Gate*.
+11. **Treasury.sol** (`scheduledWithdrawals`): Operation hash mismatch between `scheduleWithdrawal` and `executeWithdrawal` due to salt (`salt` vs `bytes32(0)`) and timestamp (`scheduleTimestamp` vs `executionTimestamp`) divergence, preventing scheduled withdrawals from executing. Gate: *Dedicated Treasury Timelock Operation Identity, Salt & Timestamp Persistence Remediation Gate*.
 12. **UpgradeExecutor.sol** (`lastUpgradeTime`): `rollbackBatch` trusts calldata `originalImplementations` without checking persisted state. Gate: *Dedicated Upgrade Governance & Implementation Verification Remediation Gate*.
 13. **CrossChainMessenger.sol** (`_processMessage`): Cross-chain message handlers are decode-only no-ops that consume `executedMessages[messageId] = true` replay state without performing position, governance, oracle, or emergency actions. Gate: *Cross-Chain Message Dispatch, Replay-State & Execution Atomicity Remediation Gate*.
-14. **LidoStETHIntegrator.sol** (`stETH.transferFrom`): Unchecked `IStETH.transferFrom` return value before crediting collateral shares. Gate: *Dedicated StETH Transfer Return Value Verification Remediation Gate*.
-15. **LidoStETHIntegrator.sol** (`_stETHToWstETH`): Broken wstETH conversion placeholder breaks collateral conservation (`wrapETH(useWstETH=true) -> _submitToLido() -> receive stETH -> _stETHToWstETH(stETHAmount) -> raw stETH.approve() -> NO wstETH.wrap() -> returns stETHAmount as fake wstETH -> wstETH.safeTransfer(msg.sender, amount)`). Gate: *Lido wstETH Wrap, Approval & Collateral Conservation Remediation Gate*.
-16. **LidoStETHIntegrator.sol** (`unwrapToETH`): wstETH-to-ETH withdrawal placeholder consumes ambient contract ETH balance and retains user wstETH (`unwrapToETH(useWstETH=true) -> wstETH.safeTransferFrom(msg.sender, address(this), amount) -> NO wstETH.unwrap() -> ethAmount = amount -> msg.sender.call{value: ethAmount}("")`). Gate: *Lido wstETH Withdrawal Queue, Conversion & Asset-Conservation Remediation Gate*.
-17. **LidoStETHIntegrator.sol** (`wrapETH`): Direct stETH wrap unit mismatch (`wrapETH(useWstETH=false) -> _submitToLido() -> returns stETH balance delta -> value mislabeled as shares -> getPooledEthByShares(stETHAmount) -> wrong transfer amount`). Gate: *Lido stETH Amount-vs-Share Unit Conservation Remediation Gate*.
-18. **RiskManager.sol** (`_checkPositionConcentration`): Position concentration enforcement disabled (`totalOI` hardcoded to 0), bypassing configured `maxPositionConcentration` limits. Gate: *RiskManager Open Interest, Trader Concentration & Position-Limit Remediation Gate*.
-19. **RiskManager.sol** (`validateLiquidation`): Liquidation validation ignores `positionId` and `currentPrice`, fetching no position state and trusting caller-supplied `healthFactor`. Gate: *RiskManager Liquidation Position, Price & Circuit-Breaker Validation Remediation Gate*.
-20. **RiskManager.sol** (`calculateLiquidationPrice`): Liquidation price math returns placeholder 0 (`liquidationPrice = 0`), disabling liquidation price calculations. Gate: *RiskManager Liquidation Price Math Remediation Gate*.
-21. **PythOracle.sol** (`typecast`): `_normalizePythPrice` fails to normalize price to 8 decimals for standard Pyth exponents. Gate: *Dedicated Pyth Exponent & Decimal Normalization Remediation Gate*.
+14. **CrossChainMessenger.sol** (`typecast`): `uint16(block.chainid)` truncation mismatches LayerZero endpoint chain IDs during message identity and route construction. Gate: *Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate*.
+15. **LidoStETHIntegrator.sol** (`stETH.transferFrom`): Unchecked `IStETH.transferFrom` return value before crediting collateral shares. Gate: *Dedicated StETH Transfer Return Value Verification Remediation Gate*.
+16. **LidoStETHIntegrator.sol** (`_stETHToWstETH`): Broken wstETH conversion placeholder breaks collateral conservation (`wrapETH(useWstETH=true) -> _submitToLido() -> receive stETH -> _stETHToWstETH(stETHAmount) -> raw stETH.approve() -> NO wstETH.wrap() -> returns stETHAmount as fake wstETH -> wstETH.safeTransfer(msg.sender, amount)`). Gate: *Lido wstETH Wrap, Approval & Collateral Conservation Remediation Gate*.
+17. **LidoStETHIntegrator.sol** (`unwrapToETH`): wstETH-to-ETH withdrawal placeholder consumes ambient contract ETH balance and retains user wstETH (`unwrapToETH(useWstETH=true) -> wstETH.safeTransferFrom(msg.sender, address(this), amount) -> NO wstETH.unwrap() -> ethAmount = amount -> msg.sender.call{value: ethAmount}("")`). Gate: *Lido wstETH Withdrawal Queue, Conversion & Asset-Conservation Remediation Gate*.
+18. **LidoStETHIntegrator.sol** (`wrapETH`): Direct stETH wrap unit mismatch (`wrapETH(useWstETH=false) -> _submitToLido() -> returns stETH balance delta -> value mislabeled as shares -> getPooledEthByShares(stETHAmount) -> wrong transfer amount`). Gate: *Lido stETH Amount-vs-Share Unit Conservation Remediation Gate*.
+19. **RiskManager.sol** (`_checkPositionConcentration`): Position concentration enforcement disabled (`totalOI` hardcoded to 0), bypassing configured `maxPositionConcentration` limits. Gate: *RiskManager Open Interest, Trader Concentration & Position-Limit Remediation Gate*.
+20. **RiskManager.sol** (`validateLiquidation`): Liquidation validation ignores `positionId` and `currentPrice`, fetching no position state and trusting caller-supplied `healthFactor`. Gate: *RiskManager Liquidation Position, Price & Circuit-Breaker Validation Remediation Gate*.
+21. **RiskManager.sol** (`calculateLiquidationPrice`): Liquidation price math returns placeholder 0 (`liquidationPrice = 0`), disabling liquidation price calculations. Gate: *RiskManager Liquidation Price Math Remediation Gate*.
 
 #### ECONOMIC_OR_LOGIC_CHANGE_REQUIRED Root Findings (7 Items)
 1. **PerpEngine.sol** (`totalFundingPaid / totalFundingReceived`): Instrumentation variables `totalFundingPaid` and `totalFundingReceived` are read by `InvariantTests.invariant_funding_symmetry()` but never written during funding settlement, rendering economic invariant testing inert. Gate: *Funding Symmetry Instrumentation, Zero-Sum Accounting & Invariant Validity Remediation Gate*.
-2. **LiquidationQueue.sol** (`randomness / starvation`): Blockhash/timestamp entropy controls liquidation grace period timing and MEV resistance; head starvation occurs when candidate execution reverts. Gate: *Liquidation Timing Randomness & MEV Remediation Gate*.
-3. **OracleSanityChecker.sol** (`checkPriceVolatility`): Volatility check method is a dummy implementation returning `true`, bypassing volatility validation. Gate: *Oracle Volatility Validation Model & Consumer Integration Remediation Gate*.
-4. **OracleAggregator.sol** (`getTWAP`): TWAP method returns current spot aggregated price, bypassing time-weighted averaging. Gate: *Oracle Aggregator Historical TWAP Semantics & Consumer Integration Remediation Gate*.
-5. **AMMPool.sol** (`getTWAFundingRate`): TWA funding rate method returns current funding rate, bypassing historical rate averaging. Gate: *AMM Historical Funding Rate & TWA Semantics Remediation Gate*.
-6. **TWAPOracle.sol** (`forceUpdate`): `forceUpdate()` is an empty function body no-op, recording no price observations. Gate: *TWAP Oracle Force-Update, Source Integration & Staleness Remediation Gate*.
-7. **VotingEscrow.sol** (`typecast`): `int128` narrowing casts on user-controlled lock amounts without explicit bounds assertions. Gate: *Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate*.
+2. **RiskManager.sol** (`checkCircuitBreaker`): `checkCircuitBreaker` ignores `timeElapsed` parameter, failing to normalize price percentage moves over the elapsed time window. Gate: *RiskManager Circuit-Breaker Price Window & Time-Normalization Remediation Gate*.
+3. **LiquidationEngine.sol** (`setIncentiveMultiplier`): `setIncentiveMultiplier` validates input bounds but performs no storage mutation, changing no reward calculation. Gate: *Liquidation Incentive Multiplier State, Reward Model & Configuration Remediation Gate*.
+4. **LiquidationQueue.sol** (`randomness / starvation`): Blockhash/timestamp entropy controls liquidation grace period timing and MEV resistance; head starvation occurs when candidate execution reverts. Gate: *Liquidation Timing Randomness & MEV Remediation Gate*.
+5. **OracleSanityChecker.sol** (`checkPriceVolatility`): Volatility check method is a dummy implementation returning `true`, bypassing volatility validation. Gate: *Oracle Volatility Validation Model & Consumer Integration Remediation Gate*.
+6. **OracleAggregator.sol** (`getTWAP`): TWAP method returns current spot aggregated price, bypassing time-weighted averaging. Gate: *Oracle Aggregator Historical TWAP Semantics & Consumer Integration Remediation Gate*.
+7. **AMMPool.sol** (`getTWAFundingRate`): TWA funding rate method returns current funding rate, bypassing historical rate averaging. Gate: *AMM Historical Funding Rate & TWA Semantics Remediation Gate*.
+8. **TWAPOracle.sol** (`forceUpdate`): `forceUpdate()` is an empty function body no-op, recording no price observations. Gate: *TWAP Oracle Force-Update, Source Integration & Staleness Remediation Gate*.
+9. **VotingEscrow.sol** (`typecast`): `int128` narrowing casts on user-controlled lock amounts without explicit bounds assertions. Gate: *Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate*.
 
 #### SECURITY_REVIEW_REQUIRED Root Findings (7 Items)
 1. **AaveFlashLoanIntegrator.sol** (`_createRequestId`): Request identity hash `keccak256(abi.encodePacked(positionId, msg.sender, block.timestamp, loanAmount))` lacks nonce and excludes `minReward`. Same-block requests with identical parameters from `flashLiquidator` collide and overwrite `activeRequests[requestId]`. Gate: *Aave Flash Loan Request Identity, Replay & Lifecycle Remediation Gate*.
@@ -437,13 +439,13 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Lines**: L261
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Risk Management, Position Concentration, Open Interest
-- **Classification**: `SECURITY_BLOCKER`
+- **Domains Involved**: Risk Management, Circuit Breaker, Price Window Time Normalization
+- **Classification**: `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/core/RiskManager.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/core/RiskManager.sol`, `_checkPositionConcentration` hardcodes `totalOI = 0`, bypassing the concentration limit check and returning `true`. Configured `maxPositionConcentration` limits are never enforced during position validation.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
-- **Follow-up Gate**: RiskManager Open Interest, Trader Concentration & Position-Limit Remediation Gate
+- **Code-Specific Rationale**: In `contracts/core/RiskManager.sol`, `checkCircuitBreaker(marketId, currentPrice, previousPrice, timeElapsed)` ignores the `timeElapsed` parameter. The circuit breaker calculates percentage price moves without normalizing over the elapsed time window, treating a price move over seconds identically to a move over hours.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` until ECONOMIC_OR_LOGIC_CHANGE_REQUIRED remediation.
+- **Follow-up Gate**: RiskManager Circuit-Breaker Price Window & Time-Normalization Remediation Gate
 
 #### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L392)
 - **Lines**: L392
@@ -1597,7 +1599,19 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Zero-Address Check Standardization Gate
 
-### File: `contracts/liquidation/LiquidationEngine.sol` (24 Diagnostics)
+### File: `contracts/liquidation/LiquidationEngine.sol` (25 Diagnostics)
+
+#### Diagnostic: `Function state mutability can be restricted to view` (L511)
+- **Lines**: L511
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Liquidation Engine, Incentive Configuration, Storage Mutation
+- **Classification**: `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/liquidation/LiquidationEngine.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/liquidation/LiquidationEngine.sol`, `setIncentiveMultiplier(uint256 newMultiplier)` checks `newMultiplier <= 0.5e18` but mutates no storage state, updates no reward configuration, and emits no event. The function returns successfully without modifying liquidation incentive multipliers.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` until ECONOMIC_OR_LOGIC_CHANGE_REQUIRED remediation.
+- **Follow-up Gate**: Liquidation Incentive Multiplier State, Reward Model & Configuration Remediation Gate
 
 #### Diagnostic: `Unused function parameter. Remove or comment out the variable name to silence this warning.` (L249)
 - **Lines**: L249
@@ -1925,17 +1939,65 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Log Security Review Gate
 
-#### Diagnostic: `typecasts that can truncate values should be checked` (GENERAL)
-- **Lines**: L222, L222, L261, L261, L261, L264, L264, L264, L288, L290
-- **Count**: 10
+#### Diagnostic: `typecasts that can truncate values should be checked` (L222)
+- **Lines**: L222, L222
+- **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Settlement, Precision, Arithmetic, Margin, Funding
+- **Domains Involved**: Oracle Integrity, Pyth Price Validation
 - **Classification**: `CONTEXTUAL_ACCEPTED`
 - **Code Path & Reachability**: Production path in `contracts/oracles/PythOracle.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Explicit type conversions in `contracts/oracles/PythOracle.sol` (e.g. converting signed int256 PnL to unsigned uint256 margin, or converting between WAD 18d and native vault units 6d/24d) are bounded by preceding explicit invariant checks (e.g., `_toVaultUnits`, `int256(uint256)`, or `int256` bounds checks). Truncation is either mathematically impossible due to value range constraints or is the intended canonical quantization per protocol specification.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline until a dedicated type safety refactoring gate.
-- **Follow-up Gate**: Dedicated Math Precision & Safe Cast Refactoring Gate
+- **Code-Specific Rationale**: In `contracts/oracles/PythOracle.sol`, `_validatePythPrice` converts Pyth publish time to uint256 for age comparison bounded by maximum staleness thresholds.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Follow-up Gate**: Pyth Oracle Integration Audit Gate
+
+#### Diagnostic: `typecasts that can truncate values should be checked` (L261)
+- **Lines**: L261, L261, L261
+- **Count**: 3
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Oracle Integrity, Price Normalization, Precision
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/oracles/PythOracle.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/oracles/PythOracle.sol`, `_normalizePythPrice` uses narrowing casts in price scaling math. For negative exponents (e.g. expo = -8 with price = 100_000_000), natural unit division returns 1 instead of normalizing to the canonical 8-decimal oracle format, corrupting mark price calculations.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Dedicated Pyth Exponent & Decimal Normalization Remediation Gate
+
+#### Diagnostic: `typecasts that can truncate values should be checked` (L264)
+- **Lines**: L264, L264, L264
+- **Count**: 3
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Oracle Integrity, Price Normalization, Precision
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/oracles/PythOracle.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/oracles/PythOracle.sol`, `_normalizePythPrice` uses narrowing casts in price scaling math for positive exponent ranges.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Dedicated Pyth Exponent & Decimal Normalization Remediation Gate
+
+#### Diagnostic: `typecasts that can truncate values should be checked` (L288)
+- **Lines**: L288
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Oracle Integrity, Confidence Interval Normalization
+- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Code Path & Reachability**: Production path in `contracts/oracles/PythOracle.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/oracles/PythOracle.sol`, `_normalizePythConfidence` converts Pyth confidence interval to uint256 bounded by price magnitude.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Follow-up Gate**: Pyth Oracle Integration Audit Gate
+
+#### Diagnostic: `typecasts that can truncate values should be checked` (L290)
+- **Lines**: L290
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Oracle Integrity, Confidence Interval Normalization
+- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Code Path & Reachability**: Production path in `contracts/oracles/PythOracle.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/oracles/PythOracle.sol`, `_normalizePythConfidence` converts Pyth confidence interval exponent bounded by price magnitude.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
+- **Follow-up Gate**: Pyth Oracle Integration Audit Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L106, L123, L212, L378

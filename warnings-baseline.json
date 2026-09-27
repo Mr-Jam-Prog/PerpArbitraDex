@@ -405,7 +405,7 @@
     "column": 5,
     "message": "Function state mutability can be restricted to view",
     "raw_warning": "Warning: Function state mutability can be restricted to view",
-    "justification": "[PRODUCTION_WARNING_DEBT] Compiler warning debt in production contract; frozen for baseline gate."
+    "justification": "[UNRESOLVED_SECURITY_DEBT] Unresolved security-sensitive diagnostic in production contract exposing no-op incentive multiplier setter; frozen for baseline gate."
   },
   {
     "file": "contracts/oracles/OracleSanityChecker.sol",
