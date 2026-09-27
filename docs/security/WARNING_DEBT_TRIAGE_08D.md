@@ -7,22 +7,22 @@
 - **Final Baseline Total**: 846
 - **Baseline Reduction**: 4 (Mechanically safe compiler warnings eliminated; 7 restored as unresolved security debt)
 - **Start Production Warning Debt**: 341
-- **Final Production Warning Debt**: 121
+- **Final Production Warning Debt**: 119
 - **Start Unresolved Security Debt**: 282
-- **Final Unresolved Security Debt**: 498 (168 reclassified + 1 Timelock reclassified + 7 restored compiler diagnostics + 40 semantic stub reclassifications)
+- **Final Unresolved Security Debt**: 500 (168 reclassified + 1 Timelock reclassified + 7 restored compiler diagnostics + 42 semantic stub reclassifications)
 
 ---
 
 ## Dispositions Breakdown
 
 ### Section A. Diagnostic-Level Disposition Totals
-The sum of diagnostic-level dispositions equals exactly 498 `UNRESOLVED_SECURITY_DEBT` entries in `warnings-baseline.json`:
+The sum of diagnostic-level dispositions equals exactly 500 `UNRESOLVED_SECURITY_DEBT` entries in `warnings-baseline.json`:
 
-- `CONTEXTUAL_ACCEPTED`: 313
-- `SECURITY_REVIEW_REQUIRED`: 143
-- `SECURITY_BLOCKER`: 37
-- `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`: 5
-- **Total Diagnostics**: 498
+- `CONTEXTUAL_ACCEPTED`: 301
+- `SECURITY_REVIEW_REQUIRED`: 144
+- `SECURITY_BLOCKER`: 42
+- `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`: 13
+- **Total Diagnostics**: 500
 
 ### Section B. Root Security Findings Summary
 Root causes after grouping related static analyzer diagnostics into unique protocol vulnerabilities:
@@ -47,16 +47,17 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 17. **LidoStETHIntegrator.sol** (`wrapETH`): Direct stETH wrap unit mismatch (`wrapETH(useWstETH=false) -> _submitToLido() -> returns stETH balance delta -> value mislabeled as shares -> getPooledEthByShares(stETHAmount) -> wrong transfer amount`). Gate: *Lido stETH Amount-vs-Share Unit Conservation Remediation Gate*.
 18. **RiskManager.sol** (`_checkPositionConcentration`): Position concentration enforcement disabled (`totalOI` hardcoded to 0), bypassing configured `maxPositionConcentration` limits. Gate: *RiskManager Open Interest, Trader Concentration & Position-Limit Remediation Gate*.
 19. **RiskManager.sol** (`validateLiquidation`): Liquidation validation ignores `positionId` and `currentPrice`, fetching no position state and trusting caller-supplied `healthFactor`. Gate: *RiskManager Liquidation Position, Price & Circuit-Breaker Validation Remediation Gate*.
-20. **PythOracle.sol** (`typecast`): `_normalizePythPrice` fails to normalize price to 8 decimals for standard Pyth exponents. Gate: *Dedicated Pyth Exponent & Decimal Normalization Remediation Gate*.
-21. **CrossChainMessenger.sol** (`typecast`): `uint16(block.chainid)` truncation mismatches LayerZero endpoint chain IDs. Gate: *Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate*.
+20. **RiskManager.sol** (`calculateLiquidationPrice`): Liquidation price math returns placeholder 0 (`liquidationPrice = 0`), disabling liquidation price calculations. Gate: *RiskManager Liquidation Price Math Remediation Gate*.
+21. **PythOracle.sol** (`typecast`): `_normalizePythPrice` fails to normalize price to 8 decimals for standard Pyth exponents. Gate: *Dedicated Pyth Exponent & Decimal Normalization Remediation Gate*.
 
-#### ECONOMIC_OR_LOGIC_CHANGE_REQUIRED Root Findings (6 Items)
-1. **LiquidationQueue.sol** (`randomness / starvation`): Blockhash/timestamp entropy controls liquidation grace period timing and MEV resistance; head starvation occurs when candidate execution reverts. Gate: *Liquidation Timing Randomness & MEV Remediation Gate*.
-2. **OracleSanityChecker.sol** (`checkPriceVolatility`): Volatility check method is a dummy implementation returning `true`, bypassing volatility validation. Gate: *Oracle Volatility Validation Model & Consumer Integration Remediation Gate*.
-3. **OracleAggregator.sol** (`getTWAP`): TWAP method returns current spot aggregated price, bypassing time-weighted averaging. Gate: *Oracle Aggregator Historical TWAP Semantics & Consumer Integration Remediation Gate*.
-4. **AMMPool.sol** (`getTWAFundingRate`): TWA funding rate method returns current funding rate, bypassing historical rate averaging. Gate: *AMM Historical Funding Rate & TWA Semantics Remediation Gate*.
-5. **TWAPOracle.sol** (`forceUpdate`): `forceUpdate()` is an empty function body no-op, recording no price observations. Gate: *TWAP Oracle Force-Update, Source Integration & Staleness Remediation Gate*.
-6. **VotingEscrow.sol** (`typecast`): `int128` narrowing casts on user-controlled lock amounts without explicit bounds assertions. Gate: *Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate*.
+#### ECONOMIC_OR_LOGIC_CHANGE_REQUIRED Root Findings (7 Items)
+1. **PerpEngine.sol** (`totalFundingPaid / totalFundingReceived`): Instrumentation variables `totalFundingPaid` and `totalFundingReceived` are read by `InvariantTests.invariant_funding_symmetry()` but never written during funding settlement, rendering economic invariant testing inert. Gate: *Funding Symmetry Instrumentation, Zero-Sum Accounting & Invariant Validity Remediation Gate*.
+2. **LiquidationQueue.sol** (`randomness / starvation`): Blockhash/timestamp entropy controls liquidation grace period timing and MEV resistance; head starvation occurs when candidate execution reverts. Gate: *Liquidation Timing Randomness & MEV Remediation Gate*.
+3. **OracleSanityChecker.sol** (`checkPriceVolatility`): Volatility check method is a dummy implementation returning `true`, bypassing volatility validation. Gate: *Oracle Volatility Validation Model & Consumer Integration Remediation Gate*.
+4. **OracleAggregator.sol** (`getTWAP`): TWAP method returns current spot aggregated price, bypassing time-weighted averaging. Gate: *Oracle Aggregator Historical TWAP Semantics & Consumer Integration Remediation Gate*.
+5. **AMMPool.sol** (`getTWAFundingRate`): TWA funding rate method returns current funding rate, bypassing historical rate averaging. Gate: *AMM Historical Funding Rate & TWA Semantics Remediation Gate*.
+6. **TWAPOracle.sol** (`forceUpdate`): `forceUpdate()` is an empty function body no-op, recording no price observations. Gate: *TWAP Oracle Force-Update, Source Integration & Staleness Remediation Gate*.
+7. **VotingEscrow.sol** (`typecast`): `int128` narrowing casts on user-controlled lock amounts without explicit bounds assertions. Gate: *Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate*.
 
 #### SECURITY_REVIEW_REQUIRED Root Findings (7 Items)
 1. **AaveFlashLoanIntegrator.sol** (`_createRequestId`): Request identity hash `keccak256(abi.encodePacked(positionId, msg.sender, block.timestamp, loanAmount))` lacks nonce and excludes `minReward`. Same-block requests with identical parameters from `flashLiquidator` collide and overwrite `activeRequests[requestId]`. Gate: *Aave Flash Loan Request Identity, Replay & Lifecycle Remediation Gate*.
@@ -120,17 +121,17 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Time Oracle Audit Gate
 
-#### Diagnostic: `weak randomness derived from a predictable on-chain value` (GENERAL)
+#### Diagnostic: `weak randomness derived from a predictable on-chain value` (L215)
 - **Lines**: L215
 - **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Liquidation Queue, Randomness
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Domains Involved**: AMM Mark Price, Funding Interval, Timestamp Modulo Variance
+- **Classification**: `SECURITY_REVIEW_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/core/AMMPool.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/core/AMMPool.sol`, pseudo-random ordering is used solely for non-critical tie-breaking in liquidation queue candidate selection, where cryptographic randomness is not required for protocol security.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
-- **Follow-up Gate**: Liquidation Queue Audit Gate
+- **Code-Specific Rationale**: In `contracts/core/AMMPool.sol`, `timeToNextFunding = config.fundingInterval - (block.timestamp - state.lastFundingTime) % config.fundingInterval` derives mark price via `FundingRateCalculator.calculateMarkPrice`. Validator timestamp drift near funding epoch boundaries introduces mark price variance.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
+- **Follow-up Gate**: Dedicated AMM Mark Price & Funding Interval Audit Gate
 
 ### File: `contracts/core/LiquidityVault.sol` (16 Diagnostics)
 
@@ -196,7 +197,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Critical Authority Rotation & Governance Observability Remediation Gate
 
-### File: `contracts/core/PerpEngine.sol` (36 Diagnostics)
+### File: `contracts/core/PerpEngine.sol` (38 Diagnostics)
 
 #### Diagnostic: `Return value of an external call is not used` (GENERAL)
 - **Lines**: L593, L1528
@@ -257,6 +258,30 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Code-Specific Rationale**: In `contracts/core/PerpEngine.sol`, loop execution iterates over arrays or feeds during batch operations. To prevent potential gas exhaustion or liveness issues on large input arrays, this path requires formal pagination bounds review.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: Gas Optimization & Unbounded Loop Audit Gate
+
+#### Diagnostic: `state variable is read but never written` (L85)
+- **Lines**: L85
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Funding Accounting, Economic Invariant Integrity, Test Trustworthiness
+- **Classification**: `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/core/PerpEngine.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/core/PerpEngine.sol`, public state variable `totalFundingPaid` is read by `InvariantTests.invariant_funding_symmetry()` but never written during funding settlement. The economic invariant test reads 0 == 0 and passes trivially without validating actual funding settlement symmetry.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` until ECONOMIC_OR_LOGIC_CHANGE_REQUIRED remediation.
+- **Follow-up Gate**: Funding Symmetry Instrumentation, Zero-Sum Accounting & Invariant Validity Remediation Gate
+
+#### Diagnostic: `state variable is read but never written` (L86)
+- **Lines**: L86
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Funding Accounting, Economic Invariant Integrity, Test Trustworthiness
+- **Classification**: `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/core/PerpEngine.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/core/PerpEngine.sol`, public state variable `totalFundingReceived` is read by `InvariantTests.invariant_funding_symmetry()` but never written during funding settlement. The economic invariant test reads 0 == 0 and passes trivially without validating actual funding settlement symmetry.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` until ECONOMIC_OR_LOGIC_CHANGE_REQUIRED remediation.
+- **Follow-up Gate**: Funding Symmetry Instrumentation, Zero-Sum Accounting & Invariant Validity Remediation Gate
 
 #### Diagnostic: `typecasts that can truncate values should be checked` (GENERAL)
 - **Lines**: L278, L280, L305, L327, L408, L411, L463, L491, L580, L678, L799, L869, L905, L946, L964, L993, L993, L993, L993, L1019
@@ -380,7 +405,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Classification**: `SECURITY_BLOCKER`
 - **Code Path & Reachability**: Production path in `contracts/core/RiskManager.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/core/RiskManager.sol`, `calculateLiquidationPrice` ignores `size` parameter and returns 0.
+- **Code-Specific Rationale**: In `contracts/core/RiskManager.sol`, `calculateLiquidationPrice` ignores `size` parameter, performs placeholder maintenance margin calculation, and returns `liquidationPrice = 0`.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
 - **Follow-up Gate**: RiskManager Liquidation Price Math Remediation Gate
 
@@ -392,7 +417,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Classification**: `SECURITY_BLOCKER`
 - **Code Path & Reachability**: Production path in `contracts/core/RiskManager.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/core/RiskManager.sol`, `calculateLiquidationPrice` ignores `price` parameter.
+- **Code-Specific Rationale**: In `contracts/core/RiskManager.sol`, `calculateLiquidationPrice` ignores `price` parameter and returns `liquidationPrice = 0`.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
 - **Follow-up Gate**: RiskManager Liquidation Price Math Remediation Gate
 
@@ -404,7 +429,7 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Classification**: `SECURITY_BLOCKER`
 - **Code Path & Reachability**: Production path in `contracts/core/RiskManager.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: In `contracts/core/RiskManager.sol`, `calculateLiquidationPrice` ignores `fundingAccrued` parameter.
+- **Code-Specific Rationale**: In `contracts/core/RiskManager.sol`, `calculateLiquidationPrice` ignores `fundingAccrued` parameter and returns `liquidationPrice = 0`.
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
 - **Follow-up Gate**: RiskManager Liquidation Price Math Remediation Gate
 
@@ -758,17 +783,41 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` for security review.
 - **Follow-up Gate**: General Security Review Gate
 
-#### Diagnostic: `typecasts that can truncate values should be checked` (GENERAL)
-- **Lines**: L353, L353, L354, L354, L370, L370
-- **Count**: 6
+#### Diagnostic: `typecasts that can truncate values should be checked` (L353)
+- **Lines**: L353, L353
+- **Count**: 2
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Settlement, Precision, Arithmetic, Margin, Funding
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Domains Involved**: Governance, Token Locking, Voting Weight Math
+- **Classification**: `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`
 - **Code Path & Reachability**: Production path in `contracts/governance/VotingEscrow.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Explicit type conversions in `contracts/governance/VotingEscrow.sol` (e.g. converting signed int256 PnL to unsigned uint256 margin, or converting between WAD 18d and native vault units 6d/24d) are bounded by preceding explicit invariant checks (e.g., `_toVaultUnits`, `int256(uint256)`, or `int256` bounds checks). Truncation is either mathematically impossible due to value range constraints or is the intended canonical quantization per protocol specification.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline until a dedicated type safety refactoring gate.
-- **Follow-up Gate**: Dedicated Math Precision & Safe Cast Refactoring Gate
+- **Code-Specific Rationale**: In `contracts/governance/VotingEscrow.sol`, narrowing typecasts converting user-controlled locked token amounts and unlock timestamps (`uint256 -> int256 -> int128`) lack explicit pre-cast upper bound assertions, presenting integer truncation risks during large token locks.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` until ECONOMIC_OR_LOGIC_CHANGE_REQUIRED remediation.
+- **Follow-up Gate**: Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate
+
+#### Diagnostic: `typecasts that can truncate values should be checked` (L354)
+- **Lines**: L354, L354
+- **Count**: 2
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Governance, Token Locking, Voting Weight Math
+- **Classification**: `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/governance/VotingEscrow.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/governance/VotingEscrow.sol`, narrowing casts in lock extension math lack explicit bounds checks.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` until ECONOMIC_OR_LOGIC_CHANGE_REQUIRED remediation.
+- **Follow-up Gate**: Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate
+
+#### Diagnostic: `typecasts that can truncate values should be checked` (L370)
+- **Lines**: L370, L370
+- **Count**: 2
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Governance, Token Locking, Voting Weight Math
+- **Classification**: `ECONOMIC_OR_LOGIC_CHANGE_REQUIRED`
+- **Code Path & Reachability**: Production path in `contracts/governance/VotingEscrow.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/governance/VotingEscrow.sol`, narrowing casts in voting power checkpointing lack explicit bounds checks.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` until ECONOMIC_OR_LOGIC_CHANGE_REQUIRED remediation.
+- **Follow-up Gate**: Dedicated VotingEscrow Safe Casting & Weight Math Remediation Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L115, L116, L156, L197, L226, L263, L295, L331, L351, L386
@@ -1040,17 +1089,65 @@ Root causes after grouping related static analyzer diagnostics into unique proto
 - **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline.
 - **Follow-up Gate**: Log Security Review Gate
 
-#### Diagnostic: `typecasts that can truncate values should be checked` (GENERAL)
-- **Lines**: L160, L171, L298, L402, L550
-- **Count**: 5
+#### Diagnostic: `typecasts that can truncate values should be checked` (L160)
+- **Lines**: L160
+- **Count**: 1
 - **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
-- **Domains Involved**: Settlement, Precision, Arithmetic, Margin, Funding
-- **Classification**: `CONTEXTUAL_ACCEPTED`
+- **Domains Involved**: Cross-Chain, LayerZero Endpoint Chain ID Mapping
+- **Classification**: `SECURITY_BLOCKER`
 - **Code Path & Reachability**: Production path in `contracts/integration/CrossChainMessenger.sol`.
 - **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
-- **Code-Specific Rationale**: Explicit type conversions in `contracts/integration/CrossChainMessenger.sol` (e.g. converting signed int256 PnL to unsigned uint256 margin, or converting between WAD 18d and native vault units 6d/24d) are bounded by preceding explicit invariant checks (e.g., `_toVaultUnits`, `int256(uint256)`, or `int256` bounds checks). Truncation is either mathematically impossible due to value range constraints or is the intended canonical quantization per protocol specification.
-- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` baseline until a dedicated type safety refactoring gate.
-- **Follow-up Gate**: Dedicated Math Precision & Safe Cast Refactoring Gate
+- **Code-Specific Rationale**: In `contracts/integration/CrossChainMessenger.sol`, `uint16(block.chainid)` truncates EVM chain IDs to 16 bits and fails to map EVM chain IDs to LayerZero endpoint chain IDs, corrupting cross-chain endpoint targeting.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate
+
+#### Diagnostic: `typecasts that can truncate values should be checked` (L171)
+- **Lines**: L171
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Cross-Chain, LayerZero Endpoint Chain ID Mapping
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/integration/CrossChainMessenger.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/integration/CrossChainMessenger.sol`, `uint16(block.chainid)` truncates EVM chain IDs during fee estimation.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate
+
+#### Diagnostic: `typecasts that can truncate values should be checked` (L298)
+- **Lines**: L298
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Cross-Chain, LayerZero Endpoint Chain ID Mapping
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/integration/CrossChainMessenger.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/integration/CrossChainMessenger.sol`, `uint16(block.chainid)` truncates EVM chain IDs during message retry validation.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate
+
+#### Diagnostic: `typecasts that can truncate values should be checked` (L402)
+- **Lines**: L402
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Cross-Chain, LayerZero Endpoint Chain ID Mapping
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/integration/CrossChainMessenger.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/integration/CrossChainMessenger.sol`, `uint16(block.chainid)` truncates EVM chain IDs during route configuration.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate
+
+#### Diagnostic: `typecasts that can truncate values should be checked` (L550)
+- **Lines**: L550
+- **Count**: 1
+- **Current Baseline Category**: `UNRESOLVED_SECURITY_DEBT`
+- **Domains Involved**: Cross-Chain, LayerZero Endpoint Chain ID Mapping
+- **Classification**: `SECURITY_BLOCKER`
+- **Code Path & Reachability**: Production path in `contracts/integration/CrossChainMessenger.sol`.
+- **Security Consequence if Real**: Potential logic/execution risk if invariants violated.
+- **Code-Specific Rationale**: In `contracts/integration/CrossChainMessenger.sol`, `uint16(block.chainid)` truncates EVM chain IDs during cross-chain message construction.
+- **Action**: Retain in `UNRESOLVED_SECURITY_DEBT` as a SECURITY_BLOCKER.
+- **Follow-up Gate**: Dedicated Cross-Chain Endpoint Chain ID Mapping Remediation Gate
 
 #### Diagnostic: `usage of `block.timestamp` in a comparison may be manipulated by validators` (GENERAL)
 - **Lines**: L404
