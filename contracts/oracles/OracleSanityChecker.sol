@@ -256,7 +256,7 @@ contract OracleSanityChecker is IOracleSanityChecker, Ownable {
     /**
      * @dev Additional sanity checks
      */
-    function _additionalChecks(bytes32 feedId, uint256 price) 
+    function _additionalChecks(bytes32 /* feedId */, uint256 price)
         internal 
         pure 
         returns (bool) 
