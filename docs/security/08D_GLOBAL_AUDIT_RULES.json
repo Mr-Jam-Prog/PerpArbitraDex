@@ -1,0 +1,375 @@
+{
+  "rules": [
+    {
+      "rule_id": "RULE_HARDCODED_ORACLE_OR_ECONOMIC_INPUT",
+      "title": "Hardcoded Oracle Price, Index or Economic Input",
+      "pattern": "1000\\s*\\*\\s*1e8|100_000_000|1000000\\s*\\*\\s*PRECISION",
+      "description": "Hardcoded economic values or oracle price returns bypass dynamic oracle/config inputs."
+    },
+    {
+      "rule_id": "RULE_UNVALIDATED_CROSS_CHAIN_SOURCE_OR_NONCE",
+      "title": "Unvalidated Source Address or Nonce Binding in Cross-Chain Messaging",
+      "pattern": "retryMessage|_validateMessage",
+      "description": "Cross-chain message handlers that accept srcAddress or transport nonce without binding/validating them."
+    },
+    {
+      "rule_id": "RULE_IGNORED_MARKET_OR_POSITION_PARAMETER",
+      "title": "Ignored Market or Position ID in Risk/Oracle Calculations",
+      "pattern": "function\\s+(_getConcentrationLimit|getTWAP|getTWAFundingRate|_getOraclePrice)\\s*\\(",
+      "description": "Functions taking positionId, marketId, or period parameter but ignoring it in state lookup."
+    },
+    {
+      "rule_id": "RULE_UNIMPLEMENTED_CRITICAL_TIMELOCK_CHECK",
+      "title": "Unimplemented or Dummy Governance / Timelock Safety Check",
+      "pattern": "function\\s+_isCriticalOperation",
+      "description": "Critical operation checks in timelocks returning false or dummy hardcoded values."
+    },
+    {
+      "rule_id": "RULE_DISABLED_EMERGENCY_OR_ADMIN_CONTROL",
+      "title": "Exposed Emergency / Admin Control Function Always Reverting",
+      "pattern": "revert\\(\\\"[^\\\"]*disabled\\\"|revert\\(\\\"[^\\\"]*not implemented\\\"",
+      "description": "Exposed state management or emergency control APIs that always revert."
+    },
+    {
+      "rule_id": "RULE_RAW_ETH_TRANSFER_REENTRANCY_OR_ORDERING",
+      "title": "Uncapped Raw ETH Transfer Prior to State Deletion / Reentrancy",
+      "pattern": "\\.call\\s*\\{value:[^}]*\\}\\s*\\(\\\"\\\"\\)",
+      "description": "Raw ETH calls before state cleanup or lacking reentrancy guards."
+    },
+    {
+      "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
+      "title": "Unchecked Return Value on External Token Transfer",
+      "pattern": "\\.transferFrom\\(|\\.transfer\\(",
+      "description": "Calls to transfer or transferFrom whose boolean return value is unchecked."
+    },
+    {
+      "rule_id": "RULE_UNOBSERVABLE_AUTHORITY_ROTATION",
+      "title": "Authority or Role Setter Lacking Event Emission",
+      "pattern": "function\\s+set[A-Z0-9_]+\\s*\\([^)]*\\)[^{]*\\{",
+      "description": "Critical governance or authority setters that modify storage without emitting an event."
+    },
+    {
+      "rule_id": "RULE_SETTER_NO_STATE_MUTATION",
+      "title": "Config/Incentive Setter with Input Validation but No Storage Mutation",
+      "pattern": "function\\s+set[A-Z0-9_]+\\s*\\(",
+      "description": "Setter functions that validate input parameters but fail to write to storage."
+    },
+    {
+      "rule_id": "RULE_TYPE_NARROWING_TRUNCATION",
+      "title": "Unchecked Narrowing Integer Cast or Decimal Conversion",
+      "pattern": "uint16\\(|uint64\\(|int128\\(",
+      "description": "Narrowing typecasts (e.g. block.chainid to uint16) without range checks."
+    }
+  ],
+  "matches": [
+    {
+      "rule_id": "RULE_IGNORED_MARKET_OR_POSITION_PARAMETER",
+      "title": "Ignored Market or Position ID in Risk/Oracle Calculations",
+      "file": "contracts/integration/AaveFlashLoanIntegrator.sol",
+      "line": 384,
+      "code_snippet": "function _getOraclePrice(uint256 positionId) internal view returns (uint256) {"
+    },
+    {
+      "rule_id": "RULE_HARDCODED_ORACLE_OR_ECONOMIC_INPUT",
+      "title": "Hardcoded Oracle Price, Index or Economic Input",
+      "file": "contracts/integration/AaveFlashLoanIntegrator.sol",
+      "line": 386,
+      "code_snippet": "return 1000 * 1e8; // Placeholder"
+    },
+    {
+      "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
+      "title": "Unchecked Return Value on External Token Transfer",
+      "file": "contracts/integration/LidoStETHIntegrator.sol",
+      "line": 147,
+      "code_snippet": "require(stETH.transferFrom(address(this), msg.sender, stETHAmount), \"Transfer failed\");"
+    },
+    {
+      "rule_id": "RULE_RAW_ETH_TRANSFER_REENTRANCY_OR_ORDERING",
+      "title": "Uncapped Raw ETH Transfer Prior to State Deletion / Reentrancy",
+      "file": "contracts/integration/LidoStETHIntegrator.sol",
+      "line": 171,
+      "code_snippet": "(bool success, ) = msg.sender.call{value: ethAmount}(\"\");"
+    },
+    {
+      "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
+      "title": "Unchecked Return Value on External Token Transfer",
+      "file": "contracts/integration/LidoStETHIntegrator.sol",
+      "line": 181,
+      "code_snippet": "stETH.transferFrom(msg.sender, address(this), amount);"
+    },
+    {
+      "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
+      "title": "Unchecked Return Value on External Token Transfer",
+      "file": "contracts/integration/LidoStETHIntegrator.sol",
+      "line": 203,
+      "code_snippet": "stETH.transferFrom(msg.sender, address(this), amount);"
+    },
+    {
+      "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
+      "title": "Unchecked Return Value on External Token Transfer",
+      "file": "contracts/integration/LidoStETHIntegrator.sol",
+      "line": 231,
+      "code_snippet": "require(stETH.transfer(msg.sender, stETHAmount), \"Transfer failed\");"
+    },
+    {
+      "rule_id": "RULE_RAW_ETH_TRANSFER_REENTRANCY_OR_ORDERING",
+      "title": "Uncapped Raw ETH Transfer Prior to State Deletion / Reentrancy",
+      "file": "contracts/integration/LidoStETHIntegrator.sol",
+      "line": 357,
+      "code_snippet": "(bool success, ) = msg.sender.call{value: amount}(\"\");"
+    },
+    {
+      "rule_id": "RULE_TYPE_NARROWING_TRUNCATION",
+      "title": "Unchecked Narrowing Integer Cast or Decimal Conversion",
+      "file": "contracts/integration/CrossChainMessenger.sol",
+      "line": 160,
+      "code_snippet": "uint16(block.chainid),"
+    },
+    {
+      "rule_id": "RULE_TYPE_NARROWING_TRUNCATION",
+      "title": "Unchecked Narrowing Integer Cast or Decimal Conversion",
+      "file": "contracts/integration/CrossChainMessenger.sol",
+      "line": 171,
+      "code_snippet": "srcChainId: uint16(block.chainid),"
+    },
+    {
+      "rule_id": "RULE_UNVALIDATED_CROSS_CHAIN_SOURCE_OR_NONCE",
+      "title": "Unvalidated Source Address or Nonce Binding in Cross-Chain Messaging",
+      "file": "contracts/integration/CrossChainMessenger.sol",
+      "line": 216,
+      "code_snippet": "_validateMessage(message, srcChainId, nonce);"
+    },
+    {
+      "rule_id": "RULE_UNVALIDATED_CROSS_CHAIN_SOURCE_OR_NONCE",
+      "title": "Unvalidated Source Address or Nonce Binding in Cross-Chain Messaging",
+      "file": "contracts/integration/CrossChainMessenger.sol",
+      "line": 243,
+      "code_snippet": "function retryMessage("
+    },
+    {
+      "rule_id": "RULE_UNVALIDATED_CROSS_CHAIN_SOURCE_OR_NONCE",
+      "title": "Unvalidated Source Address or Nonce Binding in Cross-Chain Messaging",
+      "file": "contracts/integration/CrossChainMessenger.sol",
+      "line": 258,
+      "code_snippet": "_validateMessage(message, srcChainId, nonce);"
+    },
+    {
+      "rule_id": "RULE_TYPE_NARROWING_TRUNCATION",
+      "title": "Unchecked Narrowing Integer Cast or Decimal Conversion",
+      "file": "contracts/integration/CrossChainMessenger.sol",
+      "line": 298,
+      "code_snippet": "srcChainId: uint16(block.chainid),"
+    },
+    {
+      "rule_id": "RULE_UNVALIDATED_CROSS_CHAIN_SOURCE_OR_NONCE",
+      "title": "Unvalidated Source Address or Nonce Binding in Cross-Chain Messaging",
+      "file": "contracts/integration/CrossChainMessenger.sol",
+      "line": 396,
+      "code_snippet": "function _validateMessage("
+    },
+    {
+      "rule_id": "RULE_TYPE_NARROWING_TRUNCATION",
+      "title": "Unchecked Narrowing Integer Cast or Decimal Conversion",
+      "file": "contracts/integration/CrossChainMessenger.sol",
+      "line": 402,
+      "code_snippet": "require(message.dstChainId == uint16(block.chainid), \"Invalid destination\");"
+    },
+    {
+      "rule_id": "RULE_TYPE_NARROWING_TRUNCATION",
+      "title": "Unchecked Narrowing Integer Cast or Decimal Conversion",
+      "file": "contracts/integration/CrossChainMessenger.sol",
+      "line": 550,
+      "code_snippet": "uint16(block.chainid),"
+    },
+    {
+      "rule_id": "RULE_RAW_ETH_TRANSFER_REENTRANCY_OR_ORDERING",
+      "title": "Uncapped Raw ETH Transfer Prior to State Deletion / Reentrancy",
+      "file": "contracts/governance/Treasury.sol",
+      "line": 163,
+      "code_snippet": "(bool success, ) = to.call{value: amount}(\"\");"
+    },
+    {
+      "rule_id": "RULE_RAW_ETH_TRANSFER_REENTRANCY_OR_ORDERING",
+      "title": "Uncapped Raw ETH Transfer Prior to State Deletion / Reentrancy",
+      "file": "contracts/governance/Treasury.sol",
+      "line": 204,
+      "code_snippet": "(bool success, ) = timelockAddress.call{value: amount}(\"\");"
+    },
+    {
+      "rule_id": "RULE_TYPE_NARROWING_TRUNCATION",
+      "title": "Unchecked Narrowing Integer Cast or Decimal Conversion",
+      "file": "contracts/governance/VotingEscrow.sol",
+      "line": 353,
+      "code_snippet": "bias = int128(int256((lockedBalance.amount * remainingTime) / MAX_TIME));"
+    },
+    {
+      "rule_id": "RULE_TYPE_NARROWING_TRUNCATION",
+      "title": "Unchecked Narrowing Integer Cast or Decimal Conversion",
+      "file": "contracts/governance/VotingEscrow.sol",
+      "line": 354,
+      "code_snippet": "slope = int128(int256(lockedBalance.amount / MAX_TIME));"
+    },
+    {
+      "rule_id": "RULE_TYPE_NARROWING_TRUNCATION",
+      "title": "Unchecked Narrowing Integer Cast or Decimal Conversion",
+      "file": "contracts/governance/VotingEscrow.sol",
+      "line": 370,
+      "code_snippet": "bias: int128(int256(totalVotingPower)),"
+    },
+    {
+      "rule_id": "RULE_UNIMPLEMENTED_CRITICAL_TIMELOCK_CHECK",
+      "title": "Unimplemented or Dummy Governance / Timelock Safety Check",
+      "file": "contracts/governance/TimelockController.sol",
+      "line": 214,
+      "code_snippet": "function _isCriticalOperation(address target, bytes calldata data)"
+    },
+    {
+      "rule_id": "RULE_IGNORED_MARKET_OR_POSITION_PARAMETER",
+      "title": "Ignored Market or Position ID in Risk/Oracle Calculations",
+      "file": "contracts/core/RiskManager.sol",
+      "line": 416,
+      "code_snippet": "function _getConcentrationLimit(uint256 marketId) internal view returns (uint256 limit) {"
+    },
+    {
+      "rule_id": "RULE_HARDCODED_ORACLE_OR_ECONOMIC_INPUT",
+      "title": "Hardcoded Oracle Price, Index or Economic Input",
+      "file": "contracts/core/RiskManager.sol",
+      "line": 424,
+      "code_snippet": "limit = 1000000 * PRECISION; // $1M default"
+    },
+    {
+      "rule_id": "RULE_IGNORED_MARKET_OR_POSITION_PARAMETER",
+      "title": "Ignored Market or Position ID in Risk/Oracle Calculations",
+      "file": "contracts/core/AMMPool.sol",
+      "line": 333,
+      "code_snippet": "function getTWAFundingRate(uint256 marketId, uint256 period)"
+    },
+    {
+      "rule_id": "RULE_DISABLED_EMERGENCY_OR_ADMIN_CONTROL",
+      "title": "Exposed Emergency / Admin Control Function Always Reverting",
+      "file": "contracts/core/AMMPool.sol",
+      "line": 380,
+      "code_snippet": "revert(\"AMMPool: emergencyResetSkew disabled\");"
+    },
+    {
+      "rule_id": "RULE_RAW_ETH_TRANSFER_REENTRANCY_OR_ORDERING",
+      "title": "Uncapped Raw ETH Transfer Prior to State Deletion / Reentrancy",
+      "file": "contracts/upgradeability/ProxyAdmin.sol",
+      "line": 174,
+      "code_snippet": "(bool success, ) = owner().call{value: amount}(\"\");"
+    },
+    {
+      "rule_id": "RULE_RAW_ETH_TRANSFER_REENTRANCY_OR_ORDERING",
+      "title": "Uncapped Raw ETH Transfer Prior to State Deletion / Reentrancy",
+      "file": "contracts/upgradeability/UpgradeExecutor.sol",
+      "line": 420,
+      "code_snippet": "(bool success, ) = msg.sender.call{value: amount}(\"\");"
+    },
+    {
+      "rule_id": "RULE_DISABLED_EMERGENCY_OR_ADMIN_CONTROL",
+      "title": "Exposed Emergency / Admin Control Function Always Reverting",
+      "file": "contracts/liquidation/LiquidationEngine.sol",
+      "line": 253,
+      "code_snippet": "revert(\"Flash liquidation disabled\");"
+    },
+    {
+      "rule_id": "RULE_IGNORED_MARKET_OR_POSITION_PARAMETER",
+      "title": "Ignored Market or Position ID in Risk/Oracle Calculations",
+      "file": "contracts/interfaces/IAMMPool.sol",
+      "line": 173,
+      "code_snippet": "function getTWAFundingRate(uint256 marketId, uint256 period)"
+    },
+    {
+      "rule_id": "RULE_IGNORED_MARKET_OR_POSITION_PARAMETER",
+      "title": "Ignored Market or Position ID in Risk/Oracle Calculations",
+      "file": "contracts/interfaces/IOracleAggregator.sol",
+      "line": 135,
+      "code_snippet": "function getTWAP(bytes32 feedId, uint256 period)"
+    },
+    {
+      "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
+      "title": "Unchecked Return Value on External Token Transfer",
+      "file": "contracts/oracles/PythOracle.sol",
+      "line": 157,
+      "code_snippet": "payable(msg.sender).transfer(msg.value - updateFee);"
+    },
+    {
+      "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
+      "title": "Unchecked Return Value on External Token Transfer",
+      "file": "contracts/oracles/PythOracle.sol",
+      "line": 172,
+      "code_snippet": "payable(msg.sender).transfer(msg.value - updateFee);"
+    },
+    {
+      "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
+      "title": "Unchecked Return Value on External Token Transfer",
+      "file": "contracts/oracles/PythOracle.sol",
+      "line": 186,
+      "code_snippet": "payable(msg.sender).transfer(msg.value);"
+    },
+    {
+      "rule_id": "RULE_TYPE_NARROWING_TRUNCATION",
+      "title": "Unchecked Narrowing Integer Cast or Decimal Conversion",
+      "file": "contracts/oracles/PythOracle.sol",
+      "line": 222,
+      "code_snippet": "uint256 price = uint256(uint64(pythPrice.price));"
+    },
+    {
+      "rule_id": "RULE_TYPE_NARROWING_TRUNCATION",
+      "title": "Unchecked Narrowing Integer Cast or Decimal Conversion",
+      "file": "contracts/oracles/PythOracle.sol",
+      "line": 223,
+      "code_snippet": "uint256 confidence = uint256(uint64(pythPrice.conf));"
+    },
+    {
+      "rule_id": "RULE_TYPE_NARROWING_TRUNCATION",
+      "title": "Unchecked Narrowing Integer Cast or Decimal Conversion",
+      "file": "contracts/oracles/PythOracle.sol",
+      "line": 261,
+      "code_snippet": "return uint256(uint64(price)) * (10 ** uint32(expo));"
+    },
+    {
+      "rule_id": "RULE_TYPE_NARROWING_TRUNCATION",
+      "title": "Unchecked Narrowing Integer Cast or Decimal Conversion",
+      "file": "contracts/oracles/PythOracle.sol",
+      "line": 264,
+      "code_snippet": "return uint256(uint64(price)) / (10 ** uint32(-expo));"
+    },
+    {
+      "rule_id": "RULE_TYPE_NARROWING_TRUNCATION",
+      "title": "Unchecked Narrowing Integer Cast or Decimal Conversion",
+      "file": "contracts/oracles/PythOracle.sol",
+      "line": 285,
+      "code_snippet": "uint64 conf = uint64(pythPrice.conf);"
+    },
+    {
+      "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
+      "title": "Unchecked Return Value on External Token Transfer",
+      "file": "contracts/oracles/PythOracle.sol",
+      "line": 358,
+      "code_snippet": "payable(owner()).transfer(balance);"
+    },
+    {
+      "rule_id": "RULE_IGNORED_MARKET_OR_POSITION_PARAMETER",
+      "title": "Ignored Market or Position ID in Risk/Oracle Calculations",
+      "file": "contracts/oracles/OracleAggregator.sol",
+      "line": 342,
+      "code_snippet": "function getTWAP(bytes32 feedId, uint256 period)"
+    },
+    {
+      "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
+      "title": "Unchecked Return Value on External Token Transfer",
+      "file": "contracts/oracles/RWAOracleAdapter.sol",
+      "line": 417,
+      "code_snippet": "payable(owner()).transfer(balance);"
+    },
+    {
+      "rule_id": "RULE_TYPE_NARROWING_TRUNCATION",
+      "title": "Unchecked Narrowing Integer Cast or Decimal Conversion",
+      "file": "contracts/libraries/BitPacking.sol",
+      "line": 286,
+      "code_snippet": "values[i] = uint64(packed >> (i * 64));"
+    }
+  ],
+  "total_matches": 44
+}
