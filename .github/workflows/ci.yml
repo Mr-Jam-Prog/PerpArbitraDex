@@ -34,3 +34,6 @@ jobs:
 
       - name: Run the Reproducible Core Gates
         run: pnpm check:core
+
+      - name: 08D-R1 Semantic Triage Integrity
+        run: pnpm check:08d-r1

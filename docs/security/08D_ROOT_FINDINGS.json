@@ -1,16 +1,23 @@
 [
   {
     "root_id": "ROOT_AAVE_ORACLE_HARDCODED",
-    "title": "AaveFlashLoanIntegrator Hardcoded Price Mock Returns Constant Value",
+    "title": "AaveFlashLoanIntegrator Hardcoded Price Returns Constant Value in Profitability Estimation",
     "classification": "SECURITY_BLOCKER",
     "affected_contracts": [
       "contracts/integration/AaveFlashLoanIntegrator.sol"
     ],
     "affected_symbols": [
-      "_getOraclePrice"
+      "AaveFlashLoanIntegrator._getOraclePrice(uint256)",
+      "AaveFlashLoanIntegrator.estimateProfitability(uint256,uint256)"
     ],
-    "execution_path": "flashLoan -> executeOperation -> _getOraclePrice returns hardcoded 1000 * 1e8 value",
-    "consequence": "Oracle price is completely hardcoded, bypassing OracleAggregator and breaking valuation during flash liquidations.",
+    "semantic_components": [
+      "Aave Flash Loan Keeper Profitability Valuation"
+    ],
+    "execution_path": "estimateProfitability -> _getOraclePrice returns hardcoded 1000 * 1e8 value",
+    "consequence": "Keeper / automation profitability estimation receives constant price, causing incorrect keeper decisions (skipping profitable candidates or attempting unprofitable ones). Note: price is not called in execution callback.",
+    "reachability_status": "CONDITIONALLY_REACHABLE",
+    "blocked_by_root_ids": [],
+    "preconditions": "Off-chain keeper queries estimateProfitability before executing flash loan",
     "gate_id": "Aave Flash Loan Integrator Price Oracle Integration Gate",
     "diagnostic_ids": [
       "6a9c171c6017a4a49fc61f2e8e419e1069fe2340e5fec137f5a63d583d924a14",
@@ -19,16 +26,22 @@
   },
   {
     "root_id": "ROOT_CROSS_CHAIN_UNTRUSTED_REMOTE",
-    "title": "CrossChainMessenger retryMessage Omits Trusted Remote Source Address Validation",
+    "title": "CrossChainMessenger Privileged retryMessage Omits Transport Source Address Validation",
     "classification": "SECURITY_BLOCKER",
     "affected_contracts": [
       "contracts/integration/CrossChainMessenger.sol"
     ],
     "affected_symbols": [
-      "retryMessage"
+      "CrossChainMessenger.retryMessage(uint16,bytes,uint64,bytes)"
     ],
-    "execution_path": "retryMessage receives srcAddress calldata but ignores it during trustedRemoteLookup check",
-    "consequence": "Untrusted remote addresses can trigger cross-chain message execution if srcAddress is not validated.",
+    "semantic_components": [
+      "Privileged Cross-Chain Message Retry Authentication"
+    ],
+    "execution_path": "retryMessage requires onlyMessenger role (granted to perpEngine) but accepts srcAddress calldata without verifying against trustedRemoteLookup",
+    "consequence": "Privileged retry path does not revalidate transport source identity, violating cross-chain trust-boundary consistency.",
+    "reachability_status": "ACTIVE_REACHABLE",
+    "blocked_by_root_ids": [],
+    "preconditions": "Caller holds MESSENGER_ROLE",
     "gate_id": "Cross-Chain Message Source Address Authentication Gate",
     "diagnostic_ids": [
       "abd34815c05f0cdf7ad009556f271589fae3a50b671497ff7e21befe2cace897"
@@ -42,10 +55,16 @@
       "contracts/integration/CrossChainMessenger.sol"
     ],
     "affected_symbols": [
-      "_validateMessage"
+      "CrossChainMessenger._validateMessage(tuple,uint16,uint64)"
     ],
-    "execution_path": "_validateMessage accepts transport nonce parameter but validates message.nonce instead",
-    "consequence": "Transport-level nonce is not bound to message-level nonce, allowing cross-chain message replay attacks.",
+    "semantic_components": [
+      "Cross-Chain Message Nonce & Delivery Ordering"
+    ],
+    "execution_path": "_validateMessage accepts transport nonce argument but evaluates inner message.nonce instead",
+    "consequence": "Transport-level nonce is unbound to payload message.nonce. Exact payload replay is prevented by executedMessages[messageId], but transport delivery ordering guarantees are bypassed.",
+    "reachability_status": "ACTIVE_REACHABLE",
+    "blocked_by_root_ids": [],
+    "preconditions": "Cross-chain message delivered by LayerZero endpoint",
     "gate_id": "Cross-Chain Transport Nonce Binding & Replay Protection Gate",
     "diagnostic_ids": [
       "1d5e5ce7002f8957dbdd035a88b1a345fa22fb1cff378fee96adc2a2634a8c07"
@@ -59,10 +78,16 @@
       "contracts/core/RiskManager.sol"
     ],
     "affected_symbols": [
-      "_getConcentrationLimit"
+      "RiskManager._getConcentrationLimit(uint256)"
     ],
-    "execution_path": "_getConcentrationLimit sets totalOI = 0 hardcoded placeholder, skipping actual open interest query",
-    "consequence": "Position concentration limits are defaulted or bypassed, allowing unbounded trader exposure.",
+    "semantic_components": [
+      "Trader Open Interest Concentration Limit"
+    ],
+    "execution_path": "_getConcentrationLimit sets totalOI = 0 hardcoded placeholder",
+    "consequence": "Position concentration limits fall back to default limit, bypassing dynamic market open interest limits.",
+    "reachability_status": "ACTIVE_REACHABLE",
+    "blocked_by_root_ids": [],
+    "preconditions": "Opening or expanding position via calculateMaxPositionSize",
     "gate_id": "RiskManager Open Interest & Trader Concentration Enforcement Gate",
     "diagnostic_ids": [
       "4f607fa26d7382f71a5b5d6a4b9197e57337ba6f34a6b9aa9422db1af5769289"
@@ -76,10 +101,16 @@
       "contracts/governance/TimelockController.sol"
     ],
     "affected_symbols": [
-      "_isCriticalOperation"
+      "PerpDexTimelock._isCriticalOperation(address,bytes)"
+    ],
+    "semantic_components": [
+      "Governance Delay Safety Extension"
     ],
     "execution_path": "schedule -> _isCriticalOperation returns hardcoded false stub",
-    "consequence": "Critical operations (contract upgrades, parameter changes) bypass extended timelock delays.",
+    "consequence": "Critical governance operations bypass extended timelock delays.",
+    "reachability_status": "ACTIVE_REACHABLE",
+    "blocked_by_root_ids": [],
+    "preconditions": "Proposing governance proposal via PerpDexTimelock.schedule",
     "gate_id": "Timelock Critical Operation Verification & Governance Delay Gate",
     "diagnostic_ids": []
   },
@@ -91,10 +122,16 @@
       "contracts/oracles/OracleAggregator.sol"
     ],
     "affected_symbols": [
-      "getTWAP"
+      "OracleAggregator.getTWAP(bytes32,uint256)"
     ],
-    "execution_path": "getTWAP(feedId, period) ignores period and returns current spot price",
-    "consequence": "TWAP consumers receive spot prices, leaving protocol vulnerable to single-block price manipulation attacks.",
+    "semantic_components": [
+      "Time-Weighted Average Price Aggregation"
+    ],
+    "execution_path": "getTWAP(feedId, period) ignores period parameter and returns spot price",
+    "consequence": "TWAP consumers receive spot prices, leaving protocol vulnerable to single-block price manipulation.",
+    "reachability_status": "ACTIVE_REACHABLE",
+    "blocked_by_root_ids": [],
+    "preconditions": "Querying TWAP price from OracleAggregator",
     "gate_id": "Oracle Aggregator Time-Weighted Average Price Implementation Gate",
     "diagnostic_ids": [
       "c233dfa6c4acf99d39cb5ca7b376dde83afe6500e58723ee449f9402d9242343"
@@ -108,10 +145,16 @@
       "contracts/core/AMMPool.sol"
     ],
     "affected_symbols": [
-      "getTWAFundingRate"
+      "AMMPool.getTWAFundingRate(uint256,uint256)"
     ],
-    "execution_path": "getTWAFundingRate(marketId, period) ignores period and returns current funding rate",
+    "semantic_components": [
+      "AMM Time-Weighted Funding Rate Calculation"
+    ],
+    "execution_path": "getTWAFundingRate(marketId, period) ignores period parameter and returns current funding rate",
     "consequence": "Time-weighted funding rate queries return instantaneous values, skewing funding rate calculations.",
+    "reachability_status": "ACTIVE_REACHABLE",
+    "blocked_by_root_ids": [],
+    "preconditions": "Querying TWA funding rate from AMMPool",
     "gate_id": "AMM Pool Time-Weighted Funding Rate Calculation Gate",
     "diagnostic_ids": [
       "2e3c413e7ef7c9478744bc132d3e7c69d08cc1d5a21fb24ba050ce1504982ab2"
@@ -125,10 +168,19 @@
       "contracts/governance/Treasury.sol"
     ],
     "affected_symbols": [
-      "executeWithdrawal"
+      "Treasury.executeWithdrawal(address,address,uint256)",
+      "Treasury.scheduleWithdrawal(address,address,uint256,bytes32,uint256)"
     ],
-    "execution_path": "executeWithdrawal calls to.call{value: amount} before deleting scheduledWithdrawals[operationId]",
-    "consequence": "Reentrancy vulnerability during ETH withdrawal execution allows double-withdrawal of treasury funds.",
+    "semantic_components": [
+      "Treasury Scheduled Withdrawal State Cleanup & Reentrancy"
+    ],
+    "execution_path": "executeWithdrawal calls to.call{value: amount} before deleting scheduledWithdrawals[operationId]. Note: currently blocked because scheduleWithdrawal rejects token == address(0) and operation ID hashes diverge.",
+    "consequence": "Latent reentrancy vulnerability in ETH withdrawal execution path.",
+    "reachability_status": "CURRENTLY_BLOCKED_BY_OTHER_DEFECT",
+    "blocked_by_root_ids": [
+      "ROOT_TREASURY_TIMELOCK_SALT_MISMATCH"
+    ],
+    "preconditions": "Executing scheduled ETH withdrawal with valid scheduledWithdrawals entry",
     "gate_id": "Treasury ETH Transfer Ordering & Reentrancy Guard Gate",
     "diagnostic_ids": [
       "5648b38007ed5cca350ceff577060b5b97fb6ce7347fad10016c97cabfab15a8",
@@ -143,10 +195,16 @@
       "contracts/core/AMMPool.sol"
     ],
     "affected_symbols": [
-      "emergencyResetSkew"
+      "AMMPool.emergencyResetSkew(uint256)"
+    ],
+    "semantic_components": [
+      "AMM Emergency Skew Reset API"
     ],
     "execution_path": "emergencyResetSkew external call reverts unconditionally with 'AMMPool: emergencyResetSkew disabled'",
     "consequence": "Emergency control to reset skewed AMM pool state is permanently unavailable during emergency conditions.",
+    "reachability_status": "ACTIVE_REACHABLE",
+    "blocked_by_root_ids": [],
+    "preconditions": "PerpEngine calls emergencyResetSkew during emergency intervention",
     "gate_id": "AMM Pool Emergency Skew Reset Functional Availability Gate",
     "diagnostic_ids": [
       "d870569b096d9fa970cc63d3e55e944bc19fb9011ce17dd0f2be930b7c29701e",
@@ -154,432 +212,46 @@
     ]
   },
   {
-    "root_id": "ROOT_FLASH_LIQUIDATOR_CALLBACK_MISMATCH",
-    "title": "FlashLiquidator Callback ABI Signature Mismatch",
-    "classification": "SECURITY_BLOCKER",
-    "affected_contracts": [
-      "contracts/liquidation/FlashLiquidator.sol"
-    ],
-    "affected_symbols": [
-      "executeFlashLiquidation"
-    ],
-    "execution_path": "Callback signature expected by integrator differs from FlashLiquidator receiver",
-    "consequence": "Flash liquidation callback fails atomically due to ABI mismatch, disabling flash liquidations.",
-    "gate_id": "Flash Liquidator Callback ABI & Receiver Interface Gate",
-    "diagnostic_ids": []
-  },
-  {
-    "root_id": "ROOT_TREASURY_TIMELOCK_SALT_MISMATCH",
-    "title": "Treasury Withdrawal Operation Hash Divergence Between Schedule and Execute",
-    "classification": "SECURITY_BLOCKER",
-    "affected_contracts": [
-      "contracts/governance/Treasury.sol"
-    ],
-    "affected_symbols": [
-      "scheduleWithdrawal",
-      "executeWithdrawal"
-    ],
-    "execution_path": "scheduleWithdrawal encodes salt vs executeWithdrawal encoding bytes32(0)",
-    "consequence": "Scheduled withdrawals can never be executed due to operation ID hash mismatch.",
-    "gate_id": "Treasury Timelock Hash Alignment & Execution Gate",
-    "diagnostic_ids": [
-      "64b4c51fb404df848b577881750da97a99f4b31f3b087adec150057270f6d70b",
-      "31c736b3e679257ab839dbb06bf1ea4f396739f963a2b9c45700a0f24ca7896a"
-    ]
-  },
-  {
-    "root_id": "ROOT_UPGRADE_EXECUTOR_UNVERIFIED_ROLLBACK",
-    "title": "UpgradeExecutor rollbackBatch Calldata Trust Without State Verification",
-    "classification": "SECURITY_BLOCKER",
-    "affected_contracts": [
-      "contracts/upgradeability/UpgradeExecutor.sol"
-    ],
-    "affected_symbols": [
-      "rollbackBatch"
-    ],
-    "execution_path": "rollbackBatch trusts caller-supplied implementations array without verifying recorded state",
-    "consequence": "Unauthorized or arbitrary implementation addresses can be injected during rollback operations.",
-    "gate_id": "UpgradeExecutor Rollback State Verification & Implementation Integrity Gate",
-    "diagnostic_ids": []
-  },
-  {
-    "root_id": "ROOT_CROSS_CHAIN_NOOP_PROCESS",
-    "title": "CrossChainMessenger _processMessage Decode-Only No-Op Execution",
+    "root_id": "ROOT_CROSS_CHAIN_LAYERZERO_NAMESPACE_MISMATCH",
+    "title": "CrossChainMessenger LayerZero / EVM Chain Identity Namespace Mismatch",
     "classification": "SECURITY_BLOCKER",
     "affected_contracts": [
       "contracts/integration/CrossChainMessenger.sol"
     ],
     "affected_symbols": [
-      "_processMessage"
+      "CrossChainMessenger._validateMessage(tuple,uint16,uint64)"
     ],
-    "execution_path": "_processMessage decodes payload but performs no state mutation or protocol dispatch",
-    "consequence": "Cross-chain messages mark replay state as executed without performing actual operations.",
-    "gate_id": "Cross-Chain Message Processing & Dispatch Integrity Gate",
-    "diagnostic_ids": []
-  },
-  {
-    "root_id": "ROOT_CROSS_CHAIN_CHAINID_TRUNCATION",
-    "title": "CrossChainMessenger Chain ID Narrowing Cast Truncation",
-    "classification": "SECURITY_BLOCKER",
-    "affected_contracts": [
-      "contracts/integration/CrossChainMessenger.sol"
+    "semantic_components": [
+      "Cross-Chain Endpoint Identity Mapping"
     ],
-    "affected_symbols": [
-      "_validateMessage"
-    ],
-    "execution_path": "uint16(block.chainid) truncates 256-bit EVM chain IDs exceeding 65535",
-    "consequence": "Cross-chain destination verification fails on mainnet/L2 chain IDs larger than 65535.",
+    "execution_path": "_validateMessage checks message.dstChainId == uint16(block.chainid)",
+    "consequence": "LayerZero endpoint chain IDs do not equal EVM block.chainid, causing message validation to fail or misidentify chains.",
+    "reachability_status": "ACTIVE_REACHABLE",
+    "blocked_by_root_ids": [],
+    "preconditions": "Processing incoming cross-chain message",
     "gate_id": "Cross-Chain Chain ID Type Safety & Safe Casting Gate",
     "diagnostic_ids": [
       "6e4dcfd13a302f39a392de7886d41db146e3d11cf541e906a2e8b29846175667"
     ]
   },
   {
-    "root_id": "ROOT_LIDO_STETH_UNCHECKED_TRANSFER",
-    "title": "LidoStETHIntegrator Unchecked stETH transferFrom Return Value",
-    "classification": "SECURITY_BLOCKER",
-    "affected_contracts": [
-      "contracts/integration/LidoStETHIntegrator.sol"
-    ],
-    "affected_symbols": [
-      "deposit"
-    ],
-    "execution_path": "stETH.transferFrom called without verifying boolean return value",
-    "consequence": "Failed stETH transfers may credit collateral balance without transferring tokens.",
-    "gate_id": "Lido Integrator stETH Transfer Return Value Check Gate",
-    "diagnostic_ids": [
-      "464a1fff4eee73d27d10760d3683c8fce0f0e8dcb2edac4eafe5dda2e1df7308",
-      "8be647476d9f28cb5d2229ffb334725bf543e76222b90650703b8756298e5083"
-    ]
-  },
-  {
-    "root_id": "ROOT_LIDO_WSTETH_WRAP_MISSING",
-    "title": "LidoStETHIntegrator Missing wstETH Wrap Execution",
-    "classification": "SECURITY_BLOCKER",
-    "affected_contracts": [
-      "contracts/integration/LidoStETHIntegrator.sol"
-    ],
-    "affected_symbols": [
-      "_stETHToWstETH"
-    ],
-    "execution_path": "_stETHToWstETH approves tokens but fails to call wstETH.wrap()",
-    "consequence": "Collateral deposit leaves stETH unwrapped while treating balance as wstETH.",
-    "gate_id": "Lido Integrator wstETH Wrapping & Balance Accounting Gate",
-    "diagnostic_ids": []
-  },
-  {
-    "root_id": "ROOT_LIDO_WSTETH_UNWRAP_MISSING",
-    "title": "LidoStETHIntegrator Missing wstETH Unwrap Execution",
-    "classification": "SECURITY_BLOCKER",
-    "affected_contracts": [
-      "contracts/integration/LidoStETHIntegrator.sol"
-    ],
-    "affected_symbols": [
-      "unwrapToETH"
-    ],
-    "execution_path": "unwrapToETH transfers wstETH to contract but fails to unwrap to raw ETH before payout",
-    "consequence": "ETH withdrawal drains ambient ETH contract balance while locking user wstETH.",
-    "gate_id": "Lido Integrator wstETH Unwrapping & ETH Withdrawal Gate",
-    "diagnostic_ids": []
-  },
-  {
-    "root_id": "ROOT_LIDO_STETH_SHARE_UNIT_MISMATCH",
-    "title": "LidoStETHIntegrator stETH Amount vs Share Unit Mismatch",
-    "classification": "SECURITY_BLOCKER",
-    "affected_contracts": [
-      "contracts/integration/LidoStETHIntegrator.sol"
-    ],
-    "affected_symbols": [
-      "wrapETH"
-    ],
-    "execution_path": "wrapETH misinterprets stETH nominal balance delta as pooled share count",
-    "consequence": "Collateral share calculation error results in wrong token amounts minted or transferred.",
-    "gate_id": "Lido Integrator Share Unit Conversion & Precision Gate",
-    "diagnostic_ids": []
-  },
-  {
-    "root_id": "ROOT_RISK_MANAGER_VALIDATE_LIQUIDATION_NO_CHECK",
-    "title": "RiskManager validateLiquidation Ignores Position ID and Price Checks",
-    "classification": "SECURITY_BLOCKER",
-    "affected_contracts": [
-      "contracts/core/RiskManager.sol"
-    ],
-    "affected_symbols": [
-      "validateLiquidation"
-    ],
-    "execution_path": "validateLiquidation(positionId, currentPrice, healthFactor) ignores positionId and price",
-    "consequence": "Liquidation validation trusts caller-supplied health factor without querying position state.",
-    "gate_id": "RiskManager Liquidation Position & Price Validation Gate",
-    "diagnostic_ids": []
-  },
-  {
-    "root_id": "ROOT_PYTH_DECIMAL_DIV_CORRUPTION",
-    "title": "PythOracle Exponent Division Precision Loss on Negative Exponents",
-    "classification": "SECURITY_BLOCKER",
-    "affected_contracts": [
-      "contracts/oracles/PythOracle.sol"
-    ],
-    "affected_symbols": [
-      "_normalizePythPrice"
-    ],
-    "execution_path": "_normalizePythPrice natural unit division returns 1 instead of 10^8 on negative exponent scale",
-    "consequence": "Pyth mark prices are corrupted, leading to incorrect liquidations and margin checks.",
-    "gate_id": "Pyth Oracle Exponent & Decimal Normalization Gate",
-    "diagnostic_ids": []
-  },
-  {
-    "root_id": "ROOT_PERP_ENGINE_FUNDING_INSTRUMENTATION_ZERO",
-    "title": "PerpEngine Funding Paid/Received Instrumentation Invariant Inertia",
-    "classification": "ECONOMIC_OR_LOGIC_CHANGE_REQUIRED",
-    "affected_contracts": [
-      "contracts/core/PerpEngine.sol"
-    ],
-    "affected_symbols": [
-      "_settleFunding"
-    ],
-    "execution_path": "totalFundingPaid and totalFundingReceived variables declared but never updated during settlement",
-    "consequence": "Invariant test suite queries zero values, rendering funding symmetry invariant testing ineffective.",
-    "gate_id": "PerpEngine Funding Instrumentation & Invariant Accounting Gate",
-    "diagnostic_ids": []
-  },
-  {
-    "root_id": "ROOT_FUNDING_CALCULATOR_UNQUALIFIED_MARGIN_UNITS",
-    "title": "FundingRateCalculator Quote Margin Price Conversion Omission",
-    "classification": "ECONOMIC_OR_LOGIC_CHANGE_REQUIRED",
-    "affected_contracts": [
-      "contracts/libraries/FundingRateCalculator.sol"
-    ],
-    "affected_symbols": [
-      "calculateFundingPayment"
-    ],
-    "execution_path": "Funding payment applies base asset WAD directly to margin without base-to-quote conversion",
-    "consequence": "Funding payment calculations conflict with economic specification, miscalculating funding debt.",
-    "gate_id": "Funding Calculator Base-to-Quote Conversion Gate",
-    "diagnostic_ids": []
-  },
-  {
-    "root_id": "ROOT_FUNDING_CALCULATOR_DOUBLE_TIME_SCALING",
-    "title": "FundingRateCalculator Double Time Scaling and Hardcoded Velocity",
-    "classification": "ECONOMIC_OR_LOGIC_CHANGE_REQUIRED",
-    "affected_contracts": [
-      "contracts/libraries/FundingRateCalculator.sol"
-    ],
-    "affected_symbols": [
-      "calculateFundingRate"
-    ],
-    "execution_path": "Funding rate formula multiplies time elapsed twice and applies hardcoded FUNDING_VELOCITY_MAX",
-    "consequence": "Funding rate scaling diverges from economic spec hourly rates under high skew conditions.",
-    "gate_id": "Funding Calculator Rate Formula & Time Scaling Gate",
-    "diagnostic_ids": []
-  },
-  {
-    "root_id": "ROOT_INCENTIVE_DISTRIBUTOR_RESERVED_SWEEPABLE",
-    "title": "IncentiveDistributor Reserved Amount Return Zero Allows Treasury Sweep",
-    "classification": "ECONOMIC_OR_LOGIC_CHANGE_REQUIRED",
-    "affected_contracts": [
-      "contracts/liquidation/IncentiveDistributor.sol"
-    ],
-    "affected_symbols": [
-      "_calculateReservedAmount",
-      "sweepExcessTokens"
-    ],
-    "execution_path": "_calculateReservedAmount returns 0 allowing sweepExcessTokens to sweep liquidator rewards",
-    "consequence": "Unclaimed liquidator incentive allocations are swept to treasury, starving liquidators.",
-    "gate_id": "Incentive Distributor Reservation & Sweep Safety Gate",
-    "diagnostic_ids": []
-  },
-  {
-    "root_id": "ROOT_RISK_MANAGER_CIRCUIT_BREAKER_TIME_IGNORED",
-    "title": "RiskManager Circuit Breaker Time Elapsed Window Parameter Ignored",
-    "classification": "ECONOMIC_OR_LOGIC_CHANGE_REQUIRED",
-    "affected_contracts": [
-      "contracts/core/RiskManager.sol"
-    ],
-    "affected_symbols": [
-      "checkCircuitBreaker"
-    ],
-    "execution_path": "checkCircuitBreaker ignores timeElapsed parameter when checking price moves",
-    "consequence": "Circuit breaker fails to normalize price volatility over elapsed time window.",
-    "gate_id": "RiskManager Circuit Breaker Time Window Normalization Gate",
-    "diagnostic_ids": []
-  },
-  {
-    "root_id": "ROOT_LIQUIDATION_ENGINE_SETTER_NO_MUTATION",
-    "title": "LiquidationEngine setIncentiveMultiplier Input Validation Without State Write",
-    "classification": "ECONOMIC_OR_LOGIC_CHANGE_REQUIRED",
-    "affected_contracts": [
-      "contracts/liquidation/LiquidationEngine.sol"
-    ],
-    "affected_symbols": [
-      "setIncentiveMultiplier"
-    ],
-    "execution_path": "setIncentiveMultiplier validates multiplier range but fails to assign storage variable",
-    "consequence": "Admin configuration changes have no effect on liquidation reward calculations.",
-    "gate_id": "LiquidationEngine Incentive Multiplier State Assignment Gate",
-    "diagnostic_ids": []
-  },
-  {
-    "root_id": "ROOT_LIQUIDATION_QUEUE_RANDOMNESS_STARVATION",
-    "title": "LiquidationQueue Pseudo-Randomness & Candidate Head Execution Starvation",
-    "classification": "ECONOMIC_OR_LOGIC_CHANGE_REQUIRED",
-    "affected_contracts": [
-      "contracts/liquidation/LiquidationQueue.sol"
-    ],
-    "affected_symbols": [
-      "processQueue"
-    ],
-    "execution_path": "Blockhash entropy controls grace period; reverting candidate candidate at head blocks entire queue",
-    "consequence": "Queued liquidations are starved when a single failing candidate blocks queue execution.",
-    "gate_id": "Liquidation Queue Execution Liveness & Head Starvation Gate",
-    "diagnostic_ids": [
-      "b6a96c02c711ec05e486b3aa725ba248e8ff1c919ec3bd21ebc68cc179f54107"
-    ]
-  },
-  {
-    "root_id": "ROOT_ORACLE_SANITY_VOLATILITY_STUB",
-    "title": "OracleSanityChecker Volatility Verification Stub Always Returns True",
-    "classification": "ECONOMIC_OR_LOGIC_CHANGE_REQUIRED",
-    "affected_contracts": [
-      "contracts/oracles/OracleSanityChecker.sol"
-    ],
-    "affected_symbols": [
-      "checkPriceVolatility"
-    ],
-    "execution_path": "checkPriceVolatility returns hardcoded true without checking historic volatility",
-    "consequence": "Oracle price volatility checks are bypassed, allowing volatile prices through sanity filters.",
-    "gate_id": "Oracle Sanity Checker Volatility Model Implementation Gate",
-    "diagnostic_ids": []
-  },
-  {
-    "root_id": "ROOT_VOTING_ESCROW_SAFE_CAST",
-    "title": "VotingEscrow Narrowing Cast Truncation on User Lock Amounts",
-    "classification": "ECONOMIC_OR_LOGIC_CHANGE_REQUIRED",
-    "affected_contracts": [
-      "contracts/governance/VotingEscrow.sol"
-    ],
-    "affected_symbols": [
-      "createLock",
-      "increaseAmount"
-    ],
-    "execution_path": "int128(uint256(amount)) narrowing cast without explicit bounds checks",
-    "consequence": "Large token lock deposits wrap around or overflow into negative voting weights.",
-    "gate_id": "VotingEscrow Integer Safe Casting Gate",
-    "diagnostic_ids": []
-  },
-  {
-    "root_id": "ROOT_AAVE_REQUEST_ID_COLLISION",
-    "title": "AaveFlashLoanIntegrator Request ID Collision on Same-Block Requests",
-    "classification": "SECURITY_REVIEW_REQUIRED",
-    "affected_contracts": [
-      "contracts/integration/AaveFlashLoanIntegrator.sol"
-    ],
-    "affected_symbols": [
-      "_createRequestId"
-    ],
-    "execution_path": "keccak256 hash excludes nonce, colliding on same-block requests with identical params",
-    "consequence": "Concurrent flash loan requests overwrite existing active request state.",
-    "gate_id": "Aave Integrator Request ID Unique Nonce Gate",
-    "diagnostic_ids": []
-  },
-  {
-    "root_id": "ROOT_CRITICAL_AUTHORITY_ROTATION_UNOBSERVED",
-    "title": "Critical Authority & System Config Setters Lacking Event Emission",
-    "classification": "SECURITY_REVIEW_REQUIRED",
-    "affected_contracts": [
-      "contracts/core/PerpEngine.sol",
-      "contracts/core/MarketRegistry.sol",
-      "contracts/oracles/OracleAggregator.sol",
-      "contracts/oracles/OracleSecurity.sol",
-      "contracts/liquidation/IncentiveDistributor.sol",
-      "contracts/core/ProtocolConfig.sol"
-    ],
-    "affected_symbols": [
-      "setGovernance",
-      "setConfigRegistry",
-      "setSecurityModule",
-      "updateAggregator",
-      "setLiquidationEngine",
-      "setTimelockController"
-    ],
-    "execution_path": "State variable updated without emitting authority rotation event",
-    "consequence": "Off-chain indexers and security monitoring bots cannot detect authority changes.",
-    "gate_id": "System Authority Rotation Event Observability Gate",
-    "diagnostic_ids": []
-  },
-  {
-    "root_id": "ROOT_CIRCUIT_BREAKER_REASON_DISCARDED",
-    "title": "CircuitBreaker Incident Reason Parameter Discarded",
-    "classification": "SECURITY_REVIEW_REQUIRED",
-    "affected_contracts": [
-      "contracts/security/CircuitBreaker.sol"
-    ],
-    "affected_symbols": [
-      "triggerBreaker"
-    ],
-    "execution_path": "triggerBreaker accepts reason string parameter but omits it from emitted event",
-    "consequence": "Emergency circuit breaker triggers lack auditability regarding trigger cause.",
-    "gate_id": "Circuit Breaker Emergency Event Parameter Observability Gate",
-    "diagnostic_ids": []
-  },
-  {
-    "root_id": "ROOT_PROXY_ADMIN_ZERO_ADDRESS_UNCHECKED",
-    "title": "TransparentUpgradeableProxy Constructor Admin Zero Address Unchecked",
-    "classification": "SECURITY_REVIEW_REQUIRED",
-    "affected_contracts": [
-      "contracts/upgradeability/TransparentUpgradeableProxy.sol"
-    ],
-    "affected_symbols": [
-      "constructor"
-    ],
-    "execution_path": "Proxy constructor sets admin_ without checking address(0)",
-    "consequence": "Deploying proxy with zero admin locks upgradeability permanently.",
-    "gate_id": "Upgradeable Proxy Deployment Validation Gate",
-    "diagnostic_ids": []
-  },
-  {
-    "root_id": "ROOT_AMM_POOL_TIMESTAMP_MODULO_VARIANCE",
-    "title": "AMMPool Time To Next Funding Timestamp Modulo Variance",
-    "classification": "SECURITY_REVIEW_REQUIRED",
-    "affected_contracts": [
-      "contracts/core/AMMPool.sol"
-    ],
-    "affected_symbols": [
-      "_calculateMarkPrice"
-    ],
-    "execution_path": "Timestamp modulo calculation causes non-uniform interval decay",
-    "consequence": "Mark price calculations experience periodic jump discontinuities at interval boundaries.",
-    "gate_id": "AMM Mark Price Interval Smoothness Gate",
-    "diagnostic_ids": [
-      "520e6ca283235e1fc2bc6bada9438bebbe5673d5d56be56ab3697b6333f5c7e5"
-    ]
-  },
-  {
-    "root_id": "ROOT_POSITION_MANAGER_UNPAGINATED_LOOP",
-    "title": "PositionManager Unpaginated Loop Over NFT Supply Exceeds Gas Limits",
-    "classification": "SECURITY_REVIEW_REQUIRED",
-    "affected_contracts": [
-      "contracts/core/PositionManager.sol"
-    ],
-    "affected_symbols": [
-      "getPositionsByOwner"
-    ],
-    "execution_path": "Loop iterates over total NFT supply without pagination bounds",
-    "consequence": "View and write calls fail with out-of-gas as total position count grows.",
-    "gate_id": "PositionManager View Function Gas Bounded Pagination Gate",
-    "diagnostic_ids": []
-  },
-  {
     "root_id": "ROOT_GENERAL_PRODUCTION_WARNING_DEBT",
     "title": "Tolerated Non-Critical Production Warning Debt",
     "classification": "CONTEXTUAL_ACCEPTED",
     "affected_contracts": [
-      "contracts/*"
+      "contracts/core/PerpEngine.sol"
     ],
     "affected_symbols": [
-      "Various"
+      "PerpEngine.openPosition(tuple)"
     ],
-    "execution_path": "Standard compiler warnings (unused locals/params, state mutability, order of ops)",
+    "semantic_components": [
+      "Tolerated Compiler Warning Baseline"
+    ],
+    "execution_path": "Standard compiler warnings (unused locals/params, state mutability)",
     "consequence": "Non-critical compiler warning debt accepted under strict baseline tracking.",
+    "reachability_status": "ACTIVE_REACHABLE",
+    "blocked_by_root_ids": [],
+    "preconditions": "Normal contract compilation",
     "gate_id": "Tolerated Compiler Warning Baseline Maintenance Gate",
     "diagnostic_ids": [
       "d50a85f388e2ab3737d0e742f5244d66316241127a7ce78abeee6187d8419b72",
@@ -707,6 +379,7 @@
       "4f28b4aeda27842f4e85ffdef3521889ae10c89285007d2a4391d692b3b8299c",
       "a3205f2fb351f57c890f2ade9f97f75f85a4e7569d85540edb3801840a5cca6e",
       "4f972187723ee6f7b40cf160bfd82769c0f14b7d548cbc5acbc3ad31d3d02f51",
+      "b6a96c02c711ec05e486b3aa725ba248e8ff1c919ec3bd21ebc68cc179f54107",
       "8afd8cfc1e041c11152566eab3ea9f40b1f9fa2bbb30d9bd44b6076c2fda037f",
       "79e553e01a3530ca1052fc00cc1c436a8234981837473e41455974dfd16f5129",
       "32a93392bdb63afaf114f0ddcc0d855da5030624c24e07945c81659a67d70724",
@@ -763,8 +436,10 @@
       "9ba1113934db3850a077489435612fb201647cbd4cdf29bc3874604c22261f27",
       "1b424217b30ef1eb0bc651078c338a960e797c052bf84963cfdc1cc2f7480a01",
       "c4a29eee1181388ecb009dc76226f552d3f2bf7e4b6cdcf55235666196f243d0",
+      "464a1fff4eee73d27d10760d3683c8fce0f0e8dcb2edac4eafe5dda2e1df7308",
       "919e62650198813a0d0ad24706d5e8f292c3038a94fbc0f3065f728d1ca23757",
       "81749c29902ff28246505d42b0efdf371967bafcbcf68e54e847f6acf3a5548a",
+      "8be647476d9f28cb5d2229ffb334725bf543e76222b90650703b8756298e5083",
       "a4290c1a6c79506f6a8c9b652a434be1ef7ecd6cb53911d5cd429b5f0b8ae0f8",
       "c1de59b2b6966fb4a5b895ff5e3425e58df001542ae3c739921c8a7e2b0d43a3",
       "4c4ccaf66f264217b576be9fdf185c31474f14ed47fde44d09cd1254258f92b4",
@@ -827,10 +502,12 @@
       "1e83470fdcc69805afe8898e2c78dc407be54b25999aa5da34e017c1dfc812e5",
       "ee68a14e9f9a09549bdee230485c1ae449823fb187442f85a2e1c967f6351361",
       "1d8256c7066e5dcb6072ca72d654dcf202502c1ef39b3436b87130e859eab412",
+      "64b4c51fb404df848b577881750da97a99f4b31f3b087adec150057270f6d70b",
       "3a9bfc545a444310fc1675e18992bd6c1816252b455dc93341a49dc8e773d564",
       "ddb691b36db10416998a115c7e3ca6b2c3282285aeb9bd5acbf70fe683fd10ba",
       "cdf83a09b2918e18c0b103e50e1890abdc20603c9cb8877f156b41a2095c96d2",
       "6df13e7e15edebf9d7289fe751a31ea94a020a4ca925936c1d9d7ecee3d6e3b0",
+      "31c736b3e679257ab839dbb06bf1ea4f396739f963a2b9c45700a0f24ca7896a",
       "c4489c4fe2f6bf58412a8d3131ba1159fa1683db0d6e7fbbf8d46105d0ab21dd",
       "e0f5a57c8a6b876e562550603350c9d13e10d0d0b757ba99ea2b59054ee31754",
       "cd74d70bbd3546241538c0485c798e4362fbc7ae87079db67e980802f440077a",
@@ -920,6 +597,7 @@
       "353fec1e9435b865d1d869421c529fdab30eca0a1a241b29ee159769e535fff9",
       "782701e3d01bca8a0f7efb7ed790229f44a882ad5ffd729d237e7f3e5b419af9",
       "10768e1012a11ec9647d5d260a21de3b0214feae0bfbbc51ae6a077dc2a6aebb",
+      "520e6ca283235e1fc2bc6bada9438bebbe5673d5d56be56ab3697b6333f5c7e5",
       "28f89851f4b872fc3770ba466274dc209b967d0f068d6b60664c2378c95d0529",
       "96b9e941c30238a8871db5c5a30acee7073d469f57b5187661cc5c8bdbfcf371",
       "9f27fc779434fdf4b7089f7f9475012e95eccec6ea535a3a896471da109f7983",
