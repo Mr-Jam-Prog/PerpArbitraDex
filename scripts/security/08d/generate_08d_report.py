@@ -58,7 +58,7 @@ This report is programmatically generated from canonical machine-readable ledger
         md_content += f"   - **Consequence**: {r['consequence']}\n"
         md_content += f"   - **Remediation Gate**: *{r['gate_id']}*\n\n"
 
-    md_content += "--- \n\n## Triage Integrity Metrics\n"
+    md_content += "---\n\n## Triage Integrity Metrics\n"
     md_content += f"- **UNMAPPED_PRODUCTION_DIAGNOSTICS**: `0`\n"
     md_content += f"- **DUPLICATE_DIAGNOSTIC_MAPPING**: `0`\n"
     md_content += f"- **UNKNOWN_SOURCE_SYMBOLS**: `0`\n"
