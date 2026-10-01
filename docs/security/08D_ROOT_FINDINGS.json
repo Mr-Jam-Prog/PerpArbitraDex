@@ -55,7 +55,7 @@
       "contracts/integration/CrossChainMessenger.sol"
     ],
     "affected_symbols": [
-      "CrossChainMessenger._validateMessage(tuple,uint16,uint64)"
+      "CrossChainMessenger._validateMessage(struct,uint16,uint64)"
     ],
     "semantic_components": [
       "Cross-Chain Message Nonce & Delivery Ordering"
@@ -169,7 +169,7 @@
     ],
     "affected_symbols": [
       "Treasury.executeWithdrawal(address,address,uint256)",
-      "Treasury.scheduleWithdrawal(address,address,uint256,bytes32,uint256)"
+      "Treasury.scheduleWithdrawal(address,address,uint256,bytes32)"
     ],
     "semantic_components": [
       "Treasury Scheduled Withdrawal State Cleanup & Reentrancy"
@@ -219,7 +219,7 @@
       "contracts/integration/CrossChainMessenger.sol"
     ],
     "affected_symbols": [
-      "CrossChainMessenger._validateMessage(tuple,uint16,uint64)"
+      "CrossChainMessenger._validateMessage(struct,uint16,uint64)"
     ],
     "semantic_components": [
       "Cross-Chain Endpoint Identity Mapping"
@@ -242,7 +242,7 @@
       "contracts/core/PerpEngine.sol"
     ],
     "affected_symbols": [
-      "PerpEngine.openPosition(tuple)"
+      "PerpEngine.openPosition(struct)"
     ],
     "semantic_components": [
       "Tolerated Compiler Warning Baseline"

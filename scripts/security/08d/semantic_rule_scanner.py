@@ -2,7 +2,7 @@
 """
 scripts/security/08d/semantic_rule_scanner.py
 Scans repository with global audit candidate rules and validates candidates against AST enclosing expressions.
-Distinguishes TRUE_POSITIVE vs FALSE_POSITIVE (e.g. require(stETH.transferFrom(...)) is checked, not unchecked).
+Distinguishes TRUE_POSITIVE vs FALSE_POSITIVE with deterministic sorting across files and matches.
 """
 
 import os
@@ -40,39 +40,48 @@ def scan_rules():
     root_dir = "contracts"
     results = []
 
+    # Collect files deterministically
+    sol_files = []
     for dirpath, _, filenames in os.walk(root_dir):
         norm_dir = dirpath.replace("\\", "/")
         if "contracts/test" in norm_dir:
             continue
         for fname in filenames:
             if fname.endswith(".sol"):
-                filepath = os.path.join(dirpath, fname).replace("\\", "/")
-                with open(filepath, "r", encoding="utf-8") as f:
-                    lines = f.readlines()
+                sol_files.append(os.path.join(dirpath, fname).replace("\\", "/"))
 
-                for idx, line in enumerate(lines, 1):
-                    for rule in GLOBAL_RULES:
-                        if re.search(rule["pattern"], line):
-                            code_snip = line.strip()
-                            status = "NEEDS_REVIEW"
+    sol_files.sort()
 
-                            # AST / Enclosing expression check for token transfers
-                            if rule["rule_id"] == "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL":
-                                if "require(" in code_snip or "if (" in code_snip or "bool success" in code_snip or "safeTransfer" in code_snip:
-                                    status = "FALSE_POSITIVE"
-                                else:
-                                    status = "TRUE_POSITIVE"
-                            else:
-                                status = "TRUE_POSITIVE"
+    for filepath in sol_files:
+        with open(filepath, "r", encoding="utf-8") as f:
+            lines = f.readlines()
 
-                            results.append({
-                                "rule_id": rule["rule_id"],
-                                "title": rule["title"],
-                                "file": filepath,
-                                "line": idx,
-                                "code_snippet": code_snip,
-                                "verification_status": status
-                            })
+        for idx, line in enumerate(lines, 1):
+            for rule in GLOBAL_RULES:
+                if re.search(rule["pattern"], line):
+                    code_snip = line.strip()
+                    status = "NEEDS_REVIEW"
+
+                    # AST / Enclosing expression check for token transfers
+                    if rule["rule_id"] == "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL":
+                        if "require(" in code_snip or "if (" in code_snip or "bool success" in code_snip or "safeTransfer" in code_snip:
+                            status = "FALSE_POSITIVE"
+                        else:
+                            status = "TRUE_POSITIVE"
+                    else:
+                        status = "TRUE_POSITIVE"
+
+                    results.append({
+                        "rule_id": rule["rule_id"],
+                        "title": rule["title"],
+                        "file": filepath,
+                        "line": idx,
+                        "code_snippet": code_snip,
+                        "verification_status": status
+                    })
+
+    # Sort results deterministically by rule_id, file, line, code_snippet
+    results.sort(key=lambda x: (x["rule_id"], x["file"], x["line"], x["code_snippet"]))
 
     out_path = "docs/security/08D_GLOBAL_AUDIT_RULES.json"
     os.makedirs("docs/security", exist_ok=True)

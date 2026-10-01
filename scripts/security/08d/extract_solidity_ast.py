@@ -2,20 +2,25 @@
 """
 scripts/security/08d/extract_solidity_ast.py
 Extracts Solidity AST nodes and symbol tables from Hardhat build-info output artifacts.
-Outputs concrete entry points, interface declarations, and symbol tables.
+Automatically triggers contract compilation if build-info artifacts are missing.
 """
 
 import os
 import sys
 import json
 import glob
+import subprocess
 
 def find_build_info():
     files = glob.glob("artifacts/build-info/*.output.json")
     if not files:
         files = glob.glob("artifacts/build-info/*.json")
     if not files:
-        print("❌ No build-info artifacts found. Please run 'pnpm exec hardhat compile' first.")
+        print("ℹ️ No build-info artifacts found. Compiling contracts via Hardhat...")
+        subprocess.run(["pnpm", "exec", "hardhat", "compile"], check=True)
+        files = glob.glob("artifacts/build-info/*.output.json") or glob.glob("artifacts/build-info/*.json")
+    if not files:
+        print("❌ Build-info generation failed.")
         sys.exit(1)
     files.sort(key=os.path.getsize, reverse=True)
     return files[0]
@@ -35,7 +40,10 @@ def extract_ast_data():
     interface_declarations = []
     symbol_table = []
 
-    for file_path, source_data in sources.items():
+    sorted_source_keys = sorted(sources.keys())
+
+    for file_path in sorted_source_keys:
+        source_data = sources[file_path]
         norm_path = file_path.replace("\\", "/")
         if norm_path.startswith("project/"):
             norm_path = norm_path[len("project/"):]
@@ -61,7 +69,6 @@ def extract_ast_data():
                         state_mutability = sub_node.get("stateMutability") # pure, view, nonpayable, payable
                         is_implemented = sub_node.get("implemented", True)
 
-                        # Extract parameters & types
                         params = []
                         param_nodes = sub_node.get("parameters", {}).get("parameters", [])
                         for p in param_nodes:
@@ -69,7 +76,6 @@ def extract_ast_data():
                             p_name = p.get("name", "")
                             params.append(f"{type_str} {p_name}".strip())
 
-                        # Returns
                         returns = []
                         ret_nodes = sub_node.get("returnParameters", {}).get("parameters", [])
                         for r in ret_nodes:
@@ -99,13 +105,16 @@ def extract_ast_data():
                         }
                         symbol_table.append(sym_item)
 
-                        # Categorize: Concrete vs Interface/Abstract Declaration
                         if contract_kind == "interface" or (is_abstract and not is_implemented):
                             interface_declarations.append(sym_item)
                         elif is_implemented and visibility in ["external", "public"]:
                             concrete_entrypoints.append(sym_item)
                         elif is_implemented and kind in ["receive", "fallback"]:
                             concrete_entrypoints.append(sym_item)
+
+    symbol_table.sort(key=lambda x: (x["file"], x["contract"], x["function_name"], x["canonical_signature"]))
+    concrete_entrypoints.sort(key=lambda x: (x["file"], x["contract"], x["function_name"], x["canonical_signature"]))
+    interface_declarations.sort(key=lambda x: (x["file"], x["contract"], x["function_name"], x["canonical_signature"]))
 
     os.makedirs("docs/security", exist_ok=True)
     with open("docs/security/08D_SYMBOL_TABLE.json", "w", encoding="utf-8") as f:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 scripts/security/08d/build_function_audit.py
-Constructs the exhaustive AST-backed function audit matrix with function-scoped evidence blocks.
+Constructs the exhaustive AST-backed function audit matrix with function-scoped evidence blocks and deterministic sorting.
 Inherent properties are evaluated strictly on the function's AST node source span, preventing file-wide pollution.
 """
 
@@ -13,16 +13,17 @@ from extract_solidity_ast import extract_ast_data
 def scan_test_references():
     test_files = []
     for root, _, files in os.walk("test"):
-        for f in files:
+        norm_root = root.replace("\\", "/")
+        for f in sorted(files):
             if f.endswith(".js") or f.endswith(".cjs") or f.endswith(".ts") or f.endswith(".sol"):
-                test_files.append(os.path.join(root, f))
+                test_files.append(os.path.join(norm_root, f).replace("\\", "/"))
 
+    test_files.sort()
     test_references = set()
     for tf in test_files:
         try:
             with open(tf, "r", encoding="utf-8") as f:
                 content = f.read()
-                # Find function calls or string occurrences
                 words = re.findall(r'\b[A-Za-z0-9_]+\b', content)
                 for w in words:
                     test_references.add(w)
@@ -35,7 +36,6 @@ def build_audit_matrix():
     symbol_table = ast_data["symbol_table"]
     test_refs = scan_test_references()
 
-    # Pre-read source files to slice function snippets
     source_files = {}
     for sym in symbol_table:
         fl = sym["file"]
@@ -58,23 +58,17 @@ def build_audit_matrix():
         vis = sym["visibility"]
         kind = sym["kind"]
 
-        # Function-scoped source snippet extraction using AST src range (offset:length:index)
         src_range = sym.get("src_range", "0:0:0")
         parts = src_range.split(":")
         offset, length = int(parts[0]), int(parts[1])
         full_file_content = source_files.get(file_path, "")
         func_snippet = full_file_content[offset:offset+length] if offset + length <= len(full_file_content) else full_file_content
 
-        # Static Test Evidence Check (without hardcoded overrides)
         test_evidence = "STATICALLY_REFERENCED_IN_TEST" if func_name in test_refs else "NO_TEST_EVIDENCE"
-
-        # Function-scoped Reachability
         reachability = "EXTERNAL_DIRECT" if vis == "external" else ("PUBLIC_DIRECT" if vis == "public" else "INTERNAL_REACHABLE")
 
-        # Function-scoped Authorization
         auth_val = "RESTRICTED_ADMIN_ROLE" if ("onlyOwner" in func_snippet or "onlyRole" in func_snippet or "onlyAdmin" in func_snippet) else ("RESTRICTED_PROTOCOL_ROLE" if ("onlyPerpEngine" in func_snippet or "onlyMessenger" in func_snippet) else "NONE")
 
-        # Function-scoped Asset Inflow / Outflow Evidence
         asset_inflow_ev = []
         if "safeTransferFrom(" in func_snippet or "transferFrom(" in func_snippet:
             asset_inflow_ev.append("IERC20.transferFrom/safeTransferFrom call present in function body")
@@ -91,16 +85,10 @@ def build_audit_matrix():
         if "aavePool." in func_snippet or "oracle." in func_snippet or "lzEndpoint." in func_snippet or "vault." in func_snippet or "perpEngine." in func_snippet:
             ext_calls_ev.append("external module call present in function body")
 
-        # Function-scoped Reentrancy Guard
         reentrancy = "NONREENTRANT" if "nonReentrant" in func_snippet else "NONE"
-
-        # Function-scoped Time Dependence
         time_dep = "YES_TIMESTAMP" if "block.timestamp" in func_snippet or "blockhash(" in func_snippet else "NO"
-
-        # Function-scoped Oracle Dependence
         oracle_dep = "YES" if ("oracle" in func_snippet.lower() or "price" in func_snippet.lower()) else "NO"
 
-        # Function-scoped Stub Detection
         is_stub = "NO"
         if "return 0" in func_snippet or "return true" in func_snippet or "revert(" in func_snippet:
             if func_name in ["_getOraclePrice", "_isCriticalOperation", "getTWAP", "getTWAFundingRate", "emergencyResetSkew", "checkPriceVolatility", "validateLiquidation", "_getConcentrationLimit", "_stETHToWstETH", "unwrapToETH", "_processMessage"]:
@@ -147,6 +135,9 @@ def build_audit_matrix():
             "reachability": reachability
         }
         audit_matrix.append(entry_item)
+
+    # Sort audit matrix deterministically
+    audit_matrix.sort(key=lambda x: (x["file"], x["contract"], x["function"], x["canonical_signature"], x["function_id"]))
 
     os.makedirs("docs/security", exist_ok=True)
     out_path = "docs/security/08D_FUNCTION_AUDIT.json"

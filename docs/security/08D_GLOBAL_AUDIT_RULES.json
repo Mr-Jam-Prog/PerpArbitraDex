@@ -27,11 +27,11 @@
   ],
   "candidate_matches": [
     {
-      "rule_id": "RULE_IGNORED_MARKET_OR_POSITION_PARAMETER",
-      "title": "Ignored Market or Position ID in Risk/Oracle Calculations",
-      "file": "contracts/integration/AaveFlashLoanIntegrator.sol",
-      "line": 384,
-      "code_snippet": "function _getOraclePrice(uint256 positionId) internal view returns (uint256) {",
+      "rule_id": "RULE_HARDCODED_ORACLE_OR_ECONOMIC_INPUT",
+      "title": "Hardcoded Oracle Price, Index or Economic Input",
+      "file": "contracts/core/RiskManager.sol",
+      "line": 424,
+      "code_snippet": "limit = 1000000 * PRECISION; // $1M default",
       "verification_status": "TRUE_POSITIVE"
     },
     {
@@ -40,6 +40,54 @@
       "file": "contracts/integration/AaveFlashLoanIntegrator.sol",
       "line": 386,
       "code_snippet": "return 1000 * 1e8; // Placeholder",
+      "verification_status": "TRUE_POSITIVE"
+    },
+    {
+      "rule_id": "RULE_IGNORED_MARKET_OR_POSITION_PARAMETER",
+      "title": "Ignored Market or Position ID in Risk/Oracle Calculations",
+      "file": "contracts/core/AMMPool.sol",
+      "line": 333,
+      "code_snippet": "function getTWAFundingRate(uint256 marketId, uint256 period)",
+      "verification_status": "TRUE_POSITIVE"
+    },
+    {
+      "rule_id": "RULE_IGNORED_MARKET_OR_POSITION_PARAMETER",
+      "title": "Ignored Market or Position ID in Risk/Oracle Calculations",
+      "file": "contracts/core/RiskManager.sol",
+      "line": 416,
+      "code_snippet": "function _getConcentrationLimit(uint256 marketId) internal view returns (uint256 limit) {",
+      "verification_status": "TRUE_POSITIVE"
+    },
+    {
+      "rule_id": "RULE_IGNORED_MARKET_OR_POSITION_PARAMETER",
+      "title": "Ignored Market or Position ID in Risk/Oracle Calculations",
+      "file": "contracts/integration/AaveFlashLoanIntegrator.sol",
+      "line": 384,
+      "code_snippet": "function _getOraclePrice(uint256 positionId) internal view returns (uint256) {",
+      "verification_status": "TRUE_POSITIVE"
+    },
+    {
+      "rule_id": "RULE_IGNORED_MARKET_OR_POSITION_PARAMETER",
+      "title": "Ignored Market or Position ID in Risk/Oracle Calculations",
+      "file": "contracts/interfaces/IAMMPool.sol",
+      "line": 173,
+      "code_snippet": "function getTWAFundingRate(uint256 marketId, uint256 period)",
+      "verification_status": "TRUE_POSITIVE"
+    },
+    {
+      "rule_id": "RULE_IGNORED_MARKET_OR_POSITION_PARAMETER",
+      "title": "Ignored Market or Position ID in Risk/Oracle Calculations",
+      "file": "contracts/interfaces/IOracleAggregator.sol",
+      "line": 135,
+      "code_snippet": "function getTWAP(bytes32 feedId, uint256 period)",
+      "verification_status": "TRUE_POSITIVE"
+    },
+    {
+      "rule_id": "RULE_IGNORED_MARKET_OR_POSITION_PARAMETER",
+      "title": "Ignored Market or Position ID in Risk/Oracle Calculations",
+      "file": "contracts/oracles/OracleAggregator.sol",
+      "line": 342,
+      "code_snippet": "function getTWAP(bytes32 feedId, uint256 period)",
       "verification_status": "TRUE_POSITIVE"
     },
     {
@@ -75,78 +123,6 @@
       "verification_status": "FALSE_POSITIVE"
     },
     {
-      "rule_id": "RULE_UNVALIDATED_CROSS_CHAIN_SOURCE_OR_NONCE",
-      "title": "Unvalidated Source Address or Nonce Binding in Cross-Chain Messaging",
-      "file": "contracts/integration/CrossChainMessenger.sol",
-      "line": 216,
-      "code_snippet": "_validateMessage(message, srcChainId, nonce);",
-      "verification_status": "TRUE_POSITIVE"
-    },
-    {
-      "rule_id": "RULE_UNVALIDATED_CROSS_CHAIN_SOURCE_OR_NONCE",
-      "title": "Unvalidated Source Address or Nonce Binding in Cross-Chain Messaging",
-      "file": "contracts/integration/CrossChainMessenger.sol",
-      "line": 243,
-      "code_snippet": "function retryMessage(",
-      "verification_status": "TRUE_POSITIVE"
-    },
-    {
-      "rule_id": "RULE_UNVALIDATED_CROSS_CHAIN_SOURCE_OR_NONCE",
-      "title": "Unvalidated Source Address or Nonce Binding in Cross-Chain Messaging",
-      "file": "contracts/integration/CrossChainMessenger.sol",
-      "line": 258,
-      "code_snippet": "_validateMessage(message, srcChainId, nonce);",
-      "verification_status": "TRUE_POSITIVE"
-    },
-    {
-      "rule_id": "RULE_UNVALIDATED_CROSS_CHAIN_SOURCE_OR_NONCE",
-      "title": "Unvalidated Source Address or Nonce Binding in Cross-Chain Messaging",
-      "file": "contracts/integration/CrossChainMessenger.sol",
-      "line": 396,
-      "code_snippet": "function _validateMessage(",
-      "verification_status": "TRUE_POSITIVE"
-    },
-    {
-      "rule_id": "RULE_IGNORED_MARKET_OR_POSITION_PARAMETER",
-      "title": "Ignored Market or Position ID in Risk/Oracle Calculations",
-      "file": "contracts/core/RiskManager.sol",
-      "line": 416,
-      "code_snippet": "function _getConcentrationLimit(uint256 marketId) internal view returns (uint256 limit) {",
-      "verification_status": "TRUE_POSITIVE"
-    },
-    {
-      "rule_id": "RULE_HARDCODED_ORACLE_OR_ECONOMIC_INPUT",
-      "title": "Hardcoded Oracle Price, Index or Economic Input",
-      "file": "contracts/core/RiskManager.sol",
-      "line": 424,
-      "code_snippet": "limit = 1000000 * PRECISION; // $1M default",
-      "verification_status": "TRUE_POSITIVE"
-    },
-    {
-      "rule_id": "RULE_IGNORED_MARKET_OR_POSITION_PARAMETER",
-      "title": "Ignored Market or Position ID in Risk/Oracle Calculations",
-      "file": "contracts/core/AMMPool.sol",
-      "line": 333,
-      "code_snippet": "function getTWAFundingRate(uint256 marketId, uint256 period)",
-      "verification_status": "TRUE_POSITIVE"
-    },
-    {
-      "rule_id": "RULE_IGNORED_MARKET_OR_POSITION_PARAMETER",
-      "title": "Ignored Market or Position ID in Risk/Oracle Calculations",
-      "file": "contracts/interfaces/IAMMPool.sol",
-      "line": 173,
-      "code_snippet": "function getTWAFundingRate(uint256 marketId, uint256 period)",
-      "verification_status": "TRUE_POSITIVE"
-    },
-    {
-      "rule_id": "RULE_IGNORED_MARKET_OR_POSITION_PARAMETER",
-      "title": "Ignored Market or Position ID in Risk/Oracle Calculations",
-      "file": "contracts/interfaces/IOracleAggregator.sol",
-      "line": 135,
-      "code_snippet": "function getTWAP(bytes32 feedId, uint256 period)",
-      "verification_status": "TRUE_POSITIVE"
-    },
-    {
       "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
       "title": "Unchecked Return Value on External Token Transfer",
       "file": "contracts/oracles/PythOracle.sol",
@@ -179,19 +155,43 @@
       "verification_status": "TRUE_POSITIVE"
     },
     {
-      "rule_id": "RULE_IGNORED_MARKET_OR_POSITION_PARAMETER",
-      "title": "Ignored Market or Position ID in Risk/Oracle Calculations",
-      "file": "contracts/oracles/OracleAggregator.sol",
-      "line": 342,
-      "code_snippet": "function getTWAP(bytes32 feedId, uint256 period)",
-      "verification_status": "TRUE_POSITIVE"
-    },
-    {
       "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
       "title": "Unchecked Return Value on External Token Transfer",
       "file": "contracts/oracles/RWAOracleAdapter.sol",
       "line": 417,
       "code_snippet": "payable(owner()).transfer(balance);",
+      "verification_status": "TRUE_POSITIVE"
+    },
+    {
+      "rule_id": "RULE_UNVALIDATED_CROSS_CHAIN_SOURCE_OR_NONCE",
+      "title": "Unvalidated Source Address or Nonce Binding in Cross-Chain Messaging",
+      "file": "contracts/integration/CrossChainMessenger.sol",
+      "line": 216,
+      "code_snippet": "_validateMessage(message, srcChainId, nonce);",
+      "verification_status": "TRUE_POSITIVE"
+    },
+    {
+      "rule_id": "RULE_UNVALIDATED_CROSS_CHAIN_SOURCE_OR_NONCE",
+      "title": "Unvalidated Source Address or Nonce Binding in Cross-Chain Messaging",
+      "file": "contracts/integration/CrossChainMessenger.sol",
+      "line": 243,
+      "code_snippet": "function retryMessage(",
+      "verification_status": "TRUE_POSITIVE"
+    },
+    {
+      "rule_id": "RULE_UNVALIDATED_CROSS_CHAIN_SOURCE_OR_NONCE",
+      "title": "Unvalidated Source Address or Nonce Binding in Cross-Chain Messaging",
+      "file": "contracts/integration/CrossChainMessenger.sol",
+      "line": 258,
+      "code_snippet": "_validateMessage(message, srcChainId, nonce);",
+      "verification_status": "TRUE_POSITIVE"
+    },
+    {
+      "rule_id": "RULE_UNVALIDATED_CROSS_CHAIN_SOURCE_OR_NONCE",
+      "title": "Unvalidated Source Address or Nonce Binding in Cross-Chain Messaging",
+      "file": "contracts/integration/CrossChainMessenger.sol",
+      "line": 396,
+      "code_snippet": "function _validateMessage(",
       "verification_status": "TRUE_POSITIVE"
     }
   ],

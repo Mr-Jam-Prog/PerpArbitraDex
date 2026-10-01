@@ -43,7 +43,7 @@ This report is programmatically generated from canonical machine-readable ledger
    - **Remediation Gate**: *Cross-Chain Message Source Address Authentication Gate*
 
 3. **CrossChainMessenger Transport Nonce Unbound to Inner Message Nonce** (`ROOT_CROSS_CHAIN_NONCE_UNBOUND`)
-   - **Contracts**: `contracts/integration/CrossChainMessenger.sol` (CrossChainMessenger._validateMessage(tuple,uint16,uint64))
+   - **Contracts**: `contracts/integration/CrossChainMessenger.sol` (CrossChainMessenger._validateMessage(struct,uint16,uint64))
    - **Execution Path**: _validateMessage accepts transport nonce argument but evaluates inner message.nonce instead
    - **Reachability Status**: `ACTIVE_REACHABLE`
    - **Consequence**: Transport-level nonce is unbound to payload message.nonce. Exact payload replay is prevented by executedMessages[messageId], but transport delivery ordering guarantees are bypassed.
@@ -78,7 +78,7 @@ This report is programmatically generated from canonical machine-readable ledger
    - **Remediation Gate**: *AMM Pool Time-Weighted Funding Rate Calculation Gate*
 
 8. **Treasury executeWithdrawal Uncapped Raw ETH Transfer Prior to State Deletion** (`ROOT_TREASURY_RAW_ETH_ORDERING`)
-   - **Contracts**: `contracts/governance/Treasury.sol` (Treasury.executeWithdrawal(address,address,uint256), Treasury.scheduleWithdrawal(address,address,uint256,bytes32,uint256))
+   - **Contracts**: `contracts/governance/Treasury.sol` (Treasury.executeWithdrawal(address,address,uint256), Treasury.scheduleWithdrawal(address,address,uint256,bytes32))
    - **Execution Path**: executeWithdrawal calls to.call{value: amount} before deleting scheduledWithdrawals[operationId]. Note: currently blocked because scheduleWithdrawal rejects token == address(0) and operation ID hashes diverge.
    - **Reachability Status**: `CURRENTLY_BLOCKED_BY_OTHER_DEFECT`
    - **Consequence**: Latent reentrancy vulnerability in ETH withdrawal execution path.
@@ -92,7 +92,7 @@ This report is programmatically generated from canonical machine-readable ledger
    - **Remediation Gate**: *AMM Pool Emergency Skew Reset Functional Availability Gate*
 
 10. **CrossChainMessenger LayerZero / EVM Chain Identity Namespace Mismatch** (`ROOT_CROSS_CHAIN_LAYERZERO_NAMESPACE_MISMATCH`)
-   - **Contracts**: `contracts/integration/CrossChainMessenger.sol` (CrossChainMessenger._validateMessage(tuple,uint16,uint64))
+   - **Contracts**: `contracts/integration/CrossChainMessenger.sol` (CrossChainMessenger._validateMessage(struct,uint16,uint64))
    - **Execution Path**: _validateMessage checks message.dstChainId == uint16(block.chainid)
    - **Reachability Status**: `ACTIVE_REACHABLE`
    - **Consequence**: LayerZero endpoint chain IDs do not equal EVM block.chainid, causing message validation to fail or misidentify chains.

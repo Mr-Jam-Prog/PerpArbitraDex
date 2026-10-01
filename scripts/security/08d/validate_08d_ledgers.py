@@ -52,22 +52,18 @@ def validate_ledgers():
         diff = ast_implemented_sigs.symmetric_difference(audit_sigs)
         errors["AST_ENTRYPOINT_SET_MISMATCH"] += len(diff)
 
-    # 2. AST Symbol Resolution for Root Affected Symbols
+    # 2. AST Symbol Resolution for Root Affected Symbols (Strict Exact Match Required)
     ast_all_sigs = set(s["canonical_signature"] for s in symbol_table)
     for r in roots:
         for aff_sym in r.get("affected_symbols", []):
             if aff_sym not in ast_all_sigs:
-                found = any(s["canonical_signature"].startswith(aff_sym.split("(")[0]) for s in symbol_table)
-                if not found:
-                    errors["UNKNOWN_SOURCE_SYMBOLS"] += 1
+                errors["UNKNOWN_SOURCE_SYMBOLS"] += 1
 
-    # 3. Templated / Generic Rationale Verification
-    root_dict = {r["root_id"]: r for r in roots}
+    # 3. Templated / Generic Rationale Verification Across ALL Entries
     for item in ledger:
         rat = item.get("code_specific_rationale", "")
-        if "required for baseline gate" in rat.lower() or "generic" in rat.lower() or "maps directly to root finding" in rat.lower() or len(rat) < 25:
-            if item.get("baseline_category") == "UNRESOLVED_SECURITY_DEBT":
-                errors["GENERIC_OR_TEMPLATED_SECURITY_RATIONALES"] += 1
+        if "required for baseline gate" in rat.lower() or "generic" in rat.lower() or "represents tolerated compiler warning debt (" in rat.lower() or len(rat) < 25:
+            errors["GENERIC_OR_TEMPLATED_SECURITY_RATIONALES"] += 1
 
     # 4. Diagnostics Mapping Invariants
     if len(prod_baseline) != len(ledger):
