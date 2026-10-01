@@ -11,15 +11,8 @@ import json
 import hashlib
 import subprocess
 
-def get_current_head_sha():
-    try:
-        res = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True)
-        return res.stdout.strip()
-    except Exception:
-        return "a19a55107f480754d8916432a3ca95cde936abb2"
-
-AUDIT_TOOL_HEAD_SHA = get_current_head_sha()
 PRODUCTION_SOURCE_SHA = "a19a55107f480754d8916432a3ca95cde936abb2"
+AUDIT_TOOL_HEAD_SHA = "a19a55107f480754d8916432a3ca95cde936abb2"
 
 ROOT_FINDINGS = [
     {
