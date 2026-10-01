@@ -188,6 +188,28 @@
     ]
   },
   {
+    "root_id": "ROOT_TREASURY_TIMELOCK_SALT_MISMATCH",
+    "title": "Treasury Scheduled Withdrawal Operation Hash Divergence",
+    "classification": "SECURITY_BLOCKER",
+    "affected_contracts": [
+      "contracts/governance/Treasury.sol"
+    ],
+    "affected_symbols": [
+      "Treasury.scheduleWithdrawal(address,address,uint256,bytes32)",
+      "Treasury.executeWithdrawal(address,address,uint256)"
+    ],
+    "semantic_components": [
+      "Treasury Timelock Operation Identity"
+    ],
+    "execution_path": "scheduleWithdrawal encodes salt vs executeWithdrawal encoding bytes32(0)",
+    "consequence": "Scheduled withdrawals fail execution due to operation ID hash divergence.",
+    "reachability_status": "ACTIVE_REACHABLE",
+    "blocked_by_root_ids": [],
+    "preconditions": "Scheduling withdrawal in Treasury",
+    "gate_id": "Treasury Timelock Operation Identity Gate",
+    "diagnostic_ids": []
+  },
+  {
     "root_id": "ROOT_AMM_POOL_EMERGENCY_RESET_DISABLED",
     "title": "AMMPool emergencyResetSkew Exposed Control API Always Reverts",
     "classification": "SECURITY_BLOCKER",

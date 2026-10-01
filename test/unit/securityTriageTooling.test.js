@@ -1,12 +1,16 @@
 import { expect } from "chai";
 import { execSync } from "child_process";
 import fs from "fs";
+import path from "path";
 
-describe("08D-R1 Security Triage Tooling Self-Tests", function () {
+describe("08D-R1 Security Triage Tooling Self-Tests & Negative Fixtures", function () {
   this.timeout(60000);
 
   it("should successfully extract AST symbols and discover receive/fallback and concrete entrypoints", function () {
-    const output = execSync("python3 scripts/security/08d/extract_solidity_ast.py", { encoding: "utf-8" });
+    const output = execSync("python3 scripts/security/08d/extract_solidity_ast.py", {
+      encoding: "utf-8",
+      env: { ...process.env, SKIP_FORCE_COMPILE: "1" }
+    });
     expect(output).to.include("Extracted");
 
     const symbolTable = JSON.parse(fs.readFileSync("docs/security/08D_SYMBOL_TABLE.json", "utf-8"));
@@ -20,7 +24,9 @@ describe("08D-R1 Security Triage Tooling Self-Tests", function () {
   });
 
   it("should build function audit matrix and report static test evidence without universal coverage assumption", function () {
-    execSync("python3 scripts/security/08d/build_function_audit.py");
+    execSync("python3 scripts/security/08d/build_function_audit.py", {
+      env: { ...process.env, SKIP_FORCE_COMPILE: "1" }
+    });
     const auditMatrix = JSON.parse(fs.readFileSync("docs/security/08D_FUNCTION_AUDIT.json", "utf-8"));
     expect(auditMatrix.length).to.be.above(0);
 
@@ -42,5 +48,105 @@ describe("08D-R1 Security Triage Tooling Self-Tests", function () {
   it("should validate canonical 08D ledgers with 0 errors via validate_08d_ledgers.py", function () {
     const res = execSync("python3 scripts/security/08d/validate_08d_ledgers.py", { encoding: "utf-8" });
     expect(res).to.include("Validation PASSED with 0 errors");
+  });
+
+  describe("Negative Test Fixtures for Validator", function () {
+    const tmpDir = "test/tmp_fixtures";
+
+    beforeEach(() => {
+      fs.mkdirSync(tmpDir, { recursive: true });
+      fs.copyFileSync("warnings-baseline.json", path.join(tmpDir, "baseline.json"));
+      fs.copyFileSync("docs/security/08D_FINDINGS_LEDGER.json", path.join(tmpDir, "ledger.json"));
+      fs.copyFileSync("docs/security/08D_ROOT_FINDINGS.json", path.join(tmpDir, "roots.json"));
+      fs.copyFileSync("docs/security/08D_FUNCTION_AUDIT.json", path.join(tmpDir, "audit.json"));
+      fs.copyFileSync("docs/security/08D_SYMBOL_TABLE.json", path.join(tmpDir, "symbols.json"));
+    });
+
+    afterEach(() => {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    it("should fail validation if an unknown symbol is present in root findings", function () {
+      const roots = JSON.parse(fs.readFileSync(path.join(tmpDir, "roots.json"), "utf-8"));
+      roots[0].affected_symbols.push("NonExistentContract.nonExistentFunction(uint256)");
+      fs.writeFileSync(path.join(tmpDir, "roots.json"), JSON.stringify(roots, null, 2));
+
+      try {
+        execSync(`python3 -c "import sys; sys.path.insert(0, 'scripts/security/08d'); from validate_08d_ledgers import validate_ledgers; validate_ledgers('${tmpDir}/baseline.json', '${tmpDir}/ledger.json', '${tmpDir}/roots.json', '${tmpDir}/audit.json', '${tmpDir}/symbols.json')"`);
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err.message).to.include("Command failed");
+      }
+    });
+
+    it("should fail validation if duplicate diagnostic IDs are present in findings ledger", function () {
+      const ledger = JSON.parse(fs.readFileSync(path.join(tmpDir, "ledger.json"), "utf-8"));
+      ledger.push(ledger[0]);
+      fs.writeFileSync(path.join(tmpDir, "ledger.json"), JSON.stringify(ledger, null, 2));
+
+      try {
+        execSync(`python3 -c "import sys; sys.path.insert(0, 'scripts/security/08d'); from validate_08d_ledgers import validate_ledgers; validate_ledgers('${tmpDir}/baseline.json', '${tmpDir}/ledger.json', '${tmpDir}/roots.json', '${tmpDir}/audit.json', '${tmpDir}/symbols.json')"`);
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err.message).to.include("Command failed");
+      }
+    });
+
+    it("should fail validation if a generic rationale template is used", function () {
+      const ledger = JSON.parse(fs.readFileSync(path.join(tmpDir, "ledger.json"), "utf-8"));
+      ledger[0].code_specific_rationale = "required for baseline gate justification text";
+      fs.writeFileSync(path.join(tmpDir, "ledger.json"), JSON.stringify(ledger, null, 2));
+
+      try {
+        execSync(`python3 -c "import sys; sys.path.insert(0, 'scripts/security/08d'); from validate_08d_ledgers import validate_ledgers; validate_ledgers('${tmpDir}/baseline.json', '${tmpDir}/ledger.json', '${tmpDir}/roots.json', '${tmpDir}/audit.json', '${tmpDir}/symbols.json')"`);
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err.message).to.include("Command failed");
+      }
+    });
+
+    it("should fail validation if AST concrete entrypoint set differs from audit concrete entrypoint set", function () {
+      const audit = JSON.parse(fs.readFileSync(path.join(tmpDir, "audit.json"), "utf-8"));
+      audit.push({
+        function_id: "InjectedContract.fakeEntry:100",
+        file: "contracts/fake/InjectedContract.sol",
+        contract: "InjectedContract",
+        function: "fakeEntry",
+        canonical_signature: "InjectedContract.fakeEntry()",
+        visibility: "external",
+        kind: "function",
+        authorization: "NONE",
+        inputs_used: "FULL",
+        state_reads: { value: "NO", variables: [] },
+        state_writes: { value: "NO", variables: [] },
+        asset_inflow: { value: "NO", evidence: [] },
+        asset_outflow: { value: "NO", evidence: [] },
+        external_calls: { value: "NO", evidence: [] },
+        callbacks: "NO",
+        reentrancy_model: "NONE",
+        oracle_dependence: "NO",
+        price_units: "N/A",
+        token_decimals: "N/A",
+        time_dependence: "NO",
+        nonce_replay_model: "N/A",
+        cross_chain_auth: "N/A",
+        event_observability: "NO_EVENT_EMITTED",
+        return_value_semantics: "VOID",
+        fail_open_or_fail_closed: "FAIL_OPEN_OR_NO_CHECK",
+        no_op_or_stub: "NO",
+        hardcoded_runtime_value: "NO",
+        test_coverage: "NO_TEST_EVIDENCE",
+        reachability: "EXTERNAL_DIRECT",
+        reachable_from: ["InjectedContract.fakeEntry()"]
+      });
+      fs.writeFileSync(path.join(tmpDir, "audit.json"), JSON.stringify(audit, null, 2));
+
+      try {
+        execSync(`python3 -c "import sys; sys.path.insert(0, 'scripts/security/08d'); from validate_08d_ledgers import validate_ledgers; validate_ledgers('${tmpDir}/baseline.json', '${tmpDir}/ledger.json', '${tmpDir}/roots.json', '${tmpDir}/audit.json', '${tmpDir}/symbols.json')"`);
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err.message).to.include("Command failed");
+      }
+    });
   });
 });

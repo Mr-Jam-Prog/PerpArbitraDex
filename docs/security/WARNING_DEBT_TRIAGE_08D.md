@@ -7,8 +7,8 @@
 - **Audit Toolchain**: Committed under `scripts/security/08d/` (`OUT_OF_REPO_AUDIT_TOOL_DEPENDENCY=0`)
 - **Total Production Compiler Warnings Triaged**: `623`
 - **Total Audited AST Symbols**: `853`
-- **Root Findings Identified**: `11`
-  - **SECURITY_BLOCKER Root Findings**: `10`
+- **Root Findings Identified**: `12`
+  - **SECURITY_BLOCKER Root Findings**: `11`
   - **ECONOMIC_OR_LOGIC_CHANGE_REQUIRED Root Findings**: `0`
   - **SECURITY_REVIEW_REQUIRED Root Findings**: `0`
   - **CONTEXTUAL_ACCEPTED Root Findings**: `1`
@@ -27,7 +27,7 @@ This report is programmatically generated from canonical machine-readable ledger
 
 ## Root Findings Inventory
 
-### SECURITY_BLOCKER Root Findings (10 Items)
+### SECURITY_BLOCKER Root Findings (11 Items)
 1. **AaveFlashLoanIntegrator Hardcoded Price Returns Constant Value in Profitability Estimation** (`ROOT_AAVE_ORACLE_HARDCODED`)
    - **Contracts**: `contracts/integration/AaveFlashLoanIntegrator.sol` (AaveFlashLoanIntegrator._getOraclePrice(uint256), AaveFlashLoanIntegrator.estimateProfitability(uint256,uint256))
    - **Execution Path**: estimateProfitability -> _getOraclePrice returns hardcoded 1000 * 1e8 value
@@ -84,14 +84,21 @@ This report is programmatically generated from canonical machine-readable ledger
    - **Consequence**: Latent reentrancy vulnerability in ETH withdrawal execution path.
    - **Remediation Gate**: *Treasury ETH Transfer Ordering & Reentrancy Guard Gate*
 
-9. **AMMPool emergencyResetSkew Exposed Control API Always Reverts** (`ROOT_AMM_POOL_EMERGENCY_RESET_DISABLED`)
+9. **Treasury Scheduled Withdrawal Operation Hash Divergence** (`ROOT_TREASURY_TIMELOCK_SALT_MISMATCH`)
+   - **Contracts**: `contracts/governance/Treasury.sol` (Treasury.scheduleWithdrawal(address,address,uint256,bytes32), Treasury.executeWithdrawal(address,address,uint256))
+   - **Execution Path**: scheduleWithdrawal encodes salt vs executeWithdrawal encoding bytes32(0)
+   - **Reachability Status**: `ACTIVE_REACHABLE`
+   - **Consequence**: Scheduled withdrawals fail execution due to operation ID hash divergence.
+   - **Remediation Gate**: *Treasury Timelock Operation Identity Gate*
+
+10. **AMMPool emergencyResetSkew Exposed Control API Always Reverts** (`ROOT_AMM_POOL_EMERGENCY_RESET_DISABLED`)
    - **Contracts**: `contracts/core/AMMPool.sol` (AMMPool.emergencyResetSkew(uint256))
    - **Execution Path**: emergencyResetSkew external call reverts unconditionally with 'AMMPool: emergencyResetSkew disabled'
    - **Reachability Status**: `ACTIVE_REACHABLE`
    - **Consequence**: Emergency control to reset skewed AMM pool state is permanently unavailable during emergency conditions.
    - **Remediation Gate**: *AMM Pool Emergency Skew Reset Functional Availability Gate*
 
-10. **CrossChainMessenger LayerZero / EVM Chain Identity Namespace Mismatch** (`ROOT_CROSS_CHAIN_LAYERZERO_NAMESPACE_MISMATCH`)
+11. **CrossChainMessenger LayerZero / EVM Chain Identity Namespace Mismatch** (`ROOT_CROSS_CHAIN_LAYERZERO_NAMESPACE_MISMATCH`)
    - **Contracts**: `contracts/integration/CrossChainMessenger.sol` (CrossChainMessenger._validateMessage(struct,uint16,uint64))
    - **Execution Path**: _validateMessage checks message.dstChainId == uint16(block.chainid)
    - **Reachability Status**: `ACTIVE_REACHABLE`
