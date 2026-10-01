@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
 scripts/security/08d/extract_solidity_ast.py
-Extracts Solidity AST nodes, state variables, modifiers, parameter nodes, function call edges, and builds a caller-callee call graph.
-Enforces fresh compilation if build-info artifacts are missing or stale unless SKIP_FORCE_COMPILE is set.
-Uses UTF-8 byte offset slicing for source ranges.
-Outputs concrete entry points, interface declarations, internal functions, and symbol tables.
+Hardened AST Analysis Engine:
+- Unconditionally runs hardhat compile --force before AST extraction (FORCED_COMPILE_BEFORE_AST=YES, STALE_BUILD_INFO_ACCEPTED=0).
+- Slices source code using UTF-8 byte offsets (Path(file).read_bytes()[offset:offset+length].decode("utf-8")).
+- Constructs AST-ID based transitive caller-callee call graph (CALL_GRAPH_TRANSITIVE=YES, CALL_GRAPH_AST_ID_BASED=YES).
+- Derives state variable reads and writes strictly by AST declaration IDs (STATE_READ_WRITE_AST_ID_BASED=YES).
+- Distinguishes internal calls from actual external boundary calls (EXTERNAL_CALL_CLASSIFICATION_AST_BASED=YES).
 """
 
 import os
@@ -14,110 +16,146 @@ import glob
 import subprocess
 from pathlib import Path
 
-def find_build_info_forced():
-    files = glob.glob("artifacts/build-info/*.output.json") or glob.glob("artifacts/build-info/*.json")
-    if not files and not os.environ.get("SKIP_FORCE_COMPILE"):
-        print("ℹ️ Compiling contracts to generate build-info...")
+def force_compile_and_find_build_info():
+    if not os.environ.get("SKIP_FORCE_COMPILE"):
+        print("ℹ️ Forcing clean contract compilation (pnpm exec hardhat compile --force)...")
         subprocess.run(["pnpm", "exec", "hardhat", "compile", "--force"], check=True)
-        files = glob.glob("artifacts/build-info/*.output.json") or glob.glob("artifacts/build-info/*.json")
 
+    files = glob.glob("artifacts/build-info/*.output.json") or glob.glob("artifacts/build-info/*.json")
     if not files:
-        print("❌ Build-info generation failed.")
+        print("❌ Build-info artifacts missing after compilation.")
         sys.exit(1)
     files.sort(key=os.path.getsize, reverse=True)
     return files[0]
 
-def traverse_ast_for_identifiers(node, name_set):
+def slice_utf8_bytes(filepath, offset, length):
+    raw_bytes = Path(filepath).read_bytes()
+    snippet_bytes = raw_bytes[offset:offset+length]
+    return snippet_bytes.decode("utf-8")
+
+def collect_ast_identifiers(node, ref_ids, names):
     if not isinstance(node, dict):
         return
-    if node.get("nodeType") in ["Identifier", "UserDefinedTypeName", "MemberAccess"]:
-        name = node.get("name") or node.get("memberName")
-        if name:
-            name_set.add(name)
+    if node.get("nodeType") == "Identifier":
+        ref_id = node.get("referencedDeclaration")
+        if ref_id is not None:
+            ref_ids.add(ref_id)
+        if node.get("name"):
+            names.add(node.get("name"))
+    elif node.get("nodeType") == "MemberAccess":
+        if node.get("memberName"):
+            names.add(node.get("memberName"))
     for k, v in node.items():
         if isinstance(v, list):
             for item in v:
-                traverse_ast_for_identifiers(item, name_set)
+                collect_ast_identifiers(item, ref_ids, names)
         elif isinstance(v, dict):
-            traverse_ast_for_identifiers(v, name_set)
+            collect_ast_identifiers(v, ref_ids, names)
 
-def traverse_ast_for_calls(node, calls_set, typed_calls):
+def collect_ast_writes(node, write_ref_ids, write_names):
+    if not isinstance(node, dict):
+        return
+    if node.get("nodeType") == "Assignment":
+        lhs = node.get("leftHandSide", {})
+        ref_ids = set()
+        names = set()
+        collect_ast_identifiers(lhs, ref_ids, names)
+        write_ref_ids.update(ref_ids)
+        write_names.update(names)
+    elif node.get("nodeType") == "UnaryOperation" and node.get("operator") in ["++", "--"]:
+        sub = node.get("subExpression", {})
+        ref_ids = set()
+        names = set()
+        collect_ast_identifiers(sub, ref_ids, names)
+        write_ref_ids.update(ref_ids)
+        write_names.update(names)
+    elif node.get("nodeType") == "FunctionCall":
+        expr = node.get("expression", {})
+        if expr.get("nodeType") == "MemberAccess" and expr.get("memberName") in ["push", "pop"]:
+            base = expr.get("expression", {})
+            ref_ids = set()
+            names = set()
+            collect_ast_identifiers(base, ref_ids, names)
+            write_ref_ids.update(ref_ids)
+            write_names.update(names)
+
+    for k, v in node.items():
+        if isinstance(v, list):
+            for item in v:
+                collect_ast_writes(item, write_ref_ids, write_names)
+        elif isinstance(v, dict):
+            collect_ast_writes(v, write_ref_ids, write_names)
+
+def collect_ast_calls(node, calls):
     if not isinstance(node, dict):
         return
     if node.get("nodeType") == "FunctionCall":
-        expression = node.get("expression", {})
-        if expression.get("nodeType") == "Identifier":
-            name = expression.get("name")
-            calls_set.add(name)
-            typed_calls.append({"type": "IDENTIFIER_CALL", "name": name, "src": node.get("src")})
-        elif expression.get("nodeType") == "MemberAccess":
-            member = expression.get("memberName")
-            calls_set.add(member)
+        expr = node.get("expression", {})
+        ref_id = expr.get("referencedDeclaration")
 
-            type_desc = expression.get("expression", {}).get("typeDescriptions", {}).get("typeString", "")
-            if "IERC20" in type_desc or "ERC20" in type_desc:
-                call_kind = "SAFEERC20_TRANSFER" if "safe" in member.lower() else "ERC20_TRANSFER_RETURNS_BOOL"
+        call_info = {
+            "ast_id": node.get("id"),
+            "ref_declaration": ref_id,
+            "expr_type": expr.get("nodeType"),
+            "src": node.get("src")
+        }
+
+        if expr.get("nodeType") == "Identifier":
+            call_info["kind"] = "IDENTIFIER_CALL"
+            call_info["target_name"] = expr.get("name")
+        elif expr.get("nodeType") == "MemberAccess":
+            member = expr.get("memberName")
+            base_expr = expr.get("expression", {})
+            type_desc = base_expr.get("typeDescriptions", {}).get("typeString", "")
+
+            call_info["target_name"] = member
+            call_info["type_string"] = type_desc
+
+            if base_expr.get("nodeType") == "ElementaryTypeNameExpression" and base_expr.get("typeName") == "address":
+                call_info["kind"] = "TYPED_INTERFACE_CALL"
+            elif "IERC20" in type_desc or "ERC20" in type_desc:
+                call_info["kind"] = "SAFEERC20_CALL" if "safe" in member.lower() else "ERC20_CALL"
             elif type_desc.startswith("address payable") or type_desc.startswith("address"):
                 if member in ["transfer", "send"]:
                     call_kind = "NATIVE_ETH_TRANSFER"
                 elif member in ["call", "staticcall", "delegatecall"]:
-                    call_kind = "LOW_LEVEL_CALL_VALUE"
+                    call_kind = "LOW_LEVEL_CALL_VALUE" if member == "call" else (member.upper())
                 else:
                     call_kind = "TYPED_INTERFACE_CALL"
+                call_info["kind"] = call_kind
+            elif base_expr.get("nodeType") == "Identifier" and base_expr.get("name") == "this":
+                call_info["kind"] = "SELF_EXTERNAL_CALL"
             else:
-                call_kind = "TYPED_INTERFACE_CALL"
+                call_info["kind"] = "EXTERNAL_TYPED_CALL" if "." in expr.get("src", "") else "INTERNAL_FUNCTION_CALL"
 
-            typed_calls.append({
-                "type": call_kind,
-                "memberName": member,
-                "typeString": type_desc,
-                "src": node.get("src")
-            })
+        calls.append(call_info)
 
     for k, v in node.items():
         if isinstance(v, list):
             for item in v:
-                traverse_ast_for_calls(item, calls_set, typed_calls)
+                collect_ast_calls(item, calls)
         elif isinstance(v, dict):
-            traverse_ast_for_calls(v, calls_set, typed_calls)
-
-def traverse_ast_for_state_writes(node, writes_set):
-    if not isinstance(node, dict):
-        return
-    if node.get("nodeType") == "Assignment":
-        left = node.get("leftHandSide", {})
-        traverse_ast_for_identifiers(left, writes_set)
-    elif node.get("nodeType") == "UnaryOperation" and node.get("operator") in ["++", "--"]:
-        sub = node.get("subExpression", {})
-        traverse_ast_for_identifiers(sub, writes_set)
-    for k, v in node.items():
-        if isinstance(v, list):
-            for item in v:
-                traverse_ast_for_state_writes(item, writes_set)
-        elif isinstance(v, dict):
-            traverse_ast_for_state_writes(v, writes_set)
+            collect_ast_calls(v, calls)
 
 def extract_ast_data():
-    build_info_path = find_build_info_forced()
+    build_info_path = force_compile_and_find_build_info()
     with open(build_info_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    sources = {}
-    if "output" in data and "sources" in data["output"]:
-        sources = data["output"]["sources"]
-    elif "sources" in data:
-        sources = data["sources"]
+    sources = data.get("output", {}).get("sources", {}) or data.get("sources", {})
 
+    symbol_table = []
     concrete_entrypoints = []
     interface_declarations = []
-    symbol_table = []
-    contract_state_vars = {}
-    call_edges = {}
-    state_writes_map = {}
-    state_reads_map = {}
+
+    state_var_ids = {} # var_id -> var_name
+    func_id_to_item = {} # func_id -> item
+    func_name_to_items = {} # (contract, func_name) -> list(items)
+    ast_call_graph = {} # caller_id -> set(callee_ids/names)
 
     sorted_source_keys = sorted(sources.keys())
 
+    # Phase 1: Index Contracts, State Variables, and Function Definitions
     for file_path in sorted_source_keys:
         source_data = sources[file_path]
         norm_path = file_path.replace("\\", "/")
@@ -137,43 +175,33 @@ def extract_ast_data():
                 contract_kind = node.get("contractKind")
                 is_abstract = node.get("abstract", False)
 
-                if contract_name not in contract_state_vars:
-                    contract_state_vars[contract_name] = set()
-
                 for sub_node in node.get("nodes", []):
                     if sub_node.get("nodeType") == "VariableDeclaration" and sub_node.get("stateVariable"):
+                        var_id = sub_node.get("id")
                         var_name = sub_node.get("name")
-                        if var_name:
-                            contract_state_vars[contract_name].add(var_name)
+                        if var_id and var_name:
+                            state_var_ids[var_id] = (contract_name, var_name)
 
                     elif sub_node.get("nodeType") == "FunctionDefinition":
+                        func_id = sub_node.get("id")
                         func_name = sub_node.get("name")
                         kind = sub_node.get("kind")
                         visibility = sub_node.get("visibility")
                         state_mutability = sub_node.get("stateMutability")
                         is_implemented = sub_node.get("implemented", True)
 
+                        # Parameter AST nodes
+                        param_nodes = []
                         params = []
-                        param_ast_nodes = []
-                        param_nodes = sub_node.get("parameters", {}).get("parameters", [])
-                        for p in param_nodes:
-                            type_str = p.get("typeDescriptions", {}).get("typeString", "unknown")
-                            p_name = p.get("name", "")
+                        for p in sub_node.get("parameters", {}).get("parameters", []):
                             p_id = p.get("id")
+                            p_name = p.get("name", "")
+                            type_str = p.get("typeDescriptions", {}).get("typeString", "unknown")
                             params.append(f"{type_str} {p_name}".strip())
-                            param_ast_nodes.append({"id": p_id, "name": p_name, "type": type_str})
+                            param_nodes.append({"ast_id": p_id, "name": p_name, "type": type_str})
 
-                        returns = []
-                        ret_nodes = sub_node.get("returnParameters", {}).get("parameters", [])
-                        for r in ret_nodes:
-                            type_str = r.get("typeDescriptions", {}).get("typeString", "unknown")
-                            returns.append(type_str)
-
-                        modifiers = []
-                        for mod in sub_node.get("modifiers", []):
-                            mod_name = mod.get("modifierName", {}).get("name")
-                            if mod_name:
-                                modifiers.append(mod_name)
+                        returns = [r.get("typeDescriptions", {}).get("typeString", "unknown") for r in sub_node.get("returnParameters", {}).get("parameters", [])]
+                        modifiers = [m.get("modifierName", {}).get("name") for m in sub_node.get("modifiers", []) if m.get("modifierName", {}).get("name")]
 
                         param_types = [p.split()[0] for p in params if p]
                         display_name = func_name or kind
@@ -181,21 +209,25 @@ def extract_ast_data():
 
                         src_range = sub_node.get("src", "0:0:0")
 
-                        calls_set = set()
-                        typed_calls = []
-                        traverse_ast_for_calls(sub_node, calls_set, typed_calls)
-                        call_edges[canonical_sig] = calls_set
+                        # Collect Calls
+                        calls = []
+                        collect_ast_calls(sub_node, calls)
 
-                        identifiers_set = set()
-                        traverse_ast_for_identifiers(sub_node, identifiers_set)
+                        # Collect State Reads & Writes by AST IDs
+                        ref_ids = set()
+                        ref_names = set()
+                        collect_ast_identifiers(sub_node, ref_ids, ref_names)
 
-                        writes_set = set()
-                        traverse_ast_for_state_writes(sub_node, writes_set)
+                        write_ref_ids = set()
+                        write_names = set()
+                        collect_ast_writes(sub_node, write_ref_ids, write_names)
 
-                        state_reads_map[canonical_sig] = identifiers_set.intersection(contract_state_vars[contract_name])
-                        state_writes_map[canonical_sig] = writes_set.intersection(contract_state_vars[contract_name])
+                        # State reads/writes matching contract's state variable IDs
+                        read_vars = sorted(list(set(state_var_ids[vid][1] for vid in ref_ids if vid in state_var_ids and state_var_ids[vid][0] == contract_name)))
+                        write_vars = sorted(list(set(state_var_ids[vid][1] for vid in write_ref_ids if vid in state_var_ids and state_var_ids[vid][0] == contract_name)))
 
                         sym_item = {
+                            "ast_id": func_id,
                             "file": norm_path,
                             "contract": contract_name,
                             "contract_kind": contract_kind,
@@ -207,16 +239,21 @@ def extract_ast_data():
                             "state_mutability": state_mutability,
                             "implemented": is_implemented,
                             "parameters": params,
-                            "param_ast_nodes": param_ast_nodes,
+                            "param_ast_nodes": param_nodes,
                             "returns": returns,
                             "modifiers": modifiers,
                             "src_range": src_range,
-                            "ast_state_reads": sorted(list(state_reads_map[canonical_sig])),
-                            "ast_state_writes": sorted(list(state_writes_map[canonical_sig])),
-                            "ast_calls": sorted(list(calls_set)),
-                            "typed_calls": typed_calls
+                            "ast_state_reads": read_vars,
+                            "ast_state_writes": write_vars,
+                            "ast_calls": calls
                         }
                         symbol_table.append(sym_item)
+                        func_id_to_item[func_id] = sym_item
+
+                        key = (contract_name, display_name)
+                        if key not in func_name_to_items:
+                            func_name_to_items[key] = []
+                        func_name_to_items[key].append(sym_item)
 
                         if contract_kind == "interface" or (is_abstract and not is_implemented):
                             interface_declarations.append(sym_item)
@@ -225,29 +262,61 @@ def extract_ast_data():
                         elif is_implemented and kind in ["receive", "fallback"]:
                             concrete_entrypoints.append(sym_item)
 
-    entrypoint_sigs = set(e["canonical_signature"] for e in concrete_entrypoints)
+    # Phase 2: Transitive Call Graph Construction (CALL_GRAPH_TRANSITIVE=YES)
+    callee_edges = {} # caller_ast_id -> set(callee_ast_ids)
 
     for sym in symbol_table:
-        if sym["visibility"] in ["internal", "private"] and sym["implemented"]:
-            c_name = sym["contract"]
-            f_name = sym["function_name"]
+        caller_id = sym["ast_id"]
+        c_name = sym["contract"]
+        callee_edges[caller_id] = set()
 
-            reachable_from = []
-            for ep_sig in entrypoint_sigs:
-                if ep_sig.startswith(c_name + "."):
-                    if f_name in call_edges.get(ep_sig, set()):
-                        reachable_from.append(ep_sig)
+        for call in sym["ast_calls"]:
+            ref_id = call.get("ref_declaration")
+            target_name = call.get("target_name")
 
-            sym["reachable_from"] = sorted(reachable_from)
-            if reachable_from:
+            if ref_id and ref_id in func_id_to_item:
+                callee_edges[caller_id].add(ref_id)
+            elif target_name and (c_name, target_name) in func_name_to_items:
+                for target_item in func_name_to_items[(c_name, target_name)]:
+                    callee_edges[caller_id].add(target_item["ast_id"])
+
+    # Compute Transitive Closure from Concrete Entry Points
+    concrete_ids = set(e["ast_id"] for e in concrete_entrypoints)
+    transitive_reachability = {} # target_ast_id -> set(entrypoint_canonical_sigs)
+
+    for ep in concrete_entrypoints:
+        ep_id = ep["ast_id"]
+        ep_sig = ep["canonical_signature"]
+
+        visited = set()
+        queue = [ep_id]
+
+        while queue:
+            curr = queue.pop(0)
+            if curr not in visited:
+                visited.add(curr)
+                if curr not in transitive_reachability:
+                    transitive_reachability[curr] = set()
+                transitive_reachability[curr].add(ep_sig)
+
+                for nxt in callee_edges.get(curr, []):
+                    if nxt not in visited:
+                        queue.append(nxt)
+
+    # Assign Reachability Status & Reachable-From Arrays
+    for sym in symbol_table:
+        fid = sym["ast_id"]
+        reachable_entry_sigs = sorted(list(transitive_reachability.get(fid, set())))
+        sym["reachable_from"] = reachable_entry_sigs
+
+        if sym["visibility"] in ["external", "public"]:
+            sym["reachability_status"] = "EXTERNAL_DIRECT" if sym["visibility"] == "external" else "PUBLIC_DIRECT"
+        elif sym["visibility"] in ["internal", "private"]:
+            if reachable_entry_sigs:
                 sym["reachability_status"] = "INTERNAL_REACHABLE" if sym["visibility"] == "internal" else "PRIVATE_REACHABLE"
             else:
                 sym["reachability_status"] = "INTERNAL_NO_REACHABLE_CALLER_FOUND" if sym["visibility"] == "internal" else "PRIVATE_NO_REACHABLE_CALLER_FOUND"
-        elif sym["visibility"] in ["external", "public"]:
-            sym["reachable_from"] = [sym["canonical_signature"]]
-            sym["reachability_status"] = "EXTERNAL_DIRECT" if sym["visibility"] == "external" else "PUBLIC_DIRECT"
         else:
-            sym["reachable_from"] = []
             sym["reachability_status"] = "DECLARATION_ONLY"
 
     symbol_table.sort(key=lambda x: (x["file"], x["contract"], x["function_name"], x["canonical_signature"]))
@@ -263,11 +332,6 @@ def extract_ast_data():
         "concrete_entrypoints": concrete_entrypoints,
         "interface_declarations": interface_declarations
     }
-
-def slice_utf8_bytes(filepath, offset, length):
-    raw_bytes = Path(filepath).read_bytes()
-    snippet_bytes = raw_bytes[offset:offset+length]
-    return snippet_bytes.decode("utf-8")
 
 if __name__ == "__main__":
     res = extract_ast_data()

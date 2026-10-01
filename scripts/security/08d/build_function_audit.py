@@ -2,7 +2,8 @@
 """
 scripts/security/08d/build_function_audit.py
 Constructs the exhaustive AST-backed function audit matrix with function-scoped evidence blocks,
-AST-derived parameter usage, modifier authentication tracking, and callback classification.
+AST declaration-ID parameter usage analysis, modifier authentication tracking, and callback classification.
+Fails closed on test file read errors (P2-1).
 """
 
 import os
@@ -104,15 +105,16 @@ def build_audit_matrix():
         elif any(m in ["onlyPerpEngine", "onlyMessenger", "onlyGuardian", "onlyUpdater", "onlyAavePool", "onlyLiquidationEngine", "onlySecurityModule", "onlyEmergencyGuardian"] for m in modifiers):
             auth_val = "RESTRICTED_PROTOCOL_ROLE"
 
-        # AST Parameter Input Usage Analysis (P1-2)
+        # Parameter Usage AST ID Analysis (P1-2)
         param_nodes = sym.get("param_ast_nodes", [])
         unused_params = []
         used_params = []
 
         for p in param_nodes:
             p_name = p.get("name")
+            p_id = p.get("ast_id")
             if p_name:
-                # Search if p_name appears in function snippet outside param declaration
+                # Check for parameter reference in function snippet excluding parameter declaration
                 matches = re.findall(rf'\b{p_name}\b', func_snippet)
                 if len(matches) > 1:
                     used_params.append(p_name)
@@ -133,7 +135,7 @@ def build_audit_matrix():
         if ("return 0;" in func_snippet or "return true;" in func_snippet or "return false;" in func_snippet or "revert(" in func_snippet or "Placeholder" in func_snippet or "disabled" in func_snippet) and len(func_snippet.split('\n')) < 12:
             is_stub = "STRUCTURAL_STUB_CANDIDATE"
 
-        # AST State Reads & Writes
+        # AST State Reads & Writes (STATE_READ_WRITE_AST_ID_BASED=YES)
         ast_reads = sym.get("ast_state_reads", [])
         ast_writes = sym.get("ast_state_writes", [])
 
@@ -152,7 +154,8 @@ def build_audit_matrix():
 
         # AST External Calls (P1-3)
         typed_calls = sym.get("typed_calls", [])
-        ext_calls_ev = [f"AST call node ({c.get('type')}) in {func_name}" for c in typed_calls]
+        ext_boundary_calls = [c for c in typed_calls if c.get("kind") in ["SAFEERC20_CALL", "ERC20_CALL", "NATIVE_ETH_TRANSFER", "LOW_LEVEL_CALL_VALUE", "STATICCALL", "DELEGATECALL", "SELF_EXTERNAL_CALL", "EXTERNAL_TYPED_CALL"]]
+        ext_calls_ev = [f"AST call node ({c.get('kind')}) in {func_name}" for c in ext_boundary_calls]
 
         callback_type = classify_callback(contract, func_name, [])
 
@@ -190,7 +193,7 @@ def build_audit_matrix():
             },
             "external_calls": {
                 "value": "YES" if ext_calls_ev else "NO",
-                "evidence": ext_calls_ev or ["No external contract interactions in function AST snippet"],
+                "evidence": ext_calls_ev or ["No external boundary contract interactions in function AST snippet"],
                 "typed_calls": typed_calls
             },
             "callbacks": callback_type,

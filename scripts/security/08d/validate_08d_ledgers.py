@@ -2,13 +2,14 @@
 """
 scripts/security/08d/validate_08d_ledgers.py
 Triage integrity validator enforcing AST entrypoint set-equality, AST symbol resolution,
-no fabricated test coverage, non-templated rationales, and exact count invariants.
+no fabricated test coverage, non-templated rationales, baseline ID set equality, and exact count invariants.
 Computes every declared check deterministically via VALIDATION_CHECKS registry.
 """
 
 import os
 import json
 import sys
+import hashlib
 
 DECLARED_CHECKS = [
     "UNMAPPED_PRODUCTION_DIAGNOSTICS",
@@ -29,8 +30,15 @@ DECLARED_CHECKS = [
     "VALIDATOR_UNIMPLEMENTED_CHECKS"
 ]
 
+def make_diagnostic_id(file_path, line, col, msg):
+    raw = f"{file_path}:{line}:{col}:{msg}"
+    return hashlib.sha256(raw.encode('utf-8')).hexdigest()
+
 def check_unmapped_production_diagnostics(prod_baseline, ledger):
-    return abs(len(prod_baseline) - len(ledger))
+    baseline_ids = set(make_diagnostic_id(w['file'], w['line'], w['column'], w['message']) for w in prod_baseline)
+    ledger_ids = set(item.get("diagnostic_id") for item in ledger if item.get("diagnostic_id"))
+    diff = baseline_ids.symmetric_difference(ledger_ids)
+    return len(diff)
 
 def check_duplicate_and_multimapped(ledger):
     seen_dids = {}

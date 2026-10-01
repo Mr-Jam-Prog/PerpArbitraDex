@@ -3,16 +3,15 @@
 scripts/security/08d/build_findings_ledger.py
 Constructs AST-backed 08D_ROOT_FINDINGS.json and 08D_FINDINGS_LEDGER.json.
 Generates code-specific, non-templated rationales detailing exact AST symbols, site semantics, and evidence objects for ALL 623 production diagnostics.
-Dynamically resolves source revisions (P2-4).
+Uses AUDIT_SCHEMA_VERSION and PRODUCTION_SOURCE_SHA for revision semantics (P2-4).
 """
 
 import os
 import json
 import hashlib
-import subprocess
 
 PRODUCTION_SOURCE_SHA = "a19a55107f480754d8916432a3ca95cde936abb2"
-AUDIT_TOOL_HEAD_SHA = "a19a55107f480754d8916432a3ca95cde936abb2"
+AUDIT_SCHEMA_VERSION = "08D-R1-v2.1"
 
 ROOT_FINDINGS = [
     {
@@ -192,7 +191,6 @@ def make_diagnostic_id(file_path, line, col, msg):
 def get_code_specific_rationale(fl, line, col, msg, root_obj):
     contract_name = fl.split('/')[-1].replace('.sol', '')
 
-    # Non-templated site-specific explanations with AST evidence references (P1-5)
     if "AaveFlashLoanIntegrator.sol" in fl and line in [384, 388]:
         return f"In contract {fl} at line {line}:{col}, compiler warning on '{msg}' directly evidences the hardcoded price stub inside _getOraclePrice(). In this function, constant 1000 * 1e8 is returned, bypassing the dynamic OracleAggregator module during keeper profitability estimation."
     elif "CrossChainMessenger.sol" in fl and line in [243, 245, 258]:
@@ -296,7 +294,7 @@ def build_ledgers():
             "security_or_economic_consequence": root_obj["consequence"],
             "code_specific_rationale": rationale,
             "gate_id": root_obj["gate_id"],
-            "audit_tool_head_sha": AUDIT_TOOL_HEAD_SHA,
+            "audit_schema_version": AUDIT_SCHEMA_VERSION,
             "production_source_sha": PRODUCTION_SOURCE_SHA,
             "review_status": "TRIAGED"
         }
