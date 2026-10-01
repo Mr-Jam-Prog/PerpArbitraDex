@@ -3,6 +3,7 @@
 scripts/security/08d/build_findings_ledger.py
 Constructs AST-backed 08D_ROOT_FINDINGS.json and 08D_FINDINGS_LEDGER.json.
 Generates code-specific, non-templated rationales detailing exact AST symbols, site semantics, and evidence objects for ALL 623 production diagnostics.
+Replaces non-blocker fallback rationale text with NEEDS_MANUAL_SEMANTIC_REVIEW disposition for unproven sites.
 Uses AUDIT_SCHEMA_VERSION and PRODUCTION_SOURCE_SHA for revision semantics (P2-4).
 """
 
@@ -212,28 +213,7 @@ def get_code_specific_rationale(fl, line, col, msg, root_obj):
     elif "Treasury.sol" in fl and line == 163:
         return f"In contract {fl} at line {line}:{col}, compiler warning on '{msg}' identifies state modification ordering relative to external ETH transfer in executeWithdrawal(). The contract issues raw ETH call before deleting scheduledWithdrawals entry."
     else:
-        if "typecasts that can truncate" in msg:
-            return f"In contract {contract_name} ({fl}:{line}:{col}), the compiler flags a numeric typecast that narrows integer bit-width ('{msg}'). Analysis confirms input values at this site are bounded by prior validation or fixed contract constants, preventing arithmetic overflow."
-        elif "block.timestamp" in msg:
-            return f"In contract {contract_name} ({fl}:{line}:{col}), the diagnostic notes block.timestamp reliance ('{msg}'). At this site, time elapsed spans hours or days (funding/timelock checks), so miner timestamp manipulation within small second windows cannot exploit protocol state."
-        elif "misuse of a boolean constant" in msg:
-            return f"In contract {contract_name} ({fl}:{line}:{col}), the compiler flags boolean constant expression usage ('{msg}'). This construct originates from explicit status assertions or constant flags, ensuring zero unintended state branches."
-        elif "external call inside a loop" in msg:
-            return f"In contract {contract_name} ({fl}:{line}:{col}), an external contract call occurs inside an iteration loop ('{msg}'). The loop bounds at this site are strictly capped by caller pagination or array length limits, ensuring execution remains within gas limits."
-        elif "event emitted after an external call" in msg:
-            return f"In contract {contract_name} ({fl}:{line}:{col}), an event is emitted following an external contract call ('{msg}'). The state mutations precede the external call and the function is protected by nonReentrant modifier, preventing log manipulation."
-        elif "Unused function parameter" in msg:
-            return f"In contract {contract_name} ({fl}:{line}:{col}), function parameter is declared but unused ('{msg}'). This parameter is mandated by interface inheritance or future feature hooks, with zero side effects on state execution."
-        elif "require` or `revert` inside a loop" in msg:
-            return f"In contract {contract_name} ({fl}:{line}:{col}), conditional require/revert assertion is executed inside a loop ('{msg}'). Bounded iteration ensures gas exhaustion cannot lock contract state."
-        elif "OpenZeppelin deprecated" in msg:
-            return f"In contract {contract_name} ({fl}:{line}:{col}), call targets a deprecated OpenZeppelin utility function ('{msg}'). The target method behavior is verified compliant with OpenZeppelin 4.9.0 semantics."
-        elif "nonReentrant` should be the first modifier" in msg:
-            return f"In contract {contract_name} ({fl}:{line}:{col}), modifier ordering places nonReentrant after custom modifiers ('{msg}'). Preceding modifiers contain zero external calls or state mutations, preserving reentrancy guard effectiveness."
-        elif "Unused local variable" in msg:
-            return f"In contract {contract_name} ({fl}:{line}:{col}), local variable is declared but unused ('{msg}'). The variable represents intermediate computation retained for code readability, with zero effect on state execution."
-        else:
-            return f"In contract {contract_name} ({fl}:{line}:{col}), diagnostic '{msg}' is evaluated under baseline warning tracking. Source site operates safely within defined protocol parameters."
+        return f"NEEDS_MANUAL_SEMANTIC_REVIEW: In contract {contract_name} ({fl}:{line}:{col}), diagnostic '{msg}' requires site-specific semantic verification under baseline tracking."
 
 def build_ledgers():
     with open("warnings-baseline.json", "r", encoding="utf-8") as f:

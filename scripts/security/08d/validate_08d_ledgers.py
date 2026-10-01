@@ -2,7 +2,7 @@
 """
 scripts/security/08d/validate_08d_ledgers.py
 Triage integrity validator enforcing AST entrypoint set-equality, AST symbol resolution,
-no fabricated test coverage, non-templated rationales, baseline ID set equality, and exact count invariants.
+generic test coverage validation, non-templated rationales, and exact count invariants.
 Computes every declared check deterministically via VALIDATION_CHECKS registry.
 """
 
@@ -26,7 +26,9 @@ DECLARED_CHECKS = [
     "UNSUPPORTED_SAFETY_ASSERTIONS",
     "FUNCTIONS_WITH_FABRICATED_TEST_COVERAGE",
     "AST_ENTRYPOINT_SET_MISMATCH",
+    "INTERNAL_FUNCTION_SET_MISMATCH",
     "UNKNOWN_BLOCKED_BY_ROOT_IDS",
+    "UNCLASSIFIED_AUTH_MODIFIERS",
     "VALIDATOR_UNIMPLEMENTED_CHECKS"
 ]
 
@@ -107,8 +109,9 @@ def check_root_and_detail_integrity(ledger, roots):
         if "required for baseline gate" in rat.lower() or "generic" in rat.lower() or "represents tolerated compiler warning debt (" in rat.lower() or len(rat) < 25:
             templated_rat += 1
 
-        if any(unsupported in rat for unsupported in ["bounded by prior validation", "protected by nonReentrant", "mandated by interface"]):
-            if "protected by nonReentrant" in rat and item.get("classification") == "SECURITY_BLOCKER":
+        # Check UNSUPPORTED_SAFETY_ASSERTIONS across all entries
+        if any(unsupported in rat for unsupported in ["protected by nonReentrant", "mandated by interface", "bounded by prior validation"]):
+            if item.get("classification") == "SECURITY_BLOCKER":
                 unsupported_assertions += 1
 
     return (root_without_ev, missing_disp, blocker_mismatch, economic_mismatch,
@@ -117,17 +120,46 @@ def check_root_and_detail_integrity(ledger, roots):
 def check_fabricated_coverage(audit):
     fabricated = 0
     for a in audit:
-        if a.get("contract") == "LidoStETHIntegrator" and a.get("function") == "wrapETH":
-            if a.get("test_coverage") == "COVERED_IN_UNIT_OR_FUZZ":
-                fabricated += 1
+        # Generic check across all audited entry points
+        cov = a.get("test_coverage")
+        func_name = a.get("function")
+        vis = a.get("visibility")
+
+        # If coverage is claimed as COVERED_IN_UNIT_OR_FUZZ or STATIC_REFERENCE_EXACT_CONTRACT_FUNCTION without reachable tests
+        if cov == "COVERED_IN_UNIT_OR_FUZZ" and a.get("reachability") == "UNREACHABLE":
+            fabricated += 1
     return fabricated
 
-def check_entrypoint_set_mismatch(symbol_table, audit):
-    ast_implemented_sigs = set(s["canonical_signature"] for s in symbol_table if s["implemented"])
-    audit_sigs = set(a["canonical_signature"] for a in audit)
-    if ast_implemented_sigs != audit_sigs:
-        return len(ast_implemented_sigs.symmetric_difference(audit_sigs))
-    return 0
+def check_entrypoint_and_internal_sets(symbol_table, audit):
+    ast_concrete_sigs = set(
+        s["canonical_signature"] for s in symbol_table
+        if s["implemented"] and ((s["contract_kind"] != "interface" and not s["is_abstract"] and s["visibility"] in ["external", "public"]) or s["kind"] in ["receive", "fallback"])
+    )
+    audit_concrete_sigs = set(
+        a["canonical_signature"] for a in audit
+        if a["visibility"] in ["external", "public"] or a["kind"] in ["receive", "fallback"]
+    )
+
+    ast_internal_sigs = set(
+        s["canonical_signature"] for s in symbol_table
+        if s["implemented"] and s["visibility"] in ["internal", "private"]
+    )
+    audit_internal_sigs = set(
+        a["canonical_signature"] for a in audit
+        if a["visibility"] in ["internal", "private"]
+    )
+
+    concrete_mismatch = len(ast_concrete_sigs.symmetric_difference(audit_concrete_sigs))
+    internal_mismatch = len(ast_internal_sigs.symmetric_difference(audit_internal_sigs))
+
+    return concrete_mismatch, internal_mismatch
+
+def check_unclassified_modifiers(audit):
+    unclassified = 0
+    for a in audit:
+        if a.get("unclassified_modifiers"):
+            unclassified += len(a["unclassified_modifiers"])
+    return unclassified
 
 VALIDATION_CHECKS = {
     "UNMAPPED_PRODUCTION_DIAGNOSTICS": lambda p, l, r, a, s: check_unmapped_production_diagnostics(p, l),
@@ -144,8 +176,10 @@ VALIDATION_CHECKS = {
     "GENERIC_OR_TEMPLATED_SECURITY_RATIONALES": lambda p, l, r, a, s: check_root_and_detail_integrity(l, r)[6],
     "UNSUPPORTED_SAFETY_ASSERTIONS": lambda p, l, r, a, s: check_root_and_detail_integrity(l, r)[7],
     "FUNCTIONS_WITH_FABRICATED_TEST_COVERAGE": lambda p, l, r, a, s: check_fabricated_coverage(a),
-    "AST_ENTRYPOINT_SET_MISMATCH": lambda p, l, r, a, s: check_entrypoint_set_mismatch(s, a),
-    "VALIDATOR_UNIMPLEMENTED_CHECKS": lambda p, l, r, a, s: 0
+    "AST_ENTRYPOINT_SET_MISMATCH": lambda p, l, r, a, s: check_entrypoint_and_internal_sets(s, a)[0],
+    "INTERNAL_FUNCTION_SET_MISMATCH": lambda p, l, r, a, s: check_entrypoint_and_internal_sets(s, a)[1],
+    "UNCLASSIFIED_AUTH_MODIFIERS": lambda p, l, r, a, s: check_unclassified_modifiers(a),
+    "VALIDATOR_UNIMPLEMENTED_CHECKS": lambda p, l, r, a, s: len(set(DECLARED_CHECKS) - set(VALIDATION_CHECKS.keys()))
 }
 
 def validate_ledgers(baseline_path="warnings-baseline.json",

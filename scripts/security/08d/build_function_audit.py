@@ -2,7 +2,7 @@
 """
 scripts/security/08d/build_function_audit.py
 Constructs the exhaustive AST-backed function audit matrix with function-scoped evidence blocks,
-AST declaration-ID parameter usage analysis, modifier authentication tracking, and callback classification.
+AST-ID parameter usage analysis, modifier authorization tracking via AST body inspection, and interface callback classification.
 Fails closed on test file read errors (P2-1).
 """
 
@@ -12,6 +12,15 @@ import json
 import re
 from pathlib import Path
 from extract_solidity_ast import extract_ast_data, slice_utf8_bytes
+
+CALLBACK_INTERFACE_REGISTRY = {
+    "IAaveFlashLoanReceiver": "AAVE_CALLBACK",
+    "ILayerZeroReceiver": "LAYERZERO_CALLBACK",
+    "IAccount": "ERC4337_CALLBACK",
+    "IERC777Recipient": "TOKEN_CALLBACK",
+    "IERC677Receiver": "TOKEN_CALLBACK",
+    "IOracleCallback": "ORACLE_CALLBACK"
+}
 
 def scan_test_references():
     test_files = []
@@ -38,29 +47,36 @@ def scan_test_references():
                 exact_contract_func_refs.add((c_name, f_name))
         except Exception as e:
             print(f"❌ Error reading test file {tf}: {e}")
-            sys.exit(1) # Fail closed on test read errors (P2-1)
+            sys.exit(1)
 
     return {
         "exact_refs": exact_contract_func_refs,
         "counts": function_name_counts
     }
 
-def classify_callback(contract, func_name, interfaces):
-    if func_name == "executeOperation":
-        return "AAVE_CALLBACK"
-    elif func_name == "lzReceive":
-        return "LAYERZERO_CALLBACK"
-    elif func_name == "validateUserOp":
-        return "ERC4337_CALLBACK"
-    elif func_name in ["onTokenTransfer", "tokensReceived"]:
-        return "TOKEN_CALLBACK"
-    elif func_name == "oracleCallback":
-        return "ORACLE_CALLBACK"
+def classify_callback(sym, interface_declarations):
+    cb_info = sym.get("callback_info")
+    if cb_info:
+        cb_iface = cb_info.get("callback_interface")
+        if cb_iface in CALLBACK_INTERFACE_REGISTRY:
+            return CALLBACK_INTERFACE_REGISTRY[cb_iface]
+        return cb_info.get("callback_class", "NOT_CALLBACK")
+
+    # Check inherited interface implementations
+    f_name = sym.get("function_name")
+    for iface in interface_declarations:
+        if iface.get("function_name") == f_name:
+            iface_name = iface.get("contract")
+            if iface_name in CALLBACK_INTERFACE_REGISTRY:
+                return CALLBACK_INTERFACE_REGISTRY[iface_name]
+
     return "NOT_CALLBACK"
 
 def build_audit_matrix():
     ast_data = extract_ast_data()
     symbol_table = ast_data["symbol_table"]
+    interface_declarations = ast_data["interface_declarations"]
+    modifier_definitions = ast_data["modifier_definitions"]
     test_info = scan_test_references()
     exact_refs = test_info["exact_refs"]
     counts = test_info["counts"]
@@ -86,7 +102,7 @@ def build_audit_matrix():
         except Exception:
             func_snippet = ""
 
-        # Test Evidence Classification (P1-7)
+        # Contract+Signature Aware Test Evidence (P1-7)
         if (contract, func_name) in exact_refs:
             test_evidence = "STATIC_REFERENCE_EXACT_CONTRACT_FUNCTION"
         elif counts.get(func_name, 0) > 0:
@@ -97,29 +113,57 @@ def build_audit_matrix():
         reachability = sym.get("reachability_status", "UNKNOWN")
         reachable_from = sym.get("reachable_from", [])
 
-        # Modifier Authorization Tracking (P1-4)
+        # Modifier Authorization AST Body Inspection
         modifiers = sym.get("modifiers", [])
-        auth_val = "NONE"
-        if any(m in ["onlyOwner", "onlyRole", "onlyAdmin", "onlyGovernance", "onlyGovernor"] for m in modifiers):
-            auth_val = "RESTRICTED_ADMIN_ROLE"
-        elif any(m in ["onlyPerpEngine", "onlyMessenger", "onlyGuardian", "onlyUpdater", "onlyAavePool", "onlyLiquidationEngine", "onlySecurityModule", "onlyEmergencyGuardian"] for m in modifiers):
-            auth_val = "RESTRICTED_PROTOCOL_ROLE"
 
-        # Parameter Usage AST ID Analysis (P1-2)
+        # Recognized OpenZeppelin / Standard base modifiers & constructor hooks that are not authorization gates
+        known_non_auth_modifiers = {
+            "nonReentrant", "whenNotPaused", "onlyDuringEmergency",
+            "ERC20", "ERC20Permit", "ERC721", "EIP712",
+            "Governor", "GovernorSettings", "GovernorVotes",
+            "GovernorVotesQuorumFraction", "GovernorTimelockControl", "OZTimelock"
+        }
+
+        # Standard OpenZeppelin Auth Modifiers declared in external imported contracts (AccessControl / Ownable)
+        standard_oz_auth_modifiers = {"onlyOwner", "onlyRole", "onlyRoleOrOpenRole", "ifAdmin"}
+
+        unclassified_mods = [m for m in modifiers if m not in modifier_definitions and m not in known_non_auth_modifiers and m not in standard_oz_auth_modifiers]
+
+        auth_val = "NONE"
+        has_auth_modifier = any(modifier_definitions.get(m) == "AUTH_ENFORCED" for m in modifiers) or any(m in standard_oz_auth_modifiers for m in modifiers)
+        if has_auth_modifier:
+            if any(m in ["onlyOwner", "onlyRole", "onlyAdmin", "onlyGovernance", "onlyGovernor", "onlyTimelock", "ifAdmin", "onlyExecutor", "onlyRoleOrOpenRole"] for m in modifiers):
+                auth_val = "RESTRICTED_ADMIN_ROLE"
+            else:
+                auth_val = "RESTRICTED_PROTOCOL_ROLE"
+
+        # AST Parameter Reference Analysis strictly by AST IDs (PARAM_USAGE_AST_ID_BASED=YES)
         param_nodes = sym.get("param_ast_nodes", [])
+        param_refs_map = sym.get("param_references_map", {})
+
         unused_params = []
         used_params = []
+        param_details = []
 
         for p in param_nodes:
-            p_name = p.get("name")
-            p_id = p.get("ast_id")
-            if p_name:
-                # Check for parameter reference in function snippet excluding parameter declaration
-                matches = re.findall(rf'\b{p_name}\b', func_snippet)
-                if len(matches) > 1:
-                    used_params.append(p_name)
-                else:
-                    unused_params.append(p_name)
+            pid = p.get("ast_id")
+            pname = p.get("name")
+            refs = param_refs_map.get(str(pid), []) or param_refs_map.get(pid, [])
+            ref_count = len(refs)
+
+            p_detail = {
+                "ast_id": pid,
+                "name": pname,
+                "reference_count": ref_count,
+                "used_in_call": any("call" in str(r) for r in refs),
+                "used_in_return": "return" in func_snippet and pname in func_snippet.split("return")[-1]
+            }
+            param_details.append(p_detail)
+
+            if ref_count > 0:
+                used_params.append(pname)
+            else:
+                unused_params.append(pname)
 
         if not param_nodes:
             input_usage = "NO_INPUTS"
@@ -130,12 +174,12 @@ def build_audit_matrix():
         else:
             input_usage = "ALL_INPUTS_USED"
 
-        # Structural AST Stub Candidate Detection (HARDCODED_STUB_SYMBOL_ALLOWLIST=0) (P1-6)
+        # Structural AST Stub Candidate Detection (HARDCODED_STUB_SYMBOL_ALLOWLIST=0)
         is_stub = "NO"
         if ("return 0;" in func_snippet or "return true;" in func_snippet or "return false;" in func_snippet or "revert(" in func_snippet or "Placeholder" in func_snippet or "disabled" in func_snippet) and len(func_snippet.split('\n')) < 12:
             is_stub = "STRUCTURAL_STUB_CANDIDATE"
 
-        # AST State Reads & Writes (STATE_READ_WRITE_AST_ID_BASED=YES)
+        # AST State Reads & Writes
         ast_reads = sym.get("ast_state_reads", [])
         ast_writes = sym.get("ast_state_writes", [])
 
@@ -152,12 +196,12 @@ def build_audit_matrix():
         if ".call{value:" in func_snippet:
             asset_outflow_ev.append(f"raw ETH transfer .call{{value:...}} in {func_name}")
 
-        # AST External Calls (P1-3)
-        typed_calls = sym.get("typed_calls", [])
+        # AST External Boundary Calls
+        typed_calls = sym.get("ast_calls", [])
         ext_boundary_calls = [c for c in typed_calls if c.get("kind") in ["SAFEERC20_CALL", "ERC20_CALL", "NATIVE_ETH_TRANSFER", "LOW_LEVEL_CALL_VALUE", "STATICCALL", "DELEGATECALL", "SELF_EXTERNAL_CALL", "EXTERNAL_TYPED_CALL"]]
         ext_calls_ev = [f"AST call node ({c.get('kind')}) in {func_name}" for c in ext_boundary_calls]
 
-        callback_type = classify_callback(contract, func_name, [])
+        callback_type = classify_callback(sym, interface_declarations)
 
         reentrancy = "NONREENTRANT" if "nonReentrant" in func_snippet else "NONE"
         time_dep = "YES_TIMESTAMP" if "block.timestamp" in func_snippet or "blockhash(" in func_snippet else "NO"
@@ -173,7 +217,9 @@ def build_audit_matrix():
             "kind": kind,
             "authorization": auth_val,
             "modifiers": modifiers,
+            "unclassified_modifiers": unclassified_mods,
             "inputs_used": input_usage,
+            "parameter_details": param_details,
             "unused_parameters": unused_params,
             "state_reads": {
                 "value": "YES" if ast_reads else "NO",
