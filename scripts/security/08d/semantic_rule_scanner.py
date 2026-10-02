@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
 scripts/security/08d/semantic_rule_scanner.py
-Scans repository with global audit candidate rules and validates candidates against AST enclosing expressions.
+Scans repository with global audit candidate rules and validates candidates against AST enclosing expressions and typed AST call nodes.
 Distinguishes TRUE_POSITIVE vs FALSE_POSITIVE with deterministic sorting across files and matches.
-Distinguishes NATIVE_ETH_TRANSFER from ERC20 boolean return transfers using AST/type info.
+Uses AST call classifications from 08D_FUNCTION_AUDIT.json / extract_solidity_ast.py to strictly filter ERC20 boolean return transfers.
 """
 
 import os
@@ -38,6 +38,25 @@ GLOBAL_RULES = [
 ]
 
 def scan_rules():
+    audit_file = "docs/security/08D_FUNCTION_AUDIT.json"
+    ast_calls_by_file = {}
+
+    if os.path.exists(audit_file):
+        with open(audit_file, "r", encoding="utf-8") as f:
+            audit_data = json.load(f)
+            for func_entry in audit_data:
+                fl = func_entry.get("file")
+                ext_calls = func_entry.get("external_calls", {}).get("typed_calls", [])
+                for call in ext_calls:
+                    call_kind = call.get("kind")
+                    target = call.get("target_name") or ""
+                    if fl not in ast_calls_by_file:
+                        ast_calls_by_file[fl] = []
+                    ast_calls_by_file[fl].append({
+                        "target": target,
+                        "kind": call_kind
+                    })
+
     root_dir = "contracts"
     results = []
 
@@ -57,17 +76,24 @@ def scan_rules():
         with open(filepath, "r", encoding="utf-8") as f:
             lines = f.readlines()
 
+        file_ast_calls = ast_calls_by_file.get(filepath, [])
+
         for idx, line in enumerate(lines, 1):
             for rule in GLOBAL_RULES:
                 if re.search(rule["pattern"], line):
                     code_snip = line.strip()
                     status = "NEEDS_REVIEW"
 
-                    # AST / Enclosing expression check for token transfers vs native ETH transfers
+                    # AST-typed call classification for token transfers vs native ETH transfers
                     if rule["rule_id"] == "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL":
-                        # Exclude native ETH transfers: payable(...).transfer(...)
+                        # Exclude native ETH transfers and SafeERC20 transfers
                         if "payable(" in code_snip or "payable " in code_snip or "payable." in code_snip:
-                            continue # Native ETH transfer, excluded from ERC20 token transfer rule
+                            continue
+
+                        # If line matches a native ETH transfer in AST call list, skip
+                        is_native_eth = any(c["kind"] == "NATIVE_ETH_TRANSFER" and c["target"] in ["transfer", "send"] for c in file_ast_calls if c["target"] and c["target"] in code_snip)
+                        if is_native_eth and not ("IERC20" in code_snip or "ERC20" in code_snip or "transferFrom" in code_snip):
+                            continue
 
                         if "require(" in code_snip or "if (" in code_snip or "bool success" in code_snip or "safeTransfer" in code_snip:
                             status = "FALSE_POSITIVE"

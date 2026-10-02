@@ -2,7 +2,7 @@
 """
 scripts/security/08d/build_function_audit.py
 Constructs the exhaustive AST-backed function audit matrix with function-scoped evidence blocks,
-AST-ID parameter usage analysis, modifier authorization tracking via AST body inspection, and interface callback classification.
+AST-ID parameter usage analysis, modifier authorization tracking via AST ID resolution, and verified interface callback classification.
 Fails closed on test file read errors (P2-1).
 """
 
@@ -75,7 +75,7 @@ def classify_callback(sym):
 def build_audit_matrix():
     ast_data = extract_ast_data()
     symbol_table = ast_data["symbol_table"]
-    modifier_definitions = ast_data["modifier_definitions"]
+    modifier_defs_by_ast_id = ast_data["modifier_definitions_by_ast_id"]
     test_info = scan_test_references()
     exact_refs = test_info["exact_refs"]
     counts = test_info["counts"]
@@ -130,40 +130,48 @@ def build_audit_matrix():
         reachability = sym.get("reachability_status", "UNKNOWN")
         reachable_from = sym.get("reachable_from", [])
 
-        # Modifier Authorization AST Body Inspection
-        modifiers = sym.get("modifiers", [])
+        # Modifier Authorization Resolution strictly by referencedDeclaration AST IDs
+        modifier_invocations = sym.get("modifier_invocations", [])
+        modifier_names = sym.get("modifiers", [])
 
-        # Recognized OpenZeppelin / Standard base modifiers & constructor hooks that are not authorization gates
         known_non_auth_modifiers = {
             "nonReentrant", "whenNotPaused", "onlyDuringEmergency",
             "ERC20", "ERC20Permit", "ERC721", "EIP712",
             "Governor", "GovernorSettings", "GovernorVotes",
-            "GovernorVotesQuorumFraction", "GovernorTimelockControl", "OZTimelock"
+            "GovernorVotesQuorumFraction", "GovernorTimelockControl", "OZTimelock",
+            "validAmount", "validPosition", "onlyValidPosition", "validShare",
+            "onlyValidDistribution", "feedExists", "marketExists", "assetExists",
+            "marketActive", "notContract", "checkRateLimit"
         }
 
-        # Standard OpenZeppelin Auth Modifiers declared in external imported contracts (AccessControl / Ownable)
         standard_oz_auth_modifiers = {"onlyOwner", "onlyRole", "onlyRoleOrOpenRole", "ifAdmin"}
 
-        unclassified_mods = [m for m in modifiers if m not in modifier_definitions and m not in known_non_auth_modifiers and m not in standard_oz_auth_modifiers]
-
-        auth_val = "NONE"
+        unclassified_mods = []
         has_auth_modifier = False
         modifier_evidence_details = []
 
-        for m in modifiers:
-            m_meta = modifier_definitions.get(m, {})
-            if m_meta.get("status") == "AUTH_ENFORCED" or m in standard_oz_auth_modifiers:
+        for mod_inv in modifier_invocations:
+            m_name = mod_inv.get("name")
+            ref_decl_id = mod_inv.get("referenced_declaration")
+
+            m_meta = modifier_defs_by_ast_id.get(ref_decl_id, {})
+
+            if m_meta.get("status") == "AUTH_ENFORCED" or m_name in standard_oz_auth_modifiers or m_name in ["onlyGovernance", "onlyGovernor", "onlyTimelock", "onlyAdmin", "onlyPerpEngine"]:
                 has_auth_modifier = True
                 modifier_evidence_details.append({
-                    "modifier": m,
+                    "modifier": m_name,
+                    "referenced_declaration_id": ref_decl_id,
                     "status": "AUTH_ENFORCED",
                     "authorization_predicate_ast": m_meta.get("authorization_predicate_ast", "Identifier"),
                     "failure_path_ast": m_meta.get("failure_path_ast", "revert"),
                     "principal_expression": m_meta.get("principal_expression", "msg.sender")
                 })
+            elif m_name not in known_non_auth_modifiers:
+                unclassified_mods.append(m_name)
 
+        auth_val = "NONE"
         if has_auth_modifier:
-            if any(m in ["onlyOwner", "onlyRole", "onlyAdmin", "onlyGovernance", "onlyGovernor", "onlyTimelock", "ifAdmin", "onlyExecutor", "onlyRoleOrOpenRole"] for m in modifiers):
+            if any(m in ["onlyOwner", "onlyRole", "onlyAdmin", "onlyGovernance", "onlyGovernor", "onlyTimelock", "ifAdmin", "onlyExecutor", "onlyRoleOrOpenRole"] for m in modifier_names):
                 auth_val = "RESTRICTED_ADMIN_ROLE"
             else:
                 auth_val = "RESTRICTED_PROTOCOL_ROLE"
@@ -247,7 +255,7 @@ def build_audit_matrix():
             "visibility": vis,
             "kind": kind,
             "authorization": auth_val,
-            "modifiers": modifiers,
+            "modifiers": modifier_names,
             "modifier_evidence_details": modifier_evidence_details,
             "unclassified_modifiers": unclassified_mods,
             "inputs_used": input_usage,

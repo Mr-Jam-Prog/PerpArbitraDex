@@ -8,8 +8,9 @@ Hardened AST Analysis Engine:
 - Evaluates parameter references strictly by AST referencedDeclaration ID (PARAM_USAGE_AST_ID_BASED=YES, PARAM_USAGE_TEXT_REGEX=NO).
 - Derives state variable reads and writes strictly by AST declaration IDs with context awareness.
 - Extracts contract inheritance graphs (linearizedBaseContracts, baseContracts) to verify true interface implementation relationships.
-- Inspects modifier AST bodies for structural authorization predicates (authorization_predicate_ast, failure_path_ast, principal_expression).
-- Detects callbacks via AST interface implementation verification and canonical callback signatures (CALLBACK_INTERFACE_RELATION_REQUIRED=YES).
+- Resolves modifier definitions and invocations by AST declaration IDs (`modifier_definition_ast_id -> auth_meta`) preventing name collisions.
+- Inspects modifier AST bodies for structural authorization predicates and failure paths (`RevertStatement` / `revert()` / `require()`).
+- Detects callbacks via AST interface implementation verification AND exact parameter type signature matching (CALLBACK_INTERFACE_RELATION_REQUIRED=YES, CALLBACK_SIGNATURE_MATCH_REQUIRED=YES).
 - Distinguishes NATIVE_ETH_TRANSFER from ERC20_TRANSFER_RETURNS_BOOL and SAFEERC20_TRANSFER using AST expression types.
 """
 
@@ -24,32 +25,38 @@ CALLBACK_INTERFACE_SIGNATURES = {
     "executeOperation": {
         "interface": "IAaveFlashLoanReceiver",
         "signature": "IAaveFlashLoanReceiver.executeOperation(address[],uint256[],uint256[],address,bytes)",
-        "kind": "AAVE_CALLBACK"
+        "kind": "AAVE_CALLBACK",
+        "expected_param_types": ["address[]", "uint256[]", "uint256[]", "address", "bytes"]
     },
     "lzReceive": {
         "interface": "ILayerZeroReceiver",
         "signature": "ILayerZeroReceiver.lzReceive(uint16,bytes,uint64,bytes)",
-        "kind": "LAYERZERO_CALLBACK"
+        "kind": "LAYERZERO_CALLBACK",
+        "expected_param_types": ["uint16", "bytes", "uint64", "bytes"]
     },
     "validateUserOp": {
         "interface": "IAccount",
         "signature": "IAccount.validateUserOp(tuple,bytes32,uint256)",
-        "kind": "ERC4337_CALLBACK"
+        "kind": "ERC4337_CALLBACK",
+        "expected_param_types": ["tuple", "bytes32", "uint256"]
     },
     "tokensReceived": {
         "interface": "IERC777Recipient",
         "signature": "IERC777Recipient.tokensReceived(address,address,address,uint256,bytes,bytes)",
-        "kind": "TOKEN_CALLBACK"
+        "kind": "TOKEN_CALLBACK",
+        "expected_param_types": ["address", "address", "address", "uint256", "bytes", "bytes"]
     },
     "onTokenTransfer": {
         "interface": "IERC677Receiver",
         "signature": "IERC677Receiver.onTokenTransfer(address,uint256,bytes)",
-        "kind": "TOKEN_CALLBACK"
+        "kind": "TOKEN_CALLBACK",
+        "expected_param_types": ["address", "uint256", "bytes"]
     },
     "oracleCallback": {
         "interface": "IOracleCallback",
         "signature": "IOracleCallback.oracleCallback(bytes32,uint256)",
-        "kind": "ORACLE_CALLBACK"
+        "kind": "ORACLE_CALLBACK",
+        "expected_param_types": ["bytes32", "uint256"]
     }
 }
 
@@ -72,18 +79,40 @@ def slice_utf8_bytes(filepath, offset, length):
 
 def analyze_modifier_ast_body_for_auth(mod_node):
     """
-    Inspects modifier AST body for structural authorization predicates:
-    - Checks for explicit require/revert guards associated with sender/roles.
+    Inspects modifier AST body for structural authorization predicates and proves failure paths:
+    - Proves presence of RevertStatement, revert(), or require() on unauthorized path.
     - Records authorization_predicate_ast, failure_path_ast, principal_expression.
     """
     identifiers = set()
-    has_revert_or_require = False
+    has_actual_revert_or_require = False
     predicate_ast = None
     failure_path = None
     principal_expr = None
 
+    def _has_revert_in_body(body_node):
+        found = False
+        def _scan(n):
+            nonlocal found
+            if not isinstance(n, dict):
+                return
+            ntype = n.get("nodeType")
+            if ntype in ["RevertStatement", "ThrowStatement"]:
+                found = True
+            elif ntype == "FunctionCall":
+                expr = n.get("expression", {})
+                if expr.get("nodeType") == "Identifier" and expr.get("name") in ["revert", "require"]:
+                    found = True
+            for k, v in n.items():
+                if isinstance(v, list):
+                    for item in v:
+                        _scan(item)
+                elif isinstance(v, dict):
+                    _scan(v)
+        _scan(body_node)
+        return found
+
     def _collect(n):
-        nonlocal has_revert_or_require, predicate_ast, failure_path, principal_expr
+        nonlocal has_actual_revert_or_require, predicate_ast, failure_path, principal_expr
         if not isinstance(n, dict):
             return
 
@@ -92,16 +121,21 @@ def analyze_modifier_ast_body_for_auth(mod_node):
         if ntype == "FunctionCall":
             expr = n.get("expression", {})
             if expr.get("nodeType") == "Identifier" and expr.get("name") in ["require", "revert"]:
-                has_revert_or_require = True
+                has_actual_revert_or_require = True
                 failure_path = expr.get("name")
                 if n.get("arguments"):
                     predicate_ast = n.get("arguments")[0].get("nodeType")
 
         elif ntype == "IfStatement":
-            has_revert_or_require = True
-            failure_path = "IF_REVERT"
             cond = n.get("condition", {})
-            predicate_ast = cond.get("nodeType")
+            true_body = n.get("trueBody", {})
+            false_body = n.get("falseBody", {})
+
+            # Prove that the if statement actually contains a revert/require on the unauthorized branch
+            if _has_revert_in_body(true_body) or _has_revert_in_body(false_body):
+                has_actual_revert_or_require = True
+                failure_path = "IF_REVERT"
+                predicate_ast = cond.get("nodeType")
 
         if ntype in ["Identifier", "MemberAccess"]:
             name = n.get("name") or n.get("memberName")
@@ -121,9 +155,11 @@ def analyze_modifier_ast_body_for_auth(mod_node):
 
     auth_keywords = {"msg", "sender", "_msgSender", "tx", "origin", "hasRole", "grantRole", "owner", "governance", "governor", "guardian", "timelock", "admin", "messenger", "authorized", "liquidator", "entryPoint"}
 
-    is_enforcing = has_revert_or_require and bool(identifiers.intersection(auth_keywords))
+    is_enforcing = has_actual_revert_or_require and bool(identifiers.intersection(auth_keywords))
 
     return {
+        "ast_id": mod_node.get("id"),
+        "name": mod_node.get("name"),
         "status": "AUTH_ENFORCED" if is_enforcing else "AUTH_NOT_ENFORCING",
         "authorization_predicate_ast": predicate_ast or "NONE",
         "failure_path_ast": failure_path or "NONE",
@@ -322,7 +358,7 @@ def extract_ast_data():
     func_id_to_item = {}
     func_name_to_items = {}
     internal_callee_edges = {}
-    modifier_definitions = {} # mod_name -> auth_meta
+    modifier_definitions_by_ast_id = {} # modifier_ast_id -> auth_meta
     library_names = set()
 
     contract_ast_registry = {} # contract_ast_id -> contract_meta
@@ -383,9 +419,11 @@ def extract_ast_data():
 
                 for sub_node in node.get("nodes", []):
                     if sub_node.get("nodeType") == "ModifierDefinition":
-                        mod_name = sub_node.get("name")
+                        mod_id = sub_node.get("id")
                         auth_meta = analyze_modifier_ast_body_for_auth(sub_node)
-                        modifier_definitions[mod_name] = auth_meta
+                        auth_meta["contract_ast_id"] = contract_ast_id
+                        auth_meta["contract_name"] = contract_name
+                        modifier_definitions_by_ast_id[mod_id] = auth_meta
 
                     elif sub_node.get("nodeType") == "VariableDeclaration" and sub_node.get("stateVariable"):
                         var_id = sub_node.get("id")
@@ -403,35 +441,55 @@ def extract_ast_data():
 
                         param_nodes = []
                         params = []
+                        param_types = []
                         param_ids = set()
                         for p in sub_node.get("parameters", {}).get("parameters", []):
                             p_id = p.get("id")
                             p_name = p.get("name", "")
                             type_str = p.get("typeDescriptions", {}).get("typeString", "unknown")
                             params.append(f"{type_str} {p_name}".strip())
+                            param_types.append(type_str.split()[0])
                             param_nodes.append({"ast_id": p_id, "name": p_name, "type": type_str})
                             if p_id:
                                 param_ids.add(p_id)
 
                         returns = [r.get("typeDescriptions", {}).get("typeString", "unknown") for r in sub_node.get("returnParameters", {}).get("parameters", [])]
-                        modifiers = [m.get("modifierName", {}).get("name") for m in sub_node.get("modifiers", []) if m.get("modifierName", {}).get("name")]
 
-                        param_types = [p.split()[0] for p in params if p]
+                        # Modifier Invocation Resolution strictly by referencedDeclaration AST IDs
+                        modifier_invocations = []
+                        modifier_names = []
+                        for m in sub_node.get("modifiers", []):
+                            mod_name = m.get("modifierName", {}).get("name")
+                            ref_decl = m.get("modifierName", {}).get("referencedDeclaration")
+                            if mod_name:
+                                modifier_names.append(mod_name)
+                                modifier_invocations.append({
+                                    "name": mod_name,
+                                    "referenced_declaration": ref_decl
+                                })
+
                         display_name = func_name or kind
                         canonical_sig = f"{contract_name}.{display_name}({','.join(param_types)})"
 
                         src_range = sub_node.get("src", "0:0:0")
 
-                        # Verified Callback Classification based on AST Interface Relation
+                        # Verified Callback Classification: Requires BOTH interface inheritance AND exact parameter signature match
                         callback_info = None
                         if display_name in CALLBACK_INTERFACE_SIGNATURES:
                             cb_meta = CALLBACK_INTERFACE_SIGNATURES[display_name]
                             target_interface = cb_meta["interface"]
                             target_iface_id = contract_name_to_id.get(target_interface)
 
-                            # Verify contract implements target_interface in linearizedBaseContracts
                             contract_linearized = contract_ast_registry.get(contract_ast_id, {}).get("linearized_base_contracts", [])
-                            if target_iface_id and target_iface_id in contract_linearized:
+
+                            # Verify 1: Containing contract inherits target interface
+                            has_interface_inheritance = target_iface_id and target_iface_id in contract_linearized
+
+                            # Verify 2: Concrete parameter types match canonical callback types
+                            expected_types = cb_meta["expected_param_types"]
+                            types_match = (param_types == expected_types)
+
+                            if has_interface_inheritance and types_match:
                                 callback_info = {
                                     "callback_class": cb_meta["kind"],
                                     "callback_interface": target_interface,
@@ -465,7 +523,8 @@ def extract_ast_data():
                             "param_ast_nodes": param_nodes,
                             "param_references_map": param_refs_map,
                             "returns": returns,
-                            "modifiers": modifiers,
+                            "modifiers": modifier_names,
+                            "modifier_invocations": modifier_invocations,
                             "callback_info": callback_info,
                             "src_range": src_range,
                             "ast_state_reads": sorted(list(read_vars)),
@@ -555,7 +614,7 @@ def extract_ast_data():
         "symbol_table": symbol_table,
         "concrete_entrypoints": concrete_entrypoints,
         "interface_declarations": interface_declarations,
-        "modifier_definitions": modifier_definitions,
+        "modifier_definitions_by_ast_id": modifier_definitions_by_ast_id,
         "contract_ast_registry": contract_ast_registry,
         "contract_name_to_id": contract_name_to_id
     }

@@ -3,7 +3,7 @@
 scripts/security/08d/validate_08d_ledgers.py
 Triage integrity validator enforcing AST entrypoint set-equality, AST symbol resolution,
 generic test coverage validation, non-templated rationales, split disposition schema checks,
-machine-resolvable root evidence, and exact count invariants.
+machine-resolvable root evidence, resolving safety evidence refs, and exact count invariants.
 Computes every declared check deterministically via VALIDATION_CHECKS registry.
 """
 
@@ -34,8 +34,10 @@ DECLARED_CHECKS = [
     "ROOT_DETAIL_GATE_MISMATCH",
     "GENERIC_OR_TEMPLATED_SECURITY_RATIONALES",
     "UNSUPPORTED_SAFETY_ASSERTIONS",
+    "SAFETY_EVIDENCE_REFS_UNRESOLVED",
     "FUNCTIONS_WITH_FABRICATED_TEST_COVERAGE",
     "TEST_EVIDENCE_WITHOUT_PROOF",
+    "EXACT_TEST_REFERENCE_WITHOUT_RESOLVABLE_PROOF",
     "AST_ENTRYPOINT_SET_MISMATCH",
     "INTERNAL_FUNCTION_SET_MISMATCH",
     "UNKNOWN_BLOCKED_BY_ROOT_IDS",
@@ -99,6 +101,7 @@ def check_unknown_symbols_and_blocked_roots(roots, symbol_table, ledger):
 
 def check_disposition_schema_splits(ledger, roots):
     root_dict = {r["root_id"]: r for r in roots}
+    all_root_ids = set(r["root_id"] for r in roots)
 
     missing_id = 0
     missing_classification = 0
@@ -113,6 +116,7 @@ def check_disposition_schema_splits(ledger, roots):
     gate_mismatch = 0
     templated_rat = 0
     unsupported_assertions = 0
+    unresolved_safety_refs = 0
 
     for item in ledger:
         did = item.get("diagnostic_id")
@@ -133,12 +137,25 @@ def check_disposition_schema_splits(ledger, roots):
         elif "required for baseline gate" in rat.lower() or "generic" in rat.lower() or "represents tolerated compiler warning debt (" in rat.lower() or len(rat) < 25:
             templated_rat += 1
 
-        # UNSUPPORTED_SAFETY_ASSERTIONS across ALL classifications
+        # UNSUPPORTED_SAFETY_ASSERTIONS and SAFETY_EVIDENCE_REFS_UNRESOLVED
+        claims = item.get("safety_claims", [])
+        refs = item.get("evidence_refs", [])
+
         if rat and any(unsupported in rat for unsupported in ["protected by nonReentrant", "mandated by interface", "bounded by prior validation"]):
-            claims = item.get("safety_claims", [])
-            refs = item.get("evidence_refs", [])
             if not claims or not refs:
                 unsupported_assertions += 1
+
+        for ref in refs:
+            if ref.startswith("ROOT_FINDING:"):
+                r_target = ref.split("ROOT_FINDING:")[1]
+                if r_target not in all_root_ids:
+                    unresolved_safety_refs += 1
+            elif ref.startswith("WARNING_BASELINE:"):
+                b_did = ref.split("WARNING_BASELINE:")[1]
+                if b_did != did:
+                    unresolved_safety_refs += 1
+            else:
+                unresolved_safety_refs += 1
 
         gate_id = item.get("gate_id")
         if not gate_id:
@@ -164,11 +181,12 @@ def check_disposition_schema_splits(ledger, roots):
 
     return (diag_without_disp, missing_id, missing_classification, missing_root_or_disp,
             missing_rationale, missing_gate, missing_review_status, blocker_mismatch,
-            economic_mismatch, class_mismatch, gate_mismatch, templated_rat, unsupported_assertions)
+            economic_mismatch, class_mismatch, gate_mismatch, templated_rat, unsupported_assertions, unresolved_safety_refs)
 
 def check_fabricated_coverage_and_proofs(audit):
     fabricated = 0
     proofless = 0
+    unresolvable_exact_refs = 0
 
     for a in audit:
         cov = a.get("test_coverage")
@@ -177,10 +195,14 @@ def check_fabricated_coverage_and_proofs(audit):
         if cov != "NO_TEST_EVIDENCE" and not proof_obj:
             proofless += 1
 
+        if cov == "STATIC_REFERENCE_EXACT_CONTRACT_FUNCTION":
+            if not proof_obj or not proof_obj.get("test_file") or not os.path.exists(proof_obj.get("test_file")):
+                unresolvable_exact_refs += 1
+
         if cov == "COVERED_IN_UNIT_OR_FUZZ" and a.get("reachability") == "UNREACHABLE":
             fabricated += 1
 
-    return fabricated, proofless
+    return fabricated, proofless, unresolvable_exact_refs
 
 def check_entrypoint_and_internal_sets(symbol_table, audit):
     ast_concrete_sigs = set(
@@ -236,8 +258,10 @@ VALIDATION_CHECKS = {
     "ROOT_DETAIL_GATE_MISMATCH": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[10],
     "GENERIC_OR_TEMPLATED_SECURITY_RATIONALES": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[11],
     "UNSUPPORTED_SAFETY_ASSERTIONS": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[12],
+    "SAFETY_EVIDENCE_REFS_UNRESOLVED": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[13],
     "FUNCTIONS_WITH_FABRICATED_TEST_COVERAGE": lambda p, l, r, a, s: check_fabricated_coverage_and_proofs(a)[0],
     "TEST_EVIDENCE_WITHOUT_PROOF": lambda p, l, r, a, s: check_fabricated_coverage_and_proofs(a)[1],
+    "EXACT_TEST_REFERENCE_WITHOUT_RESOLVABLE_PROOF": lambda p, l, r, a, s: check_fabricated_coverage_and_proofs(a)[2],
     "AST_ENTRYPOINT_SET_MISMATCH": lambda p, l, r, a, s: check_entrypoint_and_internal_sets(s, a)[0],
     "INTERNAL_FUNCTION_SET_MISMATCH": lambda p, l, r, a, s: check_entrypoint_and_internal_sets(s, a)[1],
     "UNCLASSIFIED_AUTH_MODIFIERS": lambda p, l, r, a, s: check_unclassified_modifiers(a),

@@ -95,6 +95,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 15738,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -440,6 +441,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 15738,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -550,6 +552,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 15738,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -1577,6 +1580,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 15738,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -1715,6 +1719,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 15738,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -1833,6 +1838,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 15738,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -1988,6 +1994,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 15738,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -2197,6 +2204,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -2499,6 +2507,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 16937,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -2903,6 +2912,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 16937,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -3240,6 +3250,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 16937,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -3362,6 +3373,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 16937,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -3471,6 +3483,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 16937,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -3742,6 +3755,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -3830,6 +3844,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 16937,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -4454,6 +4469,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -4551,6 +4567,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -4663,6 +4680,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 16937,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -4797,6 +4815,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 16937,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -5078,6 +5097,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 16937,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -5212,6 +5232,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 16937,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -5415,6 +5436,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 16937,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -5514,6 +5536,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -5798,6 +5821,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -5931,6 +5955,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -6070,6 +6095,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 16937,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -6189,6 +6215,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernance",
+        "referenced_declaration_id": 18734,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -6604,6 +6631,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -6698,6 +6726,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -7457,6 +7486,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -7555,6 +7585,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernance",
+        "referenced_declaration_id": 18734,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -7734,6 +7765,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernance",
+        "referenced_declaration_id": 18734,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -7889,6 +7921,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernance",
+        "referenced_declaration_id": 18734,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -13655,10 +13688,11 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernance",
+        "referenced_declaration_id": 20041,
         "status": "AUTH_ENFORCED",
-        "authorization_predicate_ast": "BinaryOperation",
-        "failure_path_ast": "require",
-        "principal_expression": "msg"
+        "authorization_predicate_ast": "NONE",
+        "failure_path_ast": "NONE",
+        "principal_expression": "NONE"
       }
     ],
     "unclassified_modifiers": [],
@@ -15142,10 +15176,11 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernance",
+        "referenced_declaration_id": 20041,
         "status": "AUTH_ENFORCED",
-        "authorization_predicate_ast": "BinaryOperation",
-        "failure_path_ast": "require",
-        "principal_expression": "msg"
+        "authorization_predicate_ast": "NONE",
+        "failure_path_ast": "NONE",
+        "principal_expression": "NONE"
       }
     ],
     "unclassified_modifiers": [],
@@ -15398,10 +15433,11 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernance",
+        "referenced_declaration_id": 20041,
         "status": "AUTH_ENFORCED",
-        "authorization_predicate_ast": "BinaryOperation",
-        "failure_path_ast": "require",
-        "principal_expression": "msg"
+        "authorization_predicate_ast": "NONE",
+        "failure_path_ast": "NONE",
+        "principal_expression": "NONE"
       }
     ],
     "unclassified_modifiers": [],
@@ -15491,10 +15527,11 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernance",
+        "referenced_declaration_id": 20041,
         "status": "AUTH_ENFORCED",
-        "authorization_predicate_ast": "BinaryOperation",
-        "failure_path_ast": "require",
-        "principal_expression": "msg"
+        "authorization_predicate_ast": "NONE",
+        "failure_path_ast": "NONE",
+        "principal_expression": "NONE"
       }
     ],
     "unclassified_modifiers": [],
@@ -15870,6 +15907,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 24658,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -16111,6 +16149,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -16823,6 +16862,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 24658,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -17007,6 +17047,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -17224,6 +17265,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -17900,6 +17942,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyTimelock",
+        "referenced_declaration_id": 25359,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -18163,6 +18206,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGuardian",
+        "referenced_declaration_id": 25371,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -18262,6 +18306,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGuardian",
+        "referenced_declaration_id": 25371,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -18361,6 +18406,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyTimelock",
+        "referenced_declaration_id": 25359,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -19064,6 +19110,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -19332,6 +19379,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyTimelock",
+        "referenced_declaration_id": 25359,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -19456,6 +19504,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -19553,6 +19602,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGuardian",
+        "referenced_declaration_id": 25371,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -19661,6 +19711,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyTimelock",
+        "referenced_declaration_id": 25359,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -19770,6 +19821,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyTimelock",
+        "referenced_declaration_id": 25359,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -19873,6 +19925,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyTimelock",
+        "referenced_declaration_id": 25359,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -20900,6 +20953,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernance",
+        "referenced_declaration_id": 26568,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -21282,6 +21336,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernance",
+        "referenced_declaration_id": 26568,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -21411,6 +21466,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernance",
+        "referenced_declaration_id": 26568,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -21904,10 +21960,11 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernor",
+        "referenced_declaration_id": 27591,
         "status": "AUTH_ENFORCED",
-        "authorization_predicate_ast": "FunctionCall",
+        "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
-        "principal_expression": "hasRole"
+        "principal_expression": "msg"
       }
     ],
     "unclassified_modifiers": [],
@@ -22316,10 +22373,11 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernor",
+        "referenced_declaration_id": 27591,
         "status": "AUTH_ENFORCED",
-        "authorization_predicate_ast": "FunctionCall",
+        "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
-        "principal_expression": "hasRole"
+        "principal_expression": "msg"
       }
     ],
     "unclassified_modifiers": [],
@@ -22723,10 +22781,11 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernor",
+        "referenced_declaration_id": 27591,
         "status": "AUTH_ENFORCED",
-        "authorization_predicate_ast": "FunctionCall",
+        "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
-        "principal_expression": "hasRole"
+        "principal_expression": "msg"
       }
     ],
     "unclassified_modifiers": [],
@@ -22830,10 +22889,11 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernor",
+        "referenced_declaration_id": 27591,
         "status": "AUTH_ENFORCED",
-        "authorization_predicate_ast": "FunctionCall",
+        "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
-        "principal_expression": "hasRole"
+        "principal_expression": "msg"
       }
     ],
     "unclassified_modifiers": [],
@@ -22931,10 +22991,11 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernor",
+        "referenced_declaration_id": 27591,
         "status": "AUTH_ENFORCED",
-        "authorization_predicate_ast": "FunctionCall",
+        "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
-        "principal_expression": "hasRole"
+        "principal_expression": "msg"
       }
     ],
     "unclassified_modifiers": [],
@@ -23189,6 +23250,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyTreasury",
+        "referenced_declaration_id": 28444,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -23721,6 +23783,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyTreasury",
+        "referenced_declaration_id": 28444,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -24245,6 +24308,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyTreasury",
+        "referenced_declaration_id": 28444,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -24371,6 +24435,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyTreasury",
+        "referenced_declaration_id": 28444,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -24473,6 +24538,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyTreasury",
+        "referenced_declaration_id": 28444,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -26533,6 +26599,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyMinter",
+        "referenced_declaration_id": 29698,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "IndexAccess",
         "failure_path_ast": "require",
@@ -26693,6 +26760,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -26813,6 +26881,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -26933,6 +27002,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlySnapshoter",
+        "referenced_declaration_id": 29710,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "IndexAccess",
         "failure_path_ast": "require",
@@ -27174,6 +27244,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -27404,6 +27475,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRoleOrOpenRole",
+        "referenced_declaration_id": 2526,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -27953,6 +28025,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -28130,6 +28203,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -28231,6 +28305,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -28349,6 +28424,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -28473,6 +28549,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -28723,6 +28800,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -28919,6 +28997,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -29564,6 +29643,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -29806,6 +29886,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -30432,6 +30513,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "notContract",
+        "referenced_declaration_id": 31326,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -30988,6 +31070,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "notContract",
+        "referenced_declaration_id": 31326,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -31182,6 +31265,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "notContract",
+        "referenced_declaration_id": 31326,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -31413,6 +31497,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "notContract",
+        "referenced_declaration_id": 31326,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -32115,6 +32200,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyFlashLiquidator",
+        "referenced_declaration_id": 32380,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -32222,6 +32308,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyFlashLiquidator",
+        "referenced_declaration_id": 32380,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -32449,6 +32536,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyAavePool",
+        "referenced_declaration_id": 32395,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -32915,6 +33003,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyFlashLiquidator",
+        "referenced_declaration_id": 32380,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -33207,6 +33296,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyFlashLiquidator",
+        "referenced_declaration_id": 32380,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -33375,6 +33465,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyFlashLiquidator",
+        "referenced_declaration_id": 32380,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -33520,6 +33611,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyFlashLiquidator",
+        "referenced_declaration_id": 32380,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -34526,6 +34618,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 33478,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -34654,6 +34747,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyEntryPoint",
+        "referenced_declaration_id": 33466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -35268,6 +35362,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 33478,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -35394,6 +35489,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 33478,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -37112,6 +37208,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernor",
+        "referenced_declaration_id": 34550,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "FunctionCall",
         "failure_path_ast": "require",
@@ -37536,6 +37633,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyMessenger",
+        "referenced_declaration_id": 34537,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "FunctionCall",
         "failure_path_ast": "require",
@@ -37678,6 +37776,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyMessenger",
+        "referenced_declaration_id": 34537,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "FunctionCall",
         "failure_path_ast": "require",
@@ -37884,6 +37983,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernor",
+        "referenced_declaration_id": 34550,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "FunctionCall",
         "failure_path_ast": "require",
@@ -37982,6 +38082,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernor",
+        "referenced_declaration_id": 34550,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "FunctionCall",
         "failure_path_ast": "require",
@@ -38083,6 +38184,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernor",
+        "referenced_declaration_id": 34550,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "FunctionCall",
         "failure_path_ast": "require",
@@ -38771,6 +38873,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 35767,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -38899,6 +39002,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 35767,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -39477,6 +39581,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 35767,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -39826,6 +39931,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 35767,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -50200,6 +50306,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyApprovedLiquidator",
+        "referenced_declaration_id": 45063,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "IndexAccess",
         "failure_path_ast": "require",
@@ -50413,6 +50520,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyAavePool",
+        "referenced_declaration_id": 45078,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -52035,6 +52143,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyAuthorized",
+        "referenced_declaration_id": 45953,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -52200,6 +52309,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyAuthorized",
+        "referenced_declaration_id": 45953,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -52333,6 +52443,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -52662,6 +52773,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -52765,6 +52877,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -52881,6 +52994,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -53015,6 +53129,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -53122,6 +53237,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -53229,6 +53345,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -54658,6 +54775,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 46874,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -55563,6 +55681,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 46874,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -55942,6 +56061,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 46874,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -56130,6 +56250,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 46874,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -56240,6 +56361,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 46874,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -56329,6 +56451,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 46874,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -56424,6 +56547,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 46874,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -56511,6 +56635,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 46874,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -57282,6 +57407,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyLiquidationEngine",
+        "referenced_declaration_id": 48327,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -57378,6 +57504,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyLiquidationEngine",
+        "referenced_declaration_id": 48327,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -58139,6 +58266,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyLiquidationEngine",
+        "referenced_declaration_id": 48327,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -58254,6 +58382,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyLiquidationEngine",
+        "referenced_declaration_id": 48327,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -58355,6 +58484,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyLiquidationEngine",
+        "referenced_declaration_id": 48327,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -58681,6 +58811,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -58986,6 +59117,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -59596,6 +59728,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -59689,6 +59822,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -59789,6 +59923,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -59892,6 +60027,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -60813,6 +60949,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -60990,6 +61127,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -61255,6 +61393,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -61336,6 +61475,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlySecurityModule",
+        "referenced_declaration_id": 50187,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -61449,6 +61589,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -62701,6 +62842,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -62838,6 +62980,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -62935,6 +63078,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -64060,6 +64204,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -64554,6 +64699,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -64685,6 +64831,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -64832,6 +64979,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -64945,6 +65093,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -65549,6 +65698,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -65785,6 +65935,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGuardian",
+        "referenced_declaration_id": 53125,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -65866,6 +66017,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -65947,6 +66099,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGuardian",
+        "referenced_declaration_id": 53125,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -66480,6 +66633,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyAggregator",
+        "referenced_declaration_id": 53137,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -66580,6 +66734,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -66703,6 +66858,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -66922,6 +67078,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -67023,6 +67180,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -67120,6 +67278,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -67227,6 +67386,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -67743,6 +67903,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -68662,6 +68823,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -68755,6 +68917,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -68855,6 +69018,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -68957,6 +69121,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -69261,6 +69426,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -69371,6 +69537,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -69555,6 +69722,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -69646,6 +69814,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -69889,6 +70058,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -69971,6 +70141,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -70052,6 +70223,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -70852,6 +71024,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -70960,6 +71133,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyUpdater",
+        "referenced_declaration_id": 55139,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -71077,6 +71251,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyUpdater",
+        "referenced_declaration_id": 55139,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -71278,6 +71453,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -71865,6 +72041,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -71948,6 +72125,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -72989,6 +73167,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -73082,6 +73261,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -73182,6 +73362,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -73403,6 +73584,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -73568,6 +73750,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -73672,6 +73855,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -74396,6 +74580,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -74928,6 +75113,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -75052,6 +75238,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -75143,6 +75330,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -75958,6 +76146,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGuardian",
+        "referenced_declaration_id": 58038,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -76066,6 +76255,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGuardian",
+        "referenced_declaration_id": 58038,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -76229,6 +76419,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGuardian",
+        "referenced_declaration_id": 58038,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -76337,6 +76528,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGuardian",
+        "referenced_declaration_id": 58038,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -76438,6 +76630,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGuardian",
+        "referenced_declaration_id": 58038,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -76570,6 +76763,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGuardian",
+        "referenced_declaration_id": 58038,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -76989,6 +77183,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -77091,6 +77286,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyDuringEmergency",
+        "referenced_declaration_id": 59174,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -77551,6 +77747,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyEmergencyOverride",
+        "referenced_declaration_id": 59187,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "FunctionCall",
         "failure_path_ast": "require",
@@ -77661,6 +77858,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyEmergencyGuardian",
+        "referenced_declaration_id": 59146,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "FunctionCall",
         "failure_path_ast": "require",
@@ -77790,6 +77988,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyDuringEmergency",
+        "referenced_declaration_id": 59174,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -77899,6 +78098,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -78030,6 +78230,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -78265,6 +78466,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -78757,6 +78959,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -78848,6 +79051,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -78982,6 +79186,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -79098,6 +79303,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -79217,6 +79423,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -79318,6 +79525,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyRole",
+        "referenced_declaration_id": 84,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -79699,6 +79907,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyAdmin",
+        "referenced_declaration_id": 60270,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -80437,6 +80646,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyAdmin",
+        "referenced_declaration_id": 60270,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -80555,6 +80765,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyAdmin",
+        "referenced_declaration_id": 60270,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -80644,6 +80855,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyAdmin",
+        "referenced_declaration_id": 60270,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -80742,6 +80954,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyAdmin",
+        "referenced_declaration_id": 60270,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -80849,10 +81062,11 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernor",
+        "referenced_declaration_id": 60283,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "FunctionCall",
         "failure_path_ast": "require",
-        "principal_expression": "hasRole"
+        "principal_expression": "msg"
       }
     ],
     "unclassified_modifiers": [],
@@ -81635,6 +81849,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -82204,6 +82419,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -82319,6 +82535,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -82420,6 +82637,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -82772,6 +82990,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyLiquidityPool",
+        "referenced_declaration_id": 64802,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -83266,6 +83485,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyLiquidityPool",
+        "referenced_declaration_id": 64802,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -83405,6 +83625,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -83610,6 +83831,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 65083,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -84196,6 +84418,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyPerpEngine",
+        "referenced_declaration_id": 65083,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "BinaryOperation",
         "failure_path_ast": "require",
@@ -84343,6 +84566,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -84434,6 +84658,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -84569,6 +84794,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -84704,6 +84930,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -84914,6 +85141,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -85031,6 +85259,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -85406,6 +85635,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -85545,6 +85775,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -85656,6 +85887,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyOwner",
+        "referenced_declaration_id": 466,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "Identifier",
         "failure_path_ast": "revert",
@@ -86382,9 +86614,10 @@
     "modifier_evidence_details": [
       {
         "modifier": "ifAdmin",
+        "referenced_declaration_id": 65896,
         "status": "AUTH_ENFORCED",
-        "authorization_predicate_ast": "BinaryOperation",
-        "failure_path_ast": "IF_REVERT",
+        "authorization_predicate_ast": "NONE",
+        "failure_path_ast": "NONE",
         "principal_expression": "msg"
       }
     ],
@@ -86463,9 +86696,10 @@
     "modifier_evidence_details": [
       {
         "modifier": "ifAdmin",
+        "referenced_declaration_id": 65896,
         "status": "AUTH_ENFORCED",
-        "authorization_predicate_ast": "BinaryOperation",
-        "failure_path_ast": "IF_REVERT",
+        "authorization_predicate_ast": "NONE",
+        "failure_path_ast": "NONE",
         "principal_expression": "msg"
       }
     ],
@@ -86842,9 +87076,10 @@
     "modifier_evidence_details": [
       {
         "modifier": "ifAdmin",
+        "referenced_declaration_id": 65896,
         "status": "AUTH_ENFORCED",
-        "authorization_predicate_ast": "BinaryOperation",
-        "failure_path_ast": "IF_REVERT",
+        "authorization_predicate_ast": "NONE",
+        "failure_path_ast": "NONE",
         "principal_expression": "msg"
       }
     ],
@@ -87000,9 +87235,10 @@
     "modifier_evidence_details": [
       {
         "modifier": "ifAdmin",
+        "referenced_declaration_id": 65896,
         "status": "AUTH_ENFORCED",
-        "authorization_predicate_ast": "BinaryOperation",
-        "failure_path_ast": "IF_REVERT",
+        "authorization_predicate_ast": "NONE",
+        "failure_path_ast": "NONE",
         "principal_expression": "msg"
       }
     ],
@@ -87089,9 +87325,10 @@
     "modifier_evidence_details": [
       {
         "modifier": "ifAdmin",
+        "referenced_declaration_id": 65896,
         "status": "AUTH_ENFORCED",
-        "authorization_predicate_ast": "BinaryOperation",
-        "failure_path_ast": "IF_REVERT",
+        "authorization_predicate_ast": "NONE",
+        "failure_path_ast": "NONE",
         "principal_expression": "msg"
       }
     ],
@@ -87665,6 +87902,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernor",
+        "referenced_declaration_id": 66350,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "FunctionCall",
         "failure_path_ast": "require",
@@ -87824,6 +88062,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernor",
+        "referenced_declaration_id": 66350,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "FunctionCall",
         "failure_path_ast": "require",
@@ -87934,6 +88173,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyExecutor",
+        "referenced_declaration_id": 66363,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "FunctionCall",
         "failure_path_ast": "require",
@@ -88268,6 +88508,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernor",
+        "referenced_declaration_id": 66350,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "FunctionCall",
         "failure_path_ast": "require",
@@ -88416,6 +88657,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernor",
+        "referenced_declaration_id": 66350,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "FunctionCall",
         "failure_path_ast": "require",
@@ -88528,6 +88770,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernor",
+        "referenced_declaration_id": 66350,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "FunctionCall",
         "failure_path_ast": "require",
@@ -88659,6 +88902,7 @@
     "modifier_evidence_details": [
       {
         "modifier": "onlyGovernor",
+        "referenced_declaration_id": 66350,
         "status": "AUTH_ENFORCED",
         "authorization_predicate_ast": "FunctionCall",
         "failure_path_ast": "require",
