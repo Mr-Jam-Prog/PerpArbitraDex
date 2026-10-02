@@ -3,7 +3,8 @@
 scripts/security/08d/validate_08d_ledgers.py
 Triage integrity validator enforcing AST entrypoint set-equality, AST symbol resolution,
 generic test coverage validation, non-templated rationales, split disposition schema checks,
-machine-resolvable root evidence, typed safety evidence reference resolution, and exact count invariants.
+machine-resolvable root evidence, call graph edge verification, modifier AST ID verification,
+exact contract+function test reference verification, and exact count invariants.
 Computes every declared check deterministically via VALIDATION_CHECKS registry.
 """
 
@@ -35,6 +36,8 @@ DECLARED_CHECKS = [
     "GENERIC_OR_TEMPLATED_SECURITY_RATIONALES",
     "UNSUPPORTED_SAFETY_ASSERTIONS",
     "SAFETY_EVIDENCE_REFS_UNRESOLVED",
+    "FALSE_CALL_GRAPH_EVIDENCE_ACCEPTED",
+    "UNKNOWN_MODIFIER_AUTH_EVIDENCE_ACCEPTED",
     "FUNCTIONS_WITH_FABRICATED_TEST_COVERAGE",
     "TEST_EVIDENCE_WITHOUT_PROOF",
     "EXACT_TEST_REFERENCE_WITHOUT_RESOLVABLE_PROOF",
@@ -103,7 +106,24 @@ def check_disposition_schema_splits(ledger, roots, symbol_table, audit):
     root_dict = {r["root_id"]: r for r in roots}
     all_root_ids = set(r["root_id"] for r in roots)
     ast_all_sigs = set(s["canonical_signature"] for s in symbol_table)
+    sig_to_ast_id = {s["canonical_signature"]: s["ast_id"] for s in symbol_table}
     ledger_dids = set(item.get("diagnostic_id") for item in ledger)
+
+    # Build internal call graph edges set (caller_ast_id, callee_ast_id)
+    call_graph_edges = set()
+    for s in symbol_table:
+        caller_id = s["ast_id"]
+        for call in s.get("ast_calls", []):
+            ref_id = call.get("ref_declaration")
+            if ref_id:
+                call_graph_edges.add((caller_id, ref_id))
+
+    # Build modifier AST ID set
+    all_modifier_ast_ids = set()
+    for a in audit:
+        for mod_ev in a.get("modifier_evidence_details", []):
+            if mod_ev.get("referenced_declaration_id"):
+                all_modifier_ast_ids.add(mod_ev.get("referenced_declaration_id"))
 
     missing_id = 0
     missing_classification = 0
@@ -119,6 +139,8 @@ def check_disposition_schema_splits(ledger, roots, symbol_table, audit):
     templated_rat = 0
     unsupported_assertions = 0
     unresolved_safety_refs = 0
+    false_call_graph_ev = 0
+    unknown_modifier_auth_ev = 0
 
     for item in ledger:
         did = item.get("diagnostic_id")
@@ -139,7 +161,6 @@ def check_disposition_schema_splits(ledger, roots, symbol_table, audit):
         elif "required for baseline gate" in rat.lower() or "generic" in rat.lower() or "represents tolerated compiler warning debt (" in rat.lower() or len(rat) < 25:
             templated_rat += 1
 
-        # UNSUPPORTED_SAFETY_ASSERTIONS and SAFETY_EVIDENCE_REFS_UNRESOLVED
         claims = item.get("safety_claims", [])
         refs = item.get("evidence_refs", [])
 
@@ -157,11 +178,21 @@ def check_disposition_schema_splits(ledger, roots, symbol_table, audit):
                     if ref.get("canonical_signature") not in ast_all_sigs:
                         unresolved_safety_refs += 1
                 elif ref_kind == "CALL_GRAPH_EDGE":
-                    if ref.get("caller") not in ast_all_sigs or ref.get("callee") not in ast_all_sigs:
+                    caller_sig = ref.get("caller")
+                    callee_sig = ref.get("callee")
+                    if caller_sig not in ast_all_sigs or callee_sig not in ast_all_sigs:
                         unresolved_safety_refs += 1
+                        false_call_graph_ev += 1
+                    else:
+                        caller_id = sig_to_ast_id.get(caller_sig)
+                        callee_id = sig_to_ast_id.get(callee_sig)
+                        if (caller_id, callee_id) not in call_graph_edges:
+                            false_call_graph_ev += 1
                 elif ref_kind == "MODIFIER_AUTH":
-                    if not ref.get("modifier_ast_id"):
+                    mod_id = ref.get("modifier_ast_id")
+                    if not mod_id or mod_id not in all_modifier_ast_ids:
                         unresolved_safety_refs += 1
+                        unknown_modifier_auth_ev += 1
                 else:
                     unresolved_safety_refs += 1
             elif isinstance(ref, str):
@@ -202,7 +233,8 @@ def check_disposition_schema_splits(ledger, roots, symbol_table, audit):
 
     return (diag_without_disp, missing_id, missing_classification, missing_root_or_disp,
             missing_rationale, missing_gate, missing_review_status, blocker_mismatch,
-            economic_mismatch, class_mismatch, gate_mismatch, templated_rat, unsupported_assertions, unresolved_safety_refs)
+            economic_mismatch, class_mismatch, gate_mismatch, templated_rat, unsupported_assertions,
+            unresolved_safety_refs, false_call_graph_ev, unknown_modifier_auth_ev)
 
 def check_fabricated_coverage_and_proofs(audit):
     fabricated = 0
@@ -220,7 +252,11 @@ def check_fabricated_coverage_and_proofs(audit):
             if not proof_obj or not proof_obj.get("test_file") or not os.path.exists(proof_obj.get("test_file")):
                 unresolvable_exact_refs += 1
             else:
-                # Verify source_location line exists and is within line bounds
+                # Verify 1: Proof signature matches audited canonical signature
+                if proof_obj.get("canonical_signature") != a.get("canonical_signature"):
+                    unresolvable_exact_refs += 1
+
+                # Verify 2: Source location line exists and is within file bounds
                 tf = proof_obj.get("test_file")
                 loc = proof_obj.get("source_location", "")
                 if ":" in loc:
@@ -231,11 +267,11 @@ def check_fabricated_coverage_and_proofs(audit):
                         if line_num <= 0 or line_num > len(lines):
                             unresolvable_exact_refs += 1
                         else:
-                            # Verify contract or function name is present in target line
+                            # Verify 3: BOTH contract AND function name must appear on referenced source line
                             target_line = lines[line_num - 1]
                             c_name = a.get("contract")
                             f_name = a.get("function")
-                            if c_name not in target_line and f_name not in target_line:
+                            if c_name not in target_line or f_name not in target_line:
                                 unresolvable_exact_refs += 1
                     except Exception:
                         unresolvable_exact_refs += 1
@@ -300,11 +336,14 @@ VALIDATION_CHECKS = {
     "GENERIC_OR_TEMPLATED_SECURITY_RATIONALES": lambda p, l, r, a, s: check_disposition_schema_splits(l, r, s, a)[11],
     "UNSUPPORTED_SAFETY_ASSERTIONS": lambda p, l, r, a, s: check_disposition_schema_splits(l, r, s, a)[12],
     "SAFETY_EVIDENCE_REFS_UNRESOLVED": lambda p, l, r, a, s: check_disposition_schema_splits(l, r, s, a)[13],
+    "FALSE_CALL_GRAPH_EVIDENCE_ACCEPTED": lambda p, l, r, a, s: check_disposition_schema_splits(l, r, s, a)[14],
+    "UNKNOWN_MODIFIER_AUTH_EVIDENCE_ACCEPTED": lambda p, l, r, a, s: check_disposition_schema_splits(l, r, s, a)[15],
     "FUNCTIONS_WITH_FABRICATED_TEST_COVERAGE": lambda p, l, r, a, s: check_fabricated_coverage_and_proofs(a)[0],
     "TEST_EVIDENCE_WITHOUT_PROOF": lambda p, l, r, a, s: check_fabricated_coverage_and_proofs(a)[1],
     "EXACT_TEST_REFERENCE_WITHOUT_RESOLVABLE_PROOF": lambda p, l, r, a, s: check_fabricated_coverage_and_proofs(a)[2],
     "AST_ENTRYPOINT_SET_MISMATCH": lambda p, l, r, a, s: check_entrypoint_and_internal_sets(s, a)[0],
     "INTERNAL_FUNCTION_SET_MISMATCH": lambda p, l, r, a, s: check_entrypoint_and_internal_sets(s, a)[1],
+    "UNKNOWN_BLOCKED_BY_ROOT_IDS": lambda p, l, r, a, s: check_unknown_symbols_and_blocked_roots(r, s, l)[1],
     "UNCLASSIFIED_AUTH_MODIFIERS": lambda p, l, r, a, s: check_unclassified_modifiers(a),
     "VALIDATOR_UNIMPLEMENTED_CHECKS": lambda p, l, r, a, s: len(set(DECLARED_CHECKS) - set(VALIDATION_CHECKS.keys()))
 }

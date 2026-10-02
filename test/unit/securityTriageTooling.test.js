@@ -71,6 +71,70 @@ describe("08D-R1 Security Triage Tooling Self-Tests & Negative Fixtures", functi
       fs.rmSync(tmpDir, { recursive: true, force: true });
     });
 
+    it("should fail validation if an unresolvable call graph edge is used in safety evidence refs", function () {
+      const ledger = JSON.parse(fs.readFileSync(path.join(tmpDir, "ledger.json"), "utf-8"));
+      ledger[0].evidence_refs.push({
+        kind: "CALL_GRAPH_EDGE",
+        caller: "NonExistentContract.foo()",
+        callee: "NonExistentContract.bar()"
+      });
+      fs.writeFileSync(path.join(tmpDir, "ledger.json"), JSON.stringify(ledger, null, 2));
+
+      try {
+        execSync(`python3 -c "import sys; sys.path.insert(0, 'scripts/security/08d'); from validate_08d_ledgers import validate_ledgers; validate_ledgers('${tmpDir}/baseline.json', '${tmpDir}/ledger.json', '${tmpDir}/roots.json', '${tmpDir}/audit.json', '${tmpDir}/symbols.json')"`);
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err.message).to.include("Command failed");
+      }
+    });
+
+    it("should fail validation if an unknown modifier AST ID is used in safety evidence refs", function () {
+      const ledger = JSON.parse(fs.readFileSync(path.join(tmpDir, "ledger.json"), "utf-8"));
+      ledger[0].evidence_refs.push({
+        kind: "MODIFIER_AUTH",
+        modifier_ast_id: 99999999
+      });
+      fs.writeFileSync(path.join(tmpDir, "ledger.json"), JSON.stringify(ledger, null, 2));
+
+      try {
+        execSync(`python3 -c "import sys; sys.path.insert(0, 'scripts/security/08d'); from validate_08d_ledgers import validate_ledgers; validate_ledgers('${tmpDir}/baseline.json', '${tmpDir}/ledger.json', '${tmpDir}/roots.json', '${tmpDir}/audit.json', '${tmpDir}/symbols.json')"`);
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err.message).to.include("Command failed");
+      }
+    });
+
+    it("should fail validation if exact test reference lacks contract or function name on referenced line", function () {
+      const audit = JSON.parse(fs.readFileSync(path.join(tmpDir, "audit.json"), "utf-8"));
+      const proved = audit.find((a) => a.test_coverage === "STATIC_REFERENCE_EXACT_CONTRACT_FUNCTION");
+      expect(proved).to.exist;
+      // Line 1 of PropertyTests.t.sol is "// SPDX-License-Identifier: MIT" which contains neither contract nor function
+      proved.test_evidence_object.source_location = `${proved.test_evidence_object.test_file}:1`;
+      fs.writeFileSync(path.join(tmpDir, "audit.json"), JSON.stringify(audit, null, 2));
+
+      try {
+        execSync(`python3 -c "import sys; sys.path.insert(0, 'scripts/security/08d'); from validate_08d_ledgers import validate_ledgers; validate_ledgers('${tmpDir}/baseline.json', '${tmpDir}/ledger.json', '${tmpDir}/roots.json', '${tmpDir}/audit.json', '${tmpDir}/symbols.json')"`);
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err.message).to.include("Command failed");
+      }
+    });
+
+    it("should fail validation if exact test reference signature mismatches audited signature", function () {
+      const audit = JSON.parse(fs.readFileSync(path.join(tmpDir, "audit.json"), "utf-8"));
+      const proved = audit.find((a) => a.test_coverage === "STATIC_REFERENCE_EXACT_CONTRACT_FUNCTION");
+      expect(proved).to.exist;
+      proved.test_evidence_object.canonical_signature = "WrongContract.wrongSig()";
+      fs.writeFileSync(path.join(tmpDir, "audit.json"), JSON.stringify(audit, null, 2));
+
+      try {
+        execSync(`python3 -c "import sys; sys.path.insert(0, 'scripts/security/08d'); from validate_08d_ledgers import validate_ledgers; validate_ledgers('${tmpDir}/baseline.json', '${tmpDir}/ledger.json', '${tmpDir}/roots.json', '${tmpDir}/audit.json', '${tmpDir}/symbols.json')"`);
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err.message).to.include("Command failed");
+      }
+    });
+
     it("should fail validation if an unsupported safety claim is used on non-blocker classification without evidence refs", function () {
       const ledger = JSON.parse(fs.readFileSync(path.join(tmpDir, "ledger.json"), "utf-8"));
       ledger[0].classification = "CONTEXTUAL_ACCEPTED";

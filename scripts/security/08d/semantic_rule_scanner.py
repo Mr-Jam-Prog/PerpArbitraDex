@@ -2,11 +2,11 @@
 """
 scripts/security/08d/semantic_rule_scanner.py
 Scans repository with global audit candidate rules and validates candidates against AST call nodes.
-TOKEN_TRANSFER_RULE_AST_AUTHORITY=YES, TOKEN_TRANSFER_RULE_REGEX_AUTHORITY=NO.
+TOKEN_TRANSFER_RESULT_HANDLING_AST_BASED=YES, TOKEN_TRANSFER_RESULT_HANDLING_TEXT_HEURISTIC=NO.
 Iterates over AST call nodes directly from 08D_FUNCTION_AUDIT.json / 08D_SYMBOL_TABLE.json for RULE_UNCHECKED_EXTERNAL_TOKEN_CALL.
-Derives structural result handling:
-- REQUIRE_CHECKED / IF_CONDITION_CHECKED / ASSIGNED_AND_CHECKED -> FALSE_POSITIVE
-- DIRECT_UNCHECKED -> TRUE_POSITIVE
+Derives structural result handling from AST parent/ancestor nodes:
+- REQUIRE_CHECKED / IF_CONDITION_CHECKED / ASSIGNED_AND_CHECKED / RETURNED -> FALSE_POSITIVE
+- ASSIGNED_UNCHECKED / DIRECT_UNCHECKED -> TRUE_POSITIVE
 Completely excludes NATIVE_ETH_TRANSFER and SAFEERC20_TRANSFER.
 """
 
@@ -40,18 +40,6 @@ GLOBAL_RULES = [
         "description": "Calls to transfer or transferFrom whose boolean return value is unchecked."
     }
 ]
-
-def analyze_line_result_handling(code_snippet):
-    if "require(" in code_snippet:
-        return "REQUIRE_CHECKED", "FALSE_POSITIVE"
-    elif "if (" in code_snippet or "if(" in code_snippet:
-        return "IF_CONDITION_CHECKED", "FALSE_POSITIVE"
-    elif "bool " in code_snippet or "success =" in code_snippet or " = " in code_snippet:
-        return "ASSIGNED_AND_CHECKED", "FALSE_POSITIVE"
-    elif "return " in code_snippet:
-        return "RETURNED", "FALSE_POSITIVE"
-    else:
-        return "DIRECT_UNCHECKED", "TRUE_POSITIVE"
 
 def scan_rules():
     audit_file = "docs/security/08D_FUNCTION_AUDIT.json"
@@ -90,7 +78,14 @@ def scan_rules():
                             break
 
                     code_snippet = lines[target_line_num - 1].strip() if target_line_num <= len(lines) else ""
-                    result_handling, verification_status = analyze_line_result_handling(code_snippet)
+
+                    # AST-derived result handling from AST call node properties
+                    ast_result_handling = call.get("ast_result_handling", "DIRECT_UNCHECKED")
+
+                    if ast_result_handling in ["REQUIRE_CHECKED", "IF_CONDITION_CHECKED", "ASSIGNED_AND_CHECKED", "RETURNED"]:
+                        verification_status = "FALSE_POSITIVE"
+                    else:
+                        verification_status = "TRUE_POSITIVE"
 
                     results.append({
                         "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
@@ -102,7 +97,7 @@ def scan_rules():
                         "src": src,
                         "enclosing_function_signature": func_sig,
                         "parent_expression_kind": call.get("expr_type", "FunctionCall"),
-                        "result_handling": result_handling,
+                        "result_handling": ast_result_handling,
                         "verification_status": verification_status
                     })
 

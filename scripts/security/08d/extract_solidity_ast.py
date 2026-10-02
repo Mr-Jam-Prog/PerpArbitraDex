@@ -12,6 +12,7 @@ Hardened AST Analysis Engine:
 - Inspects modifier AST bodies for structural authorization predicates and failure paths (`RevertStatement` / `revert()` / `require()`).
 - Detects callbacks via AST interface implementation verification AND exact parameter type signature matching (CALLBACK_INTERFACE_RELATION_REQUIRED=YES, CALLBACK_SIGNATURE_MATCH_REQUIRED=YES).
 - Distinguishes NATIVE_ETH_TRANSFER from ERC20_TRANSFER_RETURNS_BOOL and SAFEERC20_TRANSFER using AST expression types.
+- Evaluates AST parent/ancestor nodes for ERC20_TRANSFER_RETURNS_BOOL call nodes to assign structural result handling (TOKEN_TRANSFER_RESULT_HANDLING_AST_BASED=YES).
 """
 
 import os
@@ -281,7 +282,83 @@ def collect_ast_state_writes_only(node, state_var_ids, writes_set):
         elif isinstance(v, dict):
             collect_ast_state_writes_only(v, state_var_ids, writes_set)
 
-def collect_ast_calls(node, calls, library_names):
+def determine_call_node_result_handling(node, parent_node, func_body):
+    """
+    Evaluates AST parent/ancestor nodes for ERC20_TRANSFER_RETURNS_BOOL call nodes:
+    - REQUIRE_CHECKED: Inside require(...) FunctionCall
+    - IF_CONDITION_CHECKED: Inside IfStatement condition
+    - RETURNED: Inside ReturnStatement
+    - ASSIGNED_AND_CHECKED: Assigned to variable that is checked in subsequent require/if
+    - ASSIGNED_UNCHECKED: Assigned to variable that is never checked
+    - DIRECT_UNCHECKED: ExpressionStatement without assignment or guard
+    """
+    p_type = parent_node.get("nodeType") if isinstance(parent_node, dict) else None
+
+    if p_type == "FunctionCall":
+        p_expr = parent_node.get("expression", {})
+        if p_expr.get("nodeType") == "Identifier" and p_expr.get("name") == "require":
+            return "REQUIRE_CHECKED"
+
+    elif p_type == "IfStatement":
+        return "IF_CONDITION_CHECKED"
+
+    elif p_type == "ReturnStatement":
+        return "RETURNED"
+
+    elif p_type == "VariableDeclarationStatement" or p_type == "Assignment":
+        # Check if assigned variable is referenced in require/if in func_body
+        var_name = None
+        if p_type == "VariableDeclarationStatement":
+            declarations = parent_node.get("declarations", [])
+            if declarations and declarations[0]:
+                var_name = declarations[0].get("name")
+        elif p_type == "Assignment":
+            lhs = parent_node.get("leftHandSide", {})
+            if lhs.get("nodeType") == "Identifier":
+                var_name = lhs.get("name")
+
+        if var_name:
+            # Check if var_name is used in require/if in func_body
+            is_checked = False
+            def _scan_usage(n):
+                nonlocal is_checked
+                if not isinstance(n, dict):
+                    return
+                ntype = n.get("nodeType")
+                if ntype in ["IfStatement", "FunctionCall"]:
+                    identifiers = set()
+                    def _collect_ids(item):
+                        if isinstance(item, dict):
+                            if item.get("nodeType") == "Identifier" and item.get("name"):
+                                identifiers.add(item.get("name"))
+                            for k, v in item.items():
+                                if isinstance(v, list):
+                                    for sub in v:
+                                        _collect_ids(sub)
+                                elif isinstance(v, dict):
+                                    _collect_ids(v)
+                    _collect_ids(n)
+                    if var_name in identifiers:
+                        is_checked = True
+                for k, v in n.items():
+                    if isinstance(v, list):
+                        for sub in v:
+                            _scan_usage(sub)
+                    elif isinstance(v, dict):
+                        _scan_usage(v)
+
+            _scan_usage(func_body)
+            if is_checked:
+                return "ASSIGNED_AND_CHECKED"
+            else:
+                return "ASSIGNED_UNCHECKED"
+
+    elif p_type == "ExpressionStatement":
+        return "DIRECT_UNCHECKED"
+
+    return "DIRECT_UNCHECKED"
+
+def collect_ast_calls(node, calls, library_names, parent_node=None, func_body=None):
     if not isinstance(node, dict):
         return
     if node.get("nodeType") == "FunctionCall":
@@ -327,6 +404,7 @@ def collect_ast_calls(node, calls, library_names):
                     call_info["kind"] = "SAFEERC20_TRANSFER"
                 elif member in ["transfer", "transferFrom"]:
                     call_info["kind"] = "ERC20_TRANSFER_RETURNS_BOOL"
+                    call_info["ast_result_handling"] = determine_call_node_result_handling(node, parent_node, func_body or node)
                 else:
                     call_info["kind"] = "ERC20_CALL"
             elif base_expr.get("nodeType") == "Identifier" and base_expr.get("name") == "this":
@@ -339,9 +417,9 @@ def collect_ast_calls(node, calls, library_names):
     for k, v in node.items():
         if isinstance(v, list):
             for item in v:
-                collect_ast_calls(item, calls, library_names)
+                collect_ast_calls(item, calls, library_names, parent_node=node, func_body=func_body or node)
         elif isinstance(v, dict):
-            collect_ast_calls(v, calls, library_names)
+            collect_ast_calls(v, calls, library_names, parent_node=node, func_body=func_body or node)
 
 def extract_ast_data():
     build_info_path = force_compile_and_find_build_info()
@@ -497,7 +575,7 @@ def extract_ast_data():
                                 }
 
                         calls = []
-                        collect_ast_calls(sub_node, calls, library_names)
+                        collect_ast_calls(sub_node, calls, library_names, parent_node=None, func_body=sub_node)
 
                         param_refs_map = {}
                         collect_ast_param_references(sub_node, param_ids, param_refs_map)
@@ -616,7 +694,8 @@ def extract_ast_data():
         "interface_declarations": interface_declarations,
         "modifier_definitions_by_ast_id": modifier_definitions_by_ast_id,
         "contract_ast_registry": contract_ast_registry,
-        "contract_name_to_id": contract_name_to_id
+        "contract_name_to_id": contract_name_to_id,
+        "internal_callee_edges": {k: sorted(list(v)) for k, v in internal_callee_edges.items()}
     }
 
 if __name__ == "__main__":
