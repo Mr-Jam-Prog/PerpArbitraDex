@@ -3,6 +3,7 @@
 scripts/security/08d/semantic_rule_scanner.py
 Scans repository with global audit candidate rules and validates candidates against AST enclosing expressions.
 Distinguishes TRUE_POSITIVE vs FALSE_POSITIVE with deterministic sorting across files and matches.
+Distinguishes NATIVE_ETH_TRANSFER from ERC20 boolean return transfers using AST/type info.
 """
 
 import os
@@ -62,8 +63,12 @@ def scan_rules():
                     code_snip = line.strip()
                     status = "NEEDS_REVIEW"
 
-                    # AST / Enclosing expression check for token transfers
+                    # AST / Enclosing expression check for token transfers vs native ETH transfers
                     if rule["rule_id"] == "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL":
+                        # Exclude native ETH transfers: payable(...).transfer(...)
+                        if "payable(" in code_snip or "payable " in code_snip or "payable." in code_snip:
+                            continue # Native ETH transfer, excluded from ERC20 token transfer rule
+
                         if "require(" in code_snip or "if (" in code_snip or "bool success" in code_snip or "safeTransfer" in code_snip:
                             status = "FALSE_POSITIVE"
                         else:

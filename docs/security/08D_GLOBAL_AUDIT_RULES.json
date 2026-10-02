@@ -123,46 +123,6 @@
       "verification_status": "FALSE_POSITIVE"
     },
     {
-      "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
-      "title": "Unchecked Return Value on External Token Transfer",
-      "file": "contracts/oracles/PythOracle.sol",
-      "line": 157,
-      "code_snippet": "payable(msg.sender).transfer(msg.value - updateFee);",
-      "verification_status": "TRUE_POSITIVE"
-    },
-    {
-      "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
-      "title": "Unchecked Return Value on External Token Transfer",
-      "file": "contracts/oracles/PythOracle.sol",
-      "line": 172,
-      "code_snippet": "payable(msg.sender).transfer(msg.value - updateFee);",
-      "verification_status": "TRUE_POSITIVE"
-    },
-    {
-      "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
-      "title": "Unchecked Return Value on External Token Transfer",
-      "file": "contracts/oracles/PythOracle.sol",
-      "line": 186,
-      "code_snippet": "payable(msg.sender).transfer(msg.value);",
-      "verification_status": "TRUE_POSITIVE"
-    },
-    {
-      "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
-      "title": "Unchecked Return Value on External Token Transfer",
-      "file": "contracts/oracles/PythOracle.sol",
-      "line": 358,
-      "code_snippet": "payable(owner()).transfer(balance);",
-      "verification_status": "TRUE_POSITIVE"
-    },
-    {
-      "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
-      "title": "Unchecked Return Value on External Token Transfer",
-      "file": "contracts/oracles/RWAOracleAdapter.sol",
-      "line": 417,
-      "code_snippet": "payable(owner()).transfer(balance);",
-      "verification_status": "TRUE_POSITIVE"
-    },
-    {
       "rule_id": "RULE_UNVALIDATED_CROSS_CHAIN_SOURCE_OR_NONCE",
       "title": "Unvalidated Source Address or Nonce Binding in Cross-Chain Messaging",
       "file": "contracts/integration/CrossChainMessenger.sol",
@@ -195,5 +155,5 @@
       "verification_status": "TRUE_POSITIVE"
     }
   ],
-  "total_matches": 21
+  "total_matches": 16
 }

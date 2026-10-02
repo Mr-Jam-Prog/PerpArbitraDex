@@ -2,7 +2,8 @@
 """
 scripts/security/08d/validate_08d_ledgers.py
 Triage integrity validator enforcing AST entrypoint set-equality, AST symbol resolution,
-generic test coverage validation, non-templated rationales, and exact count invariants.
+generic test coverage validation, non-templated rationales, split disposition schema checks,
+machine-resolvable root evidence, and exact count invariants.
 Computes every declared check deterministically via VALIDATION_CHECKS registry.
 """
 
@@ -17,7 +18,16 @@ DECLARED_CHECKS = [
     "MULTIMAPPED_PRODUCTION_DIAGNOSTICS",
     "UNKNOWN_SOURCE_SYMBOLS",
     "ROOT_WITHOUT_EVIDENCE",
+    "ROOT_WITHOUT_MACHINE_EVIDENCE",
+    "ROOT_DIAGNOSTIC_IDS_UNKNOWN",
+    "ROOT_SEMANTIC_EVIDENCE_UNRESOLVED",
     "DIAGNOSTIC_WITHOUT_DISPOSITION",
+    "DIAGNOSTIC_WITHOUT_ID",
+    "DIAGNOSTIC_WITHOUT_CLASSIFICATION",
+    "DIAGNOSTIC_WITHOUT_ROOT_OR_STANDALONE_DISPOSITION",
+    "DIAGNOSTIC_WITHOUT_RATIONALE",
+    "DIAGNOSTIC_WITHOUT_REQUIRED_GATE",
+    "DIAGNOSTIC_WITHOUT_REVIEW_STATUS",
     "BLOCKER_DETAIL_WITHOUT_BLOCKER_ROOT",
     "ECONOMIC_DETAIL_WITHOUT_ECONOMIC_ROOT",
     "ROOT_DETAIL_CLASSIFICATION_MISMATCH",
@@ -25,6 +35,7 @@ DECLARED_CHECKS = [
     "GENERIC_OR_TEMPLATED_SECURITY_RATIONALES",
     "UNSUPPORTED_SAFETY_ASSERTIONS",
     "FUNCTIONS_WITH_FABRICATED_TEST_COVERAGE",
+    "TEST_EVIDENCE_WITHOUT_PROOF",
     "AST_ENTRYPOINT_SET_MISMATCH",
     "INTERNAL_FUNCTION_SET_MISMATCH",
     "UNKNOWN_BLOCKED_BY_ROOT_IDS",
@@ -52,11 +63,16 @@ def check_duplicate_and_multimapped(ledger):
     multimapped = sum(c - 1 for c in seen_dids.values() if c > 2)
     return duplicates, multimapped
 
-def check_unknown_symbols_and_blocked_roots(roots, symbol_table):
+def check_unknown_symbols_and_blocked_roots(roots, symbol_table, ledger):
     ast_all_sigs = set(s["canonical_signature"] for s in symbol_table)
     all_root_ids = set(r["root_id"] for r in roots)
+    ledger_dids = set(item.get("diagnostic_id") for item in ledger)
+
     unknown_syms = 0
     unknown_blocked = 0
+    unknown_root_dids = 0
+    unresolved_semantic_ev = 0
+    roots_without_machine_ev = 0
 
     for r in roots:
         for aff_sym in r.get("affected_symbols", []):
@@ -66,12 +82,31 @@ def check_unknown_symbols_and_blocked_roots(roots, symbol_table):
             if blocked_id not in all_root_ids:
                 unknown_blocked += 1
 
-    return unknown_syms, unknown_blocked
+        r_dids = r.get("diagnostic_ids", [])
+        for r_did in r_dids:
+            if r_did not in ledger_dids:
+                unknown_root_dids += 1
 
-def check_root_and_detail_integrity(ledger, roots):
+        sem_ev = r.get("semantic_evidence", [])
+        for ev in sem_ev:
+            if ev.get("canonical_signature") and ev.get("canonical_signature") not in ast_all_sigs:
+                unresolved_semantic_ev += 1
+
+        if not r_dids and not sem_ev:
+            roots_without_machine_ev += 1
+
+    return unknown_syms, unknown_blocked, unknown_root_dids, unresolved_semantic_ev, roots_without_machine_ev
+
+def check_disposition_schema_splits(ledger, roots):
     root_dict = {r["root_id"]: r for r in roots}
-    root_without_ev = 0
-    missing_disp = 0
+
+    missing_id = 0
+    missing_classification = 0
+    missing_root_or_disp = 0
+    missing_rationale = 0
+    missing_gate = 0
+    missing_review_status = 0
+
     blocker_mismatch = 0
     economic_mismatch = 0
     class_mismatch = 0
@@ -79,56 +114,73 @@ def check_root_and_detail_integrity(ledger, roots):
     templated_rat = 0
     unsupported_assertions = 0
 
-    for r in roots:
-        if not r.get("diagnostic_ids") and not r.get("execution_path"):
-            root_without_ev += 1
-
     for item in ledger:
         did = item.get("diagnostic_id")
         if not did:
-            missing_disp += 1
-            continue
+            missing_id += 1
 
-        rid = item.get("root_id")
-        if not rid or rid not in root_dict:
-            continue
+        classification = item.get("classification")
+        if not classification:
+            missing_classification += 1
 
-        r_obj = root_dict[rid]
+        root_id = item.get("root_id")
+        if not root_id:
+            missing_root_or_disp += 1
 
-        if item.get("classification") != r_obj.get("classification"):
-            class_mismatch += 1
-            if item.get("classification") == "SECURITY_BLOCKER":
-                blocker_mismatch += 1
-            elif item.get("classification") == "ECONOMIC_OR_LOGIC_CHANGE_REQUIRED":
-                economic_mismatch += 1
-
-        if item.get("gate_id") != r_obj.get("gate_id"):
-            gate_mismatch += 1
-
-        rat = item.get("code_specific_rationale", "")
-        if "required for baseline gate" in rat.lower() or "generic" in rat.lower() or "represents tolerated compiler warning debt (" in rat.lower() or len(rat) < 25:
+        rat = item.get("code_specific_rationale")
+        if not rat:
+            missing_rationale += 1
+        elif "required for baseline gate" in rat.lower() or "generic" in rat.lower() or "represents tolerated compiler warning debt (" in rat.lower() or len(rat) < 25:
             templated_rat += 1
 
-        # Check UNSUPPORTED_SAFETY_ASSERTIONS across all entries
-        if any(unsupported in rat for unsupported in ["protected by nonReentrant", "mandated by interface", "bounded by prior validation"]):
-            if item.get("classification") == "SECURITY_BLOCKER":
+        # UNSUPPORTED_SAFETY_ASSERTIONS across ALL classifications
+        if rat and any(unsupported in rat for unsupported in ["protected by nonReentrant", "mandated by interface", "bounded by prior validation"]):
+            claims = item.get("safety_claims", [])
+            refs = item.get("evidence_refs", [])
+            if not claims or not refs:
                 unsupported_assertions += 1
 
-    return (root_without_ev, missing_disp, blocker_mismatch, economic_mismatch,
-            class_mismatch, gate_mismatch, templated_rat, unsupported_assertions)
+        gate_id = item.get("gate_id")
+        if not gate_id:
+            missing_gate += 1
 
-def check_fabricated_coverage(audit):
+        review_status = item.get("review_status")
+        if not review_status:
+            missing_review_status += 1
+
+        if root_id and root_id in root_dict:
+            r_obj = root_dict[root_id]
+            if classification != r_obj.get("classification"):
+                class_mismatch += 1
+                if classification == "SECURITY_BLOCKER":
+                    blocker_mismatch += 1
+                elif classification == "ECONOMIC_OR_LOGIC_CHANGE_REQUIRED":
+                    economic_mismatch += 1
+
+            if gate_id != r_obj.get("gate_id"):
+                gate_mismatch += 1
+
+    diag_without_disp = missing_id + missing_classification + missing_root_or_disp + missing_rationale + missing_gate + missing_review_status
+
+    return (diag_without_disp, missing_id, missing_classification, missing_root_or_disp,
+            missing_rationale, missing_gate, missing_review_status, blocker_mismatch,
+            economic_mismatch, class_mismatch, gate_mismatch, templated_rat, unsupported_assertions)
+
+def check_fabricated_coverage_and_proofs(audit):
     fabricated = 0
-    for a in audit:
-        # Generic check across all audited entry points
-        cov = a.get("test_coverage")
-        func_name = a.get("function")
-        vis = a.get("visibility")
+    proofless = 0
 
-        # If coverage is claimed as COVERED_IN_UNIT_OR_FUZZ or STATIC_REFERENCE_EXACT_CONTRACT_FUNCTION without reachable tests
+    for a in audit:
+        cov = a.get("test_coverage")
+        proof_obj = a.get("test_evidence_object")
+
+        if cov != "NO_TEST_EVIDENCE" and not proof_obj:
+            proofless += 1
+
         if cov == "COVERED_IN_UNIT_OR_FUZZ" and a.get("reachability") == "UNREACHABLE":
             fabricated += 1
-    return fabricated
+
+    return fabricated, proofless
 
 def check_entrypoint_and_internal_sets(symbol_table, audit):
     ast_concrete_sigs = set(
@@ -165,17 +217,27 @@ VALIDATION_CHECKS = {
     "UNMAPPED_PRODUCTION_DIAGNOSTICS": lambda p, l, r, a, s: check_unmapped_production_diagnostics(p, l),
     "DUPLICATE_DIAGNOSTIC_MAPPING": lambda p, l, r, a, s: check_duplicate_and_multimapped(l)[0],
     "MULTIMAPPED_PRODUCTION_DIAGNOSTICS": lambda p, l, r, a, s: check_duplicate_and_multimapped(l)[1],
-    "UNKNOWN_SOURCE_SYMBOLS": lambda p, l, r, a, s: check_unknown_symbols_and_blocked_roots(r, s)[0],
-    "UNKNOWN_BLOCKED_BY_ROOT_IDS": lambda p, l, r, a, s: check_unknown_symbols_and_blocked_roots(r, s)[1],
-    "ROOT_WITHOUT_EVIDENCE": lambda p, l, r, a, s: check_root_and_detail_integrity(l, r)[0],
-    "DIAGNOSTIC_WITHOUT_DISPOSITION": lambda p, l, r, a, s: check_root_and_detail_integrity(l, r)[1],
-    "BLOCKER_DETAIL_WITHOUT_BLOCKER_ROOT": lambda p, l, r, a, s: check_root_and_detail_integrity(l, r)[2],
-    "ECONOMIC_DETAIL_WITHOUT_ECONOMIC_ROOT": lambda p, l, r, a, s: check_root_and_detail_integrity(l, r)[3],
-    "ROOT_DETAIL_CLASSIFICATION_MISMATCH": lambda p, l, r, a, s: check_root_and_detail_integrity(l, r)[4],
-    "ROOT_DETAIL_GATE_MISMATCH": lambda p, l, r, a, s: check_root_and_detail_integrity(l, r)[5],
-    "GENERIC_OR_TEMPLATED_SECURITY_RATIONALES": lambda p, l, r, a, s: check_root_and_detail_integrity(l, r)[6],
-    "UNSUPPORTED_SAFETY_ASSERTIONS": lambda p, l, r, a, s: check_root_and_detail_integrity(l, r)[7],
-    "FUNCTIONS_WITH_FABRICATED_TEST_COVERAGE": lambda p, l, r, a, s: check_fabricated_coverage(a),
+    "UNKNOWN_SOURCE_SYMBOLS": lambda p, l, r, a, s: check_unknown_symbols_and_blocked_roots(r, s, l)[0],
+    "UNKNOWN_BLOCKED_BY_ROOT_IDS": lambda p, l, r, a, s: check_unknown_symbols_and_blocked_roots(r, s, l)[1],
+    "ROOT_WITHOUT_EVIDENCE": lambda p, l, r, a, s: check_unknown_symbols_and_blocked_roots(r, s, l)[4],
+    "ROOT_WITHOUT_MACHINE_EVIDENCE": lambda p, l, r, a, s: check_unknown_symbols_and_blocked_roots(r, s, l)[4],
+    "ROOT_DIAGNOSTIC_IDS_UNKNOWN": lambda p, l, r, a, s: check_unknown_symbols_and_blocked_roots(r, s, l)[2],
+    "ROOT_SEMANTIC_EVIDENCE_UNRESOLVED": lambda p, l, r, a, s: check_unknown_symbols_and_blocked_roots(r, s, l)[3],
+    "DIAGNOSTIC_WITHOUT_DISPOSITION": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[0],
+    "DIAGNOSTIC_WITHOUT_ID": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[1],
+    "DIAGNOSTIC_WITHOUT_CLASSIFICATION": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[2],
+    "DIAGNOSTIC_WITHOUT_ROOT_OR_STANDALONE_DISPOSITION": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[3],
+    "DIAGNOSTIC_WITHOUT_RATIONALE": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[4],
+    "DIAGNOSTIC_WITHOUT_REQUIRED_GATE": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[5],
+    "DIAGNOSTIC_WITHOUT_REVIEW_STATUS": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[6],
+    "BLOCKER_DETAIL_WITHOUT_BLOCKER_ROOT": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[7],
+    "ECONOMIC_DETAIL_WITHOUT_ECONOMIC_ROOT": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[8],
+    "ROOT_DETAIL_CLASSIFICATION_MISMATCH": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[9],
+    "ROOT_DETAIL_GATE_MISMATCH": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[10],
+    "GENERIC_OR_TEMPLATED_SECURITY_RATIONALES": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[11],
+    "UNSUPPORTED_SAFETY_ASSERTIONS": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[12],
+    "FUNCTIONS_WITH_FABRICATED_TEST_COVERAGE": lambda p, l, r, a, s: check_fabricated_coverage_and_proofs(a)[0],
+    "TEST_EVIDENCE_WITHOUT_PROOF": lambda p, l, r, a, s: check_fabricated_coverage_and_proofs(a)[1],
     "AST_ENTRYPOINT_SET_MISMATCH": lambda p, l, r, a, s: check_entrypoint_and_internal_sets(s, a)[0],
     "INTERNAL_FUNCTION_SET_MISMATCH": lambda p, l, r, a, s: check_entrypoint_and_internal_sets(s, a)[1],
     "UNCLASSIFIED_AUTH_MODIFIERS": lambda p, l, r, a, s: check_unclassified_modifiers(a),

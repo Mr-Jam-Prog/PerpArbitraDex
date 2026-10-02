@@ -7,9 +7,10 @@ Hardened AST Analysis Engine:
 - Constructs AST-ID based transitive caller-callee call graph using internal and library calls (CALL_GRAPH_TRANSITIVE=YES).
 - Evaluates parameter references strictly by AST referencedDeclaration ID (PARAM_USAGE_AST_ID_BASED=YES, PARAM_USAGE_TEXT_REGEX=NO).
 - Derives state variable reads and writes strictly by AST declaration IDs with context awareness.
-- Inspects modifier AST bodies for authorization checks (msg.sender, hasRole, owner, governance, guardian, revert).
-- Detects callbacks via AST interface implementations and canonical callback signatures (CALLBACK_INTERFACE_EVIDENCE=YES).
-- Correctly classifies internal library calls as INTERNAL_LIBRARY_CALL based on AST referencedDeclaration and typeString.
+- Extracts contract inheritance graphs (linearizedBaseContracts, baseContracts) to verify true interface implementation relationships.
+- Inspects modifier AST bodies for structural authorization predicates (authorization_predicate_ast, failure_path_ast, principal_expression).
+- Detects callbacks via AST interface implementation verification and canonical callback signatures (CALLBACK_INTERFACE_RELATION_REQUIRED=YES).
+- Distinguishes NATIVE_ETH_TRANSFER from ERC20_TRANSFER_RETURNS_BOOL and SAFEERC20_TRANSFER using AST expression types.
 """
 
 import os
@@ -70,26 +71,64 @@ def slice_utf8_bytes(filepath, offset, length):
     return snippet_bytes.decode("utf-8")
 
 def analyze_modifier_ast_body_for_auth(mod_node):
+    """
+    Inspects modifier AST body for structural authorization predicates:
+    - Checks for explicit require/revert guards associated with sender/roles.
+    - Records authorization_predicate_ast, failure_path_ast, principal_expression.
+    """
     identifiers = set()
+    has_revert_or_require = False
+    predicate_ast = None
+    failure_path = None
+    principal_expr = None
+
     def _collect(n):
+        nonlocal has_revert_or_require, predicate_ast, failure_path, principal_expr
         if not isinstance(n, dict):
             return
-        if n.get("nodeType") in ["Identifier", "MemberAccess"]:
+
+        ntype = n.get("nodeType")
+
+        if ntype == "FunctionCall":
+            expr = n.get("expression", {})
+            if expr.get("nodeType") == "Identifier" and expr.get("name") in ["require", "revert"]:
+                has_revert_or_require = True
+                failure_path = expr.get("name")
+                if n.get("arguments"):
+                    predicate_ast = n.get("arguments")[0].get("nodeType")
+
+        elif ntype == "IfStatement":
+            has_revert_or_require = True
+            failure_path = "IF_REVERT"
+            cond = n.get("condition", {})
+            predicate_ast = cond.get("nodeType")
+
+        if ntype in ["Identifier", "MemberAccess"]:
             name = n.get("name") or n.get("memberName")
             if name:
                 identifiers.add(name)
+                if name in ["msg", "sender", "_msgSender", "tx", "origin", "hasRole"]:
+                    principal_expr = name
+
         for k, v in n.items():
             if isinstance(v, list):
                 for item in v:
                     _collect(item)
             elif isinstance(v, dict):
                 _collect(v)
+
     _collect(mod_node)
 
-    auth_keywords = {"msg", "sender", "tx", "origin", "hasRole", "grantRole", "owner", "governance", "governor", "guardian", "timelock", "admin", "messenger", "authorized", "liquidator", "entryPoint"}
-    if identifiers.intersection(auth_keywords):
-        return "AUTH_ENFORCED"
-    return "AUTH_NOT_ENFORCING"
+    auth_keywords = {"msg", "sender", "_msgSender", "tx", "origin", "hasRole", "grantRole", "owner", "governance", "governor", "guardian", "timelock", "admin", "messenger", "authorized", "liquidator", "entryPoint"}
+
+    is_enforcing = has_revert_or_require and bool(identifiers.intersection(auth_keywords))
+
+    return {
+        "status": "AUTH_ENFORCED" if is_enforcing else "AUTH_NOT_ENFORCING",
+        "authorization_predicate_ast": predicate_ast or "NONE",
+        "failure_path_ast": failure_path or "NONE",
+        "principal_expression": principal_expr or "NONE"
+    }
 
 def collect_ast_param_references(node, param_ast_ids, param_refs_map):
     if not isinstance(node, dict):
@@ -239,9 +278,7 @@ def collect_ast_calls(node, calls, library_names):
                 call_info["kind"] = "INHERITED_INTERNAL_CALL"
             elif base_expr.get("nodeType") == "ElementaryTypeNameExpression" and base_expr.get("typeName") == "address":
                 call_info["kind"] = "EXTERNAL_INTERFACE_CALL"
-            elif "IERC20" in type_desc or "ERC20" in type_desc:
-                call_info["kind"] = "SAFEERC20_CALL" if "safe" in member.lower() else "ERC20_CALL"
-            elif type_desc.startswith("address payable") or type_desc.startswith("address"):
+            elif type_desc.startswith("address payable") or type_desc.startswith("address") or base_name == "payable":
                 if member in ["transfer", "send"]:
                     call_kind = "NATIVE_ETH_TRANSFER"
                 elif member in ["call", "staticcall", "delegatecall"]:
@@ -249,6 +286,13 @@ def collect_ast_calls(node, calls, library_names):
                 else:
                     call_kind = "EXTERNAL_TYPED_CALL"
                 call_info["kind"] = call_kind
+            elif "IERC20" in type_desc or "ERC20" in type_desc or "contract IERC20" in type_desc:
+                if "safe" in member.lower():
+                    call_info["kind"] = "SAFEERC20_TRANSFER"
+                elif member in ["transfer", "transferFrom"]:
+                    call_info["kind"] = "ERC20_TRANSFER_RETURNS_BOOL"
+                else:
+                    call_info["kind"] = "ERC20_CALL"
             elif base_expr.get("nodeType") == "Identifier" and base_expr.get("name") == "this":
                 call_info["kind"] = "SELF_EXTERNAL_CALL"
             else:
@@ -278,22 +322,45 @@ def extract_ast_data():
     func_id_to_item = {}
     func_name_to_items = {}
     internal_callee_edges = {}
-    modifier_definitions = {} # mod_name -> auth_class
+    modifier_definitions = {} # mod_name -> auth_meta
     library_names = set()
+
+    contract_ast_registry = {} # contract_ast_id -> contract_meta
+    contract_name_to_id = {}
 
     sorted_source_keys = sorted(sources.keys())
 
-    # Pass 0: Index library names
+    # Pass 0: Index Contract Definitions, AST IDs, and Base Contracts
     for file_path in sorted_source_keys:
         source_data = sources[file_path]
         ast = source_data.get("ast", {})
         if not ast:
             continue
         for node in ast.get("nodes", []):
-            if node.get("nodeType") == "ContractDefinition" and node.get("contractKind") == "library":
-                library_names.add(node.get("name"))
+            if node.get("nodeType") == "ContractDefinition":
+                c_id = node.get("id")
+                c_name = node.get("name")
+                c_kind = node.get("contractKind")
+                linearized_bases = node.get("linearizedBaseContracts", [])
+                base_contracts = [
+                    b.get("baseName", {}).get("name") or b.get("baseName", {}).get("referencedDeclaration")
+                    for b in node.get("baseContracts", [])
+                ]
 
-    # Phase 1: Index Contracts, State Variables, Modifiers, and Functions
+                contract_meta = {
+                    "ast_id": c_id,
+                    "name": c_name,
+                    "kind": c_kind,
+                    "linearized_base_contracts": linearized_bases,
+                    "base_contracts": base_contracts
+                }
+                contract_ast_registry[c_id] = contract_meta
+                contract_name_to_id[c_name] = c_id
+
+                if c_kind == "library":
+                    library_names.add(c_name)
+
+    # Phase 1: Index State Variables, Modifiers, and Functions
     for file_path in sorted_source_keys:
         source_data = sources[file_path]
         norm_path = file_path.replace("\\", "/")
@@ -311,13 +378,14 @@ def extract_ast_data():
             if node.get("nodeType") == "ContractDefinition":
                 contract_name = node.get("name")
                 contract_kind = node.get("contractKind")
+                contract_ast_id = node.get("id")
                 is_abstract = node.get("abstract", False)
 
                 for sub_node in node.get("nodes", []):
                     if sub_node.get("nodeType") == "ModifierDefinition":
                         mod_name = sub_node.get("name")
-                        auth_class = analyze_modifier_ast_body_for_auth(sub_node)
-                        modifier_definitions[mod_name] = auth_class
+                        auth_meta = analyze_modifier_ast_body_for_auth(sub_node)
+                        modifier_definitions[mod_name] = auth_meta
 
                     elif sub_node.get("nodeType") == "VariableDeclaration" and sub_node.get("stateVariable"):
                         var_id = sub_node.get("id")
@@ -354,15 +422,21 @@ def extract_ast_data():
 
                         src_range = sub_node.get("src", "0:0:0")
 
-                        # AST Interface Callback Classification (CALLBACK_INTERFACE_EVIDENCE=YES)
+                        # Verified Callback Classification based on AST Interface Relation
                         callback_info = None
                         if display_name in CALLBACK_INTERFACE_SIGNATURES:
                             cb_meta = CALLBACK_INTERFACE_SIGNATURES[display_name]
-                            callback_info = {
-                                "callback_class": cb_meta["kind"],
-                                "callback_interface": cb_meta["interface"],
-                                "canonical_callback_signature": cb_meta["signature"]
-                            }
+                            target_interface = cb_meta["interface"]
+                            target_iface_id = contract_name_to_id.get(target_interface)
+
+                            # Verify contract implements target_interface in linearizedBaseContracts
+                            contract_linearized = contract_ast_registry.get(contract_ast_id, {}).get("linearized_base_contracts", [])
+                            if target_iface_id and target_iface_id in contract_linearized:
+                                callback_info = {
+                                    "callback_class": cb_meta["kind"],
+                                    "callback_interface": target_interface,
+                                    "canonical_callback_signature": cb_meta["signature"]
+                                }
 
                         calls = []
                         collect_ast_calls(sub_node, calls, library_names)
@@ -378,6 +452,7 @@ def extract_ast_data():
                             "ast_id": func_id,
                             "file": norm_path,
                             "contract": contract_name,
+                            "contract_ast_id": contract_ast_id,
                             "contract_kind": contract_kind,
                             "is_abstract": is_abstract,
                             "function_name": display_name,
@@ -480,7 +555,9 @@ def extract_ast_data():
         "symbol_table": symbol_table,
         "concrete_entrypoints": concrete_entrypoints,
         "interface_declarations": interface_declarations,
-        "modifier_definitions": modifier_definitions
+        "modifier_definitions": modifier_definitions,
+        "contract_ast_registry": contract_ast_registry,
+        "contract_name_to_id": contract_name_to_id
     }
 
 if __name__ == "__main__":

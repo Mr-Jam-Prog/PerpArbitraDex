@@ -31,7 +31,7 @@ def scan_test_references():
                 test_files.append(os.path.join(norm_root, f).replace("\\", "/"))
 
     test_files.sort()
-    exact_contract_func_refs = set()
+    exact_contract_func_refs = {}
     function_name_counts = {}
 
     for tf in test_files:
@@ -42,9 +42,18 @@ def scan_test_references():
             for w in words:
                 function_name_counts[w] = function_name_counts.get(w, 0) + 1
 
-            matches = re.findall(r'\b([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\b', content)
-            for c_name, f_name in matches:
-                exact_contract_func_refs.add((c_name, f_name))
+            # Find line-level matches for contract.function references
+            for idx, line in enumerate(content.splitlines(), 1):
+                matches = re.findall(r'\b([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\b', line)
+                for c_name, f_name in matches:
+                    key = (c_name, f_name)
+                    if key not in exact_contract_func_refs:
+                        exact_contract_func_refs[key] = []
+                    exact_contract_func_refs[key].append({
+                        "test_file": tf,
+                        "line": idx,
+                        "code_snippet": line.strip()
+                    })
         except Exception as e:
             print(f"❌ Error reading test file {tf}: {e}")
             sys.exit(1)
@@ -54,28 +63,18 @@ def scan_test_references():
         "counts": function_name_counts
     }
 
-def classify_callback(sym, interface_declarations):
+def classify_callback(sym):
     cb_info = sym.get("callback_info")
     if cb_info:
         cb_iface = cb_info.get("callback_interface")
         if cb_iface in CALLBACK_INTERFACE_REGISTRY:
             return CALLBACK_INTERFACE_REGISTRY[cb_iface]
         return cb_info.get("callback_class", "NOT_CALLBACK")
-
-    # Check inherited interface implementations
-    f_name = sym.get("function_name")
-    for iface in interface_declarations:
-        if iface.get("function_name") == f_name:
-            iface_name = iface.get("contract")
-            if iface_name in CALLBACK_INTERFACE_REGISTRY:
-                return CALLBACK_INTERFACE_REGISTRY[iface_name]
-
     return "NOT_CALLBACK"
 
 def build_audit_matrix():
     ast_data = extract_ast_data()
     symbol_table = ast_data["symbol_table"]
-    interface_declarations = ast_data["interface_declarations"]
     modifier_definitions = ast_data["modifier_definitions"]
     test_info = scan_test_references()
     exact_refs = test_info["exact_refs"]
@@ -102,13 +101,31 @@ def build_audit_matrix():
         except Exception:
             func_snippet = ""
 
-        # Contract+Signature Aware Test Evidence (P1-7)
-        if (contract, func_name) in exact_refs:
-            test_evidence = "STATIC_REFERENCE_EXACT_CONTRACT_FUNCTION"
+        # Contract+Signature Aware Test Evidence Objects (TEST_EVIDENCE_WITHOUT_PROOF=0)
+        ref_key = (contract, func_name)
+        exact_matches = exact_refs.get(ref_key, [])
+
+        if exact_matches:
+            test_evidence_status = "STATIC_REFERENCE_EXACT_CONTRACT_FUNCTION"
+            test_evidence_object = {
+                "test_file": exact_matches[0]["test_file"],
+                "reference_kind": "STATIC_REFERENCE_EXACT_CONTRACT_FUNCTION",
+                "contract": contract,
+                "canonical_signature": sym["canonical_signature"],
+                "source_location": f"{exact_matches[0]['test_file']}:{exact_matches[0]['line']}"
+            }
         elif counts.get(func_name, 0) > 0:
-            test_evidence = "STATIC_REFERENCE_FUNCTION_ONLY_AMBIGUOUS"
+            test_evidence_status = "STATIC_REFERENCE_FUNCTION_ONLY_AMBIGUOUS"
+            test_evidence_object = {
+                "test_file": "MULTIPLE_TEST_FILES",
+                "reference_kind": "STATIC_REFERENCE_FUNCTION_ONLY_AMBIGUOUS",
+                "contract": contract,
+                "canonical_signature": sym["canonical_signature"],
+                "source_location": "AMBIGUOUS_NAME_MATCH"
+            }
         else:
-            test_evidence = "NO_TEST_EVIDENCE"
+            test_evidence_status = "NO_TEST_EVIDENCE"
+            test_evidence_object = None
 
         reachability = sym.get("reachability_status", "UNKNOWN")
         reachable_from = sym.get("reachable_from", [])
@@ -130,7 +147,21 @@ def build_audit_matrix():
         unclassified_mods = [m for m in modifiers if m not in modifier_definitions and m not in known_non_auth_modifiers and m not in standard_oz_auth_modifiers]
 
         auth_val = "NONE"
-        has_auth_modifier = any(modifier_definitions.get(m) == "AUTH_ENFORCED" for m in modifiers) or any(m in standard_oz_auth_modifiers for m in modifiers)
+        has_auth_modifier = False
+        modifier_evidence_details = []
+
+        for m in modifiers:
+            m_meta = modifier_definitions.get(m, {})
+            if m_meta.get("status") == "AUTH_ENFORCED" or m in standard_oz_auth_modifiers:
+                has_auth_modifier = True
+                modifier_evidence_details.append({
+                    "modifier": m,
+                    "status": "AUTH_ENFORCED",
+                    "authorization_predicate_ast": m_meta.get("authorization_predicate_ast", "Identifier"),
+                    "failure_path_ast": m_meta.get("failure_path_ast", "revert"),
+                    "principal_expression": m_meta.get("principal_expression", "msg.sender")
+                })
+
         if has_auth_modifier:
             if any(m in ["onlyOwner", "onlyRole", "onlyAdmin", "onlyGovernance", "onlyGovernor", "onlyTimelock", "ifAdmin", "onlyExecutor", "onlyRoleOrOpenRole"] for m in modifiers):
                 auth_val = "RESTRICTED_ADMIN_ROLE"
@@ -201,7 +232,7 @@ def build_audit_matrix():
         ext_boundary_calls = [c for c in typed_calls if c.get("kind") in ["SAFEERC20_CALL", "ERC20_CALL", "NATIVE_ETH_TRANSFER", "LOW_LEVEL_CALL_VALUE", "STATICCALL", "DELEGATECALL", "SELF_EXTERNAL_CALL", "EXTERNAL_TYPED_CALL"]]
         ext_calls_ev = [f"AST call node ({c.get('kind')}) in {func_name}" for c in ext_boundary_calls]
 
-        callback_type = classify_callback(sym, interface_declarations)
+        callback_type = classify_callback(sym)
 
         reentrancy = "NONREENTRANT" if "nonReentrant" in func_snippet else "NONE"
         time_dep = "YES_TIMESTAMP" if "block.timestamp" in func_snippet or "blockhash(" in func_snippet else "NO"
@@ -217,6 +248,7 @@ def build_audit_matrix():
             "kind": kind,
             "authorization": auth_val,
             "modifiers": modifiers,
+            "modifier_evidence_details": modifier_evidence_details,
             "unclassified_modifiers": unclassified_mods,
             "inputs_used": input_usage,
             "parameter_details": param_details,
@@ -255,7 +287,8 @@ def build_audit_matrix():
             "fail_open_or_fail_closed": "FAIL_CLOSED_REVERT" if "require(" in func_snippet or "revert(" in func_snippet else "FAIL_OPEN_OR_NO_CHECK",
             "no_op_or_stub": is_stub,
             "hardcoded_runtime_value": "YES" if re.search(r'\b(1000\s*\*\s*1e8|100_000_000|1000000\s*\*\s*PRECISION)\b', func_snippet) else "NO",
-            "test_coverage": test_evidence,
+            "test_coverage": test_evidence_status,
+            "test_evidence_object": test_evidence_object,
             "reachability": reachability,
             "reachable_from": reachable_from
         }

@@ -23,7 +23,7 @@ describe("08D-R1 Security Triage Tooling Self-Tests & Negative Fixtures", functi
     expect(internalMatches.length).to.be.above(0);
   });
 
-  it("should build function audit matrix and report static test evidence without universal coverage assumption", function () {
+  it("should build function audit matrix and report static test evidence with structured proof objects", function () {
     execSync("python3 scripts/security/08d/build_function_audit.py", {
       env: { ...process.env, SKIP_FORCE_COMPILE: "1" }
     });
@@ -33,9 +33,13 @@ describe("08D-R1 Security Triage Tooling Self-Tests & Negative Fixtures", functi
     const wrapEth = auditMatrix.find((a) => a.contract === "LidoStETHIntegrator" && a.function === "wrapETH");
     expect(wrapEth).to.exist;
     expect(wrapEth.test_coverage).to.not.equal("COVERED_IN_UNIT_OR_FUZZ");
+
+    const provedFunction = auditMatrix.find((a) => a.test_evidence_object !== null);
+    expect(provedFunction).to.exist;
+    expect(provedFunction.test_evidence_object).to.have.property("source_location");
   });
 
-  it("should classify checked token transfers as FALSE_POSITIVE in rule scanner", function () {
+  it("should classify checked token transfers as FALSE_POSITIVE in rule scanner while excluding native ETH transfers", function () {
     execSync("python3 scripts/security/08d/semantic_rule_scanner.py");
     const ruleScan = JSON.parse(fs.readFileSync("docs/security/08D_GLOBAL_AUDIT_RULES.json", "utf-8"));
     expect(ruleScan.candidate_matches).to.exist;
@@ -43,6 +47,10 @@ describe("08D-R1 Security Triage Tooling Self-Tests & Negative Fixtures", functi
     const uncheckedRuleMatches = ruleScan.candidate_matches.filter((m) => m.rule_id === "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL");
     const falsePositives = uncheckedRuleMatches.filter((m) => m.verification_status === "FALSE_POSITIVE");
     expect(falsePositives.length).to.be.above(0);
+
+    // Verify native ETH transfers are not included as token transfers
+    const nativeEthMatches = uncheckedRuleMatches.filter((m) => m.code_snippet.includes("payable("));
+    expect(nativeEthMatches.length).to.equal(0);
   });
 
   it("should validate canonical 08D ledgers with 0 errors via validate_08d_ledgers.py", function () {
@@ -64,6 +72,50 @@ describe("08D-R1 Security Triage Tooling Self-Tests & Negative Fixtures", functi
 
     afterEach(() => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    it("should fail validation if an unsupported safety claim is used on non-blocker classification without evidence refs", function () {
+      const ledger = JSON.parse(fs.readFileSync(path.join(tmpDir, "ledger.json"), "utf-8"));
+      ledger[0].classification = "CONTEXTUAL_ACCEPTED";
+      ledger[0].code_specific_rationale = "This diagnostic is protected by nonReentrant and operates safely.";
+      ledger[0].safety_claims = [];
+      ledger[0].evidence_refs = [];
+      fs.writeFileSync(path.join(tmpDir, "ledger.json"), JSON.stringify(ledger, null, 2));
+
+      try {
+        execSync(`python3 -c "import sys; sys.path.insert(0, 'scripts/security/08d'); from validate_08d_ledgers import validate_ledgers; validate_ledgers('${tmpDir}/baseline.json', '${tmpDir}/ledger.json', '${tmpDir}/roots.json', '${tmpDir}/audit.json', '${tmpDir}/symbols.json')"`);
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err.message).to.include("Command failed");
+      }
+    });
+
+    it("should fail validation if test evidence is claimed without a proof object", function () {
+      const audit = JSON.parse(fs.readFileSync(path.join(tmpDir, "audit.json"), "utf-8"));
+      audit[0].test_coverage = "STATIC_REFERENCE_EXACT_CONTRACT_FUNCTION";
+      audit[0].test_evidence_object = null;
+      fs.writeFileSync(path.join(tmpDir, "audit.json"), JSON.stringify(audit, null, 2));
+
+      try {
+        execSync(`python3 -c "import sys; sys.path.insert(0, 'scripts/security/08d'); from validate_08d_ledgers import validate_ledgers; validate_ledgers('${tmpDir}/baseline.json', '${tmpDir}/ledger.json', '${tmpDir}/roots.json', '${tmpDir}/audit.json', '${tmpDir}/symbols.json')"`);
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err.message).to.include("Command failed");
+      }
+    });
+
+    it("should fail validation if a root finding lacks machine-resolvable evidence", function () {
+      const roots = JSON.parse(fs.readFileSync(path.join(tmpDir, "roots.json"), "utf-8"));
+      roots[0].diagnostic_ids = [];
+      roots[0].semantic_evidence = [];
+      fs.writeFileSync(path.join(tmpDir, "roots.json"), JSON.stringify(roots, null, 2));
+
+      try {
+        execSync(`python3 -c "import sys; sys.path.insert(0, 'scripts/security/08d'); from validate_08d_ledgers import validate_ledgers; validate_ledgers('${tmpDir}/baseline.json', '${tmpDir}/ledger.json', '${tmpDir}/roots.json', '${tmpDir}/audit.json', '${tmpDir}/symbols.json')"`);
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err.message).to.include("Command failed");
+      }
     });
 
     it("should fail validation if an unknown symbol is present in root findings", function () {
@@ -143,6 +195,15 @@ describe("08D-R1 Security Triage Tooling Self-Tests & Negative Fixtures", functi
 
       try {
         execSync(`python3 -c "import sys; sys.path.insert(0, 'scripts/security/08d'); from validate_08d_ledgers import validate_ledgers; validate_ledgers('${tmpDir}/baseline.json', '${tmpDir}/ledger.json', '${tmpDir}/roots.json', '${tmpDir}/audit.json', '${tmpDir}/symbols.json')"`);
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err.message).to.include("Command failed");
+      }
+    });
+
+    it("should fail validation if a declared check is not implemented in the validator", function () {
+      try {
+        execSync(`python3 -c "import sys; sys.path.insert(0, 'scripts/security/08d'); import validate_08d_ledgers; validate_08d_ledgers.DECLARED_CHECKS.append('FAKE_UNIMPLEMENTED_CHECK'); validate_08d_ledgers.validate_ledgers('${tmpDir}/baseline.json', '${tmpDir}/ledger.json', '${tmpDir}/roots.json', '${tmpDir}/audit.json', '${tmpDir}/symbols.json')"`);
         expect.fail("Should have thrown");
       } catch (err) {
         expect(err.message).to.include("Command failed");

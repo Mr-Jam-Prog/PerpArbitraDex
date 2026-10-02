@@ -19,6 +19,13 @@
     "blocked_by_root_ids": [],
     "preconditions": "Off-chain keeper queries estimateProfitability before executing flash loan",
     "gate_id": "Aave Flash Loan Integrator Price Oracle Integration Gate",
+    "semantic_evidence": [
+      {
+        "canonical_signature": "AaveFlashLoanIntegrator._getOraclePrice(uint256)",
+        "src": "384:12",
+        "evidence_kind": "HARDCODED_PRICE_STUB"
+      }
+    ],
     "diagnostic_ids": [
       "6a9c171c6017a4a49fc61f2e8e419e1069fe2340e5fec137f5a63d583d924a14",
       "e2262b5d96a47a6be1fffe9aa40d9b5cfb421a2fbe65188aacf483e2d7e18c19"
@@ -43,6 +50,13 @@
     "blocked_by_root_ids": [],
     "preconditions": "Caller holds MESSENGER_ROLE",
     "gate_id": "Cross-Chain Message Source Address Authentication Gate",
+    "semantic_evidence": [
+      {
+        "canonical_signature": "CrossChainMessenger.retryMessage(uint16,bytes,uint64,bytes)",
+        "src": "243:10",
+        "evidence_kind": "UNVALIDATED_SOURCE_ADDRESS"
+      }
+    ],
     "diagnostic_ids": [
       "abd34815c05f0cdf7ad009556f271589fae3a50b671497ff7e21befe2cace897"
     ]
@@ -66,6 +80,13 @@
     "blocked_by_root_ids": [],
     "preconditions": "Cross-chain message delivered by LayerZero endpoint",
     "gate_id": "Cross-Chain Transport Nonce Binding & Replay Protection Gate",
+    "semantic_evidence": [
+      {
+        "canonical_signature": "CrossChainMessenger._validateMessage(struct,uint16,uint64)",
+        "src": "396:10",
+        "evidence_kind": "UNBOUND_TRANSPORT_NONCE"
+      }
+    ],
     "diagnostic_ids": [
       "1d5e5ce7002f8957dbdd035a88b1a345fa22fb1cff378fee96adc2a2634a8c07"
     ]
@@ -89,6 +110,13 @@
     "blocked_by_root_ids": [],
     "preconditions": "Opening or expanding position via calculateMaxPositionSize",
     "gate_id": "RiskManager Open Interest & Trader Concentration Enforcement Gate",
+    "semantic_evidence": [
+      {
+        "canonical_signature": "RiskManager._getConcentrationLimit(uint256)",
+        "src": "416:10",
+        "evidence_kind": "HARDCODED_OPEN_INTEREST"
+      }
+    ],
     "diagnostic_ids": [
       "4f607fa26d7382f71a5b5d6a4b9197e57337ba6f34a6b9aa9422db1af5769289"
     ]
@@ -112,6 +140,13 @@
     "blocked_by_root_ids": [],
     "preconditions": "Proposing governance proposal via PerpDexTimelock.schedule",
     "gate_id": "Timelock Critical Operation Verification & Governance Delay Gate",
+    "semantic_evidence": [
+      {
+        "canonical_signature": "PerpDexTimelock._isCriticalOperation(address,bytes)",
+        "src": "228:10",
+        "evidence_kind": "DISABLED_CRITICAL_OP_CHECK"
+      }
+    ],
     "diagnostic_ids": []
   },
   {
@@ -133,6 +168,13 @@
     "blocked_by_root_ids": [],
     "preconditions": "Querying TWAP price from OracleAggregator",
     "gate_id": "Oracle Aggregator Time-Weighted Average Price Implementation Gate",
+    "semantic_evidence": [
+      {
+        "canonical_signature": "OracleAggregator.getTWAP(bytes32,uint256)",
+        "src": "342:10",
+        "evidence_kind": "IGNORED_TWAP_PERIOD"
+      }
+    ],
     "diagnostic_ids": [
       "c233dfa6c4acf99d39cb5ca7b376dde83afe6500e58723ee449f9402d9242343"
     ]
@@ -156,6 +198,13 @@
     "blocked_by_root_ids": [],
     "preconditions": "Querying TWA funding rate from AMMPool",
     "gate_id": "AMM Pool Time-Weighted Funding Rate Calculation Gate",
+    "semantic_evidence": [
+      {
+        "canonical_signature": "AMMPool.getTWAFundingRate(uint256,uint256)",
+        "src": "333:10",
+        "evidence_kind": "IGNORED_TWA_FUNDING_PERIOD"
+      }
+    ],
     "diagnostic_ids": [
       "2e3c413e7ef7c9478744bc132d3e7c69d08cc1d5a21fb24ba050ce1504982ab2"
     ]
@@ -182,6 +231,13 @@
     ],
     "preconditions": "Executing scheduled ETH withdrawal with valid scheduledWithdrawals entry",
     "gate_id": "Treasury ETH Transfer Ordering & Reentrancy Guard Gate",
+    "semantic_evidence": [
+      {
+        "canonical_signature": "Treasury.executeWithdrawal(address,address,uint256)",
+        "src": "163:10",
+        "evidence_kind": "RAW_ETH_TRANSFER_ORDERING"
+      }
+    ],
     "diagnostic_ids": [
       "5648b38007ed5cca350ceff577060b5b97fb6ce7347fad10016c97cabfab15a8",
       "bcf2f5ad4d3d7f84c78b2b03f5f1d33c5aeb1d4a1d8f1d44073f8612c00b4556"
@@ -207,6 +263,13 @@
     "blocked_by_root_ids": [],
     "preconditions": "Scheduling withdrawal in Treasury",
     "gate_id": "Treasury Timelock Operation Identity Gate",
+    "semantic_evidence": [
+      {
+        "canonical_signature": "Treasury.scheduleWithdrawal(address,address,uint256,bytes32)",
+        "src": "120:10",
+        "evidence_kind": "TIMELOCK_SALT_MISMATCH"
+      }
+    ],
     "diagnostic_ids": []
   },
   {
@@ -228,6 +291,13 @@
     "blocked_by_root_ids": [],
     "preconditions": "PerpEngine calls emergencyResetSkew during emergency intervention",
     "gate_id": "AMM Pool Emergency Skew Reset Functional Availability Gate",
+    "semantic_evidence": [
+      {
+        "canonical_signature": "AMMPool.emergencyResetSkew(uint256)",
+        "src": "379:10",
+        "evidence_kind": "DISABLED_EMERGENCY_CONTROL"
+      }
+    ],
     "diagnostic_ids": [
       "d870569b096d9fa970cc63d3e55e944bc19fb9011ce17dd0f2be930b7c29701e",
       "5a3a004afabc82a2f5b46704bd989ed044946846974babfbf7d51976f51072e9"
@@ -252,6 +322,13 @@
     "blocked_by_root_ids": [],
     "preconditions": "Processing incoming cross-chain message",
     "gate_id": "Cross-Chain Chain ID Type Safety & Safe Casting Gate",
+    "semantic_evidence": [
+      {
+        "canonical_signature": "CrossChainMessenger._validateMessage(struct,uint16,uint64)",
+        "src": "402:10",
+        "evidence_kind": "CHAIN_ID_NAMESPACE_MISMATCH"
+      }
+    ],
     "diagnostic_ids": [
       "6e4dcfd13a302f39a392de7886d41db146e3d11cf541e906a2e8b29846175667"
     ]
@@ -275,6 +352,13 @@
     "blocked_by_root_ids": [],
     "preconditions": "Normal contract compilation",
     "gate_id": "Tolerated Compiler Warning Baseline Maintenance Gate",
+    "semantic_evidence": [
+      {
+        "canonical_signature": "PerpEngine.openPosition(struct)",
+        "src": "100:10",
+        "evidence_kind": "COMPILER_WARNING_BASELINE"
+      }
+    ],
     "diagnostic_ids": [
       "d50a85f388e2ab3737d0e742f5244d66316241127a7ce78abeee6187d8419b72",
       "ed7a87c0e151306e493882b0575711dd0538608bba7cc6bd249c1b3809bd0469",
