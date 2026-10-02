@@ -25,6 +25,7 @@
         "test:math": "pnpm --filter @perpdex/math test",
         "build:packages": "pnpm --filter @perpdex/math run build && pnpm --filter @perpdex/sdk run build",
         "check:core:raw": "pnpm run install:frozen && pnpm exec hardhat compile --force && pnpm run check:contract-size && forge build --force && pnpm run test:unit && pnpm run test:forge && pnpm run build:packages && pnpm run test:math",
+        "check:08d-r1": "python3 scripts/security/08d/extract_solidity_ast.py && python3 scripts/security/08d/build_function_audit.py && python3 scripts/security/08d/semantic_rule_scanner.py && python3 scripts/security/08d/build_findings_ledger.py && python3 scripts/security/08d/validate_08d_ledgers.py && python3 scripts/security/08d/generate_08d_report.py && git diff --exit-code docs/security/",
         "check:core": "node scripts/check-warning-baseline.mjs",
         "build": "pnpm --recursive run build",
         "lint": "pnpm --recursive run lint"
