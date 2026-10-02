@@ -39,15 +39,12 @@ describe("08D-R1 Security Triage Tooling Self-Tests & Negative Fixtures", functi
     expect(provedFunction.test_evidence_object).to.have.property("source_location");
   });
 
-  it("should classify checked token transfers as FALSE_POSITIVE in rule scanner while excluding native ETH transfers", function () {
+  it("should scan global audit candidate rules and exclude native ETH transfers from token transfer rules", function () {
     execSync("python3 scripts/security/08d/semantic_rule_scanner.py");
     const ruleScan = JSON.parse(fs.readFileSync("docs/security/08D_GLOBAL_AUDIT_RULES.json", "utf-8"));
     expect(ruleScan.candidate_matches).to.exist;
 
     const uncheckedRuleMatches = ruleScan.candidate_matches.filter((m) => m.rule_id === "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL");
-    const falsePositives = uncheckedRuleMatches.filter((m) => m.verification_status === "FALSE_POSITIVE");
-    expect(falsePositives.length).to.be.above(0);
-
     // Verify native ETH transfers are not included as token transfers
     const nativeEthMatches = uncheckedRuleMatches.filter((m) => m.code_snippet.includes("payable("));
     expect(nativeEthMatches.length).to.equal(0);

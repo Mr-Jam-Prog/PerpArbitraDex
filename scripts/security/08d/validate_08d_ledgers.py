@@ -3,7 +3,7 @@
 scripts/security/08d/validate_08d_ledgers.py
 Triage integrity validator enforcing AST entrypoint set-equality, AST symbol resolution,
 generic test coverage validation, non-templated rationales, split disposition schema checks,
-machine-resolvable root evidence, resolving safety evidence refs, and exact count invariants.
+machine-resolvable root evidence, typed safety evidence reference resolution, and exact count invariants.
 Computes every declared check deterministically via VALIDATION_CHECKS registry.
 """
 
@@ -99,9 +99,11 @@ def check_unknown_symbols_and_blocked_roots(roots, symbol_table, ledger):
 
     return unknown_syms, unknown_blocked, unknown_root_dids, unresolved_semantic_ev, roots_without_machine_ev
 
-def check_disposition_schema_splits(ledger, roots):
+def check_disposition_schema_splits(ledger, roots, symbol_table, audit):
     root_dict = {r["root_id"]: r for r in roots}
     all_root_ids = set(r["root_id"] for r in roots)
+    ast_all_sigs = set(s["canonical_signature"] for s in symbol_table)
+    ledger_dids = set(item.get("diagnostic_id") for item in ledger)
 
     missing_id = 0
     missing_classification = 0
@@ -146,13 +148,32 @@ def check_disposition_schema_splits(ledger, roots):
                 unsupported_assertions += 1
 
         for ref in refs:
-            if ref.startswith("ROOT_FINDING:"):
-                r_target = ref.split("ROOT_FINDING:")[1]
-                if r_target not in all_root_ids:
+            if isinstance(ref, dict):
+                ref_kind = ref.get("kind")
+                if ref_kind == "DIAGNOSTIC":
+                    if ref.get("id") not in ledger_dids:
+                        unresolved_safety_refs += 1
+                elif ref_kind == "AST_SYMBOL":
+                    if ref.get("canonical_signature") not in ast_all_sigs:
+                        unresolved_safety_refs += 1
+                elif ref_kind == "CALL_GRAPH_EDGE":
+                    if ref.get("caller") not in ast_all_sigs or ref.get("callee") not in ast_all_sigs:
+                        unresolved_safety_refs += 1
+                elif ref_kind == "MODIFIER_AUTH":
+                    if not ref.get("modifier_ast_id"):
+                        unresolved_safety_refs += 1
+                else:
                     unresolved_safety_refs += 1
-            elif ref.startswith("WARNING_BASELINE:"):
-                b_did = ref.split("WARNING_BASELINE:")[1]
-                if b_did != did:
+            elif isinstance(ref, str):
+                if ref.startswith("ROOT_FINDING:"):
+                    r_target = ref.split("ROOT_FINDING:")[1]
+                    if r_target not in all_root_ids:
+                        unresolved_safety_refs += 1
+                elif ref.startswith("WARNING_BASELINE:"):
+                    b_did = ref.split("WARNING_BASELINE:")[1]
+                    if b_did != did or b_did not in ledger_dids:
+                        unresolved_safety_refs += 1
+                else:
                     unresolved_safety_refs += 1
             else:
                 unresolved_safety_refs += 1
@@ -198,6 +219,26 @@ def check_fabricated_coverage_and_proofs(audit):
         if cov == "STATIC_REFERENCE_EXACT_CONTRACT_FUNCTION":
             if not proof_obj or not proof_obj.get("test_file") or not os.path.exists(proof_obj.get("test_file")):
                 unresolvable_exact_refs += 1
+            else:
+                # Verify source_location line exists and is within line bounds
+                tf = proof_obj.get("test_file")
+                loc = proof_obj.get("source_location", "")
+                if ":" in loc:
+                    try:
+                        line_num = int(loc.split(":")[-1])
+                        with open(tf, "r", encoding="utf-8") as f:
+                            lines = f.readlines()
+                        if line_num <= 0 or line_num > len(lines):
+                            unresolvable_exact_refs += 1
+                        else:
+                            # Verify contract or function name is present in target line
+                            target_line = lines[line_num - 1]
+                            c_name = a.get("contract")
+                            f_name = a.get("function")
+                            if c_name not in target_line and f_name not in target_line:
+                                unresolvable_exact_refs += 1
+                    except Exception:
+                        unresolvable_exact_refs += 1
 
         if cov == "COVERED_IN_UNIT_OR_FUZZ" and a.get("reachability") == "UNREACHABLE":
             fabricated += 1
@@ -245,20 +286,20 @@ VALIDATION_CHECKS = {
     "ROOT_WITHOUT_MACHINE_EVIDENCE": lambda p, l, r, a, s: check_unknown_symbols_and_blocked_roots(r, s, l)[4],
     "ROOT_DIAGNOSTIC_IDS_UNKNOWN": lambda p, l, r, a, s: check_unknown_symbols_and_blocked_roots(r, s, l)[2],
     "ROOT_SEMANTIC_EVIDENCE_UNRESOLVED": lambda p, l, r, a, s: check_unknown_symbols_and_blocked_roots(r, s, l)[3],
-    "DIAGNOSTIC_WITHOUT_DISPOSITION": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[0],
-    "DIAGNOSTIC_WITHOUT_ID": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[1],
-    "DIAGNOSTIC_WITHOUT_CLASSIFICATION": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[2],
-    "DIAGNOSTIC_WITHOUT_ROOT_OR_STANDALONE_DISPOSITION": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[3],
-    "DIAGNOSTIC_WITHOUT_RATIONALE": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[4],
-    "DIAGNOSTIC_WITHOUT_REQUIRED_GATE": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[5],
-    "DIAGNOSTIC_WITHOUT_REVIEW_STATUS": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[6],
-    "BLOCKER_DETAIL_WITHOUT_BLOCKER_ROOT": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[7],
-    "ECONOMIC_DETAIL_WITHOUT_ECONOMIC_ROOT": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[8],
-    "ROOT_DETAIL_CLASSIFICATION_MISMATCH": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[9],
-    "ROOT_DETAIL_GATE_MISMATCH": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[10],
-    "GENERIC_OR_TEMPLATED_SECURITY_RATIONALES": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[11],
-    "UNSUPPORTED_SAFETY_ASSERTIONS": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[12],
-    "SAFETY_EVIDENCE_REFS_UNRESOLVED": lambda p, l, r, a, s: check_disposition_schema_splits(l, r)[13],
+    "DIAGNOSTIC_WITHOUT_DISPOSITION": lambda p, l, r, a, s: check_disposition_schema_splits(l, r, s, a)[0],
+    "DIAGNOSTIC_WITHOUT_ID": lambda p, l, r, a, s: check_disposition_schema_splits(l, r, s, a)[1],
+    "DIAGNOSTIC_WITHOUT_CLASSIFICATION": lambda p, l, r, a, s: check_disposition_schema_splits(l, r, s, a)[2],
+    "DIAGNOSTIC_WITHOUT_ROOT_OR_STANDALONE_DISPOSITION": lambda p, l, r, a, s: check_disposition_schema_splits(l, r, s, a)[3],
+    "DIAGNOSTIC_WITHOUT_RATIONALE": lambda p, l, r, a, s: check_disposition_schema_splits(l, r, s, a)[4],
+    "DIAGNOSTIC_WITHOUT_REQUIRED_GATE": lambda p, l, r, a, s: check_disposition_schema_splits(l, r, s, a)[5],
+    "DIAGNOSTIC_WITHOUT_REVIEW_STATUS": lambda p, l, r, a, s: check_disposition_schema_splits(l, r, s, a)[6],
+    "BLOCKER_DETAIL_WITHOUT_BLOCKER_ROOT": lambda p, l, r, a, s: check_disposition_schema_splits(l, r, s, a)[7],
+    "ECONOMIC_DETAIL_WITHOUT_ECONOMIC_ROOT": lambda p, l, r, a, s: check_disposition_schema_splits(l, r, s, a)[8],
+    "ROOT_DETAIL_CLASSIFICATION_MISMATCH": lambda p, l, r, a, s: check_disposition_schema_splits(l, r, s, a)[9],
+    "ROOT_DETAIL_GATE_MISMATCH": lambda p, l, r, a, s: check_disposition_schema_splits(l, r, s, a)[10],
+    "GENERIC_OR_TEMPLATED_SECURITY_RATIONALES": lambda p, l, r, a, s: check_disposition_schema_splits(l, r, s, a)[11],
+    "UNSUPPORTED_SAFETY_ASSERTIONS": lambda p, l, r, a, s: check_disposition_schema_splits(l, r, s, a)[12],
+    "SAFETY_EVIDENCE_REFS_UNRESOLVED": lambda p, l, r, a, s: check_disposition_schema_splits(l, r, s, a)[13],
     "FUNCTIONS_WITH_FABRICATED_TEST_COVERAGE": lambda p, l, r, a, s: check_fabricated_coverage_and_proofs(a)[0],
     "TEST_EVIDENCE_WITHOUT_PROOF": lambda p, l, r, a, s: check_fabricated_coverage_and_proofs(a)[1],
     "EXACT_TEST_REFERENCE_WITHOUT_RESOLVABLE_PROOF": lambda p, l, r, a, s: check_fabricated_coverage_and_proofs(a)[2],

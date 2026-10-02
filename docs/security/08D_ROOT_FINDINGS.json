@@ -21,6 +21,7 @@
     "gate_id": "Aave Flash Loan Integrator Price Oracle Integration Gate",
     "semantic_evidence": [
       {
+        "kind": "AST_SYMBOL",
         "canonical_signature": "AaveFlashLoanIntegrator._getOraclePrice(uint256)",
         "src": "384:12",
         "evidence_kind": "HARDCODED_PRICE_STUB"
@@ -52,6 +53,7 @@
     "gate_id": "Cross-Chain Message Source Address Authentication Gate",
     "semantic_evidence": [
       {
+        "kind": "AST_SYMBOL",
         "canonical_signature": "CrossChainMessenger.retryMessage(uint16,bytes,uint64,bytes)",
         "src": "243:10",
         "evidence_kind": "UNVALIDATED_SOURCE_ADDRESS"
@@ -82,6 +84,7 @@
     "gate_id": "Cross-Chain Transport Nonce Binding & Replay Protection Gate",
     "semantic_evidence": [
       {
+        "kind": "AST_SYMBOL",
         "canonical_signature": "CrossChainMessenger._validateMessage(struct,uint16,uint64)",
         "src": "396:10",
         "evidence_kind": "UNBOUND_TRANSPORT_NONCE"
@@ -112,6 +115,7 @@
     "gate_id": "RiskManager Open Interest & Trader Concentration Enforcement Gate",
     "semantic_evidence": [
       {
+        "kind": "AST_SYMBOL",
         "canonical_signature": "RiskManager._getConcentrationLimit(uint256)",
         "src": "416:10",
         "evidence_kind": "HARDCODED_OPEN_INTEREST"
@@ -142,6 +146,7 @@
     "gate_id": "Timelock Critical Operation Verification & Governance Delay Gate",
     "semantic_evidence": [
       {
+        "kind": "AST_SYMBOL",
         "canonical_signature": "PerpDexTimelock._isCriticalOperation(address,bytes)",
         "src": "228:10",
         "evidence_kind": "DISABLED_CRITICAL_OP_CHECK"
@@ -170,6 +175,7 @@
     "gate_id": "Oracle Aggregator Time-Weighted Average Price Implementation Gate",
     "semantic_evidence": [
       {
+        "kind": "AST_SYMBOL",
         "canonical_signature": "OracleAggregator.getTWAP(bytes32,uint256)",
         "src": "342:10",
         "evidence_kind": "IGNORED_TWAP_PERIOD"
@@ -200,6 +206,7 @@
     "gate_id": "AMM Pool Time-Weighted Funding Rate Calculation Gate",
     "semantic_evidence": [
       {
+        "kind": "AST_SYMBOL",
         "canonical_signature": "AMMPool.getTWAFundingRate(uint256,uint256)",
         "src": "333:10",
         "evidence_kind": "IGNORED_TWA_FUNDING_PERIOD"
@@ -233,6 +240,7 @@
     "gate_id": "Treasury ETH Transfer Ordering & Reentrancy Guard Gate",
     "semantic_evidence": [
       {
+        "kind": "AST_SYMBOL",
         "canonical_signature": "Treasury.executeWithdrawal(address,address,uint256)",
         "src": "163:10",
         "evidence_kind": "RAW_ETH_TRANSFER_ORDERING"
@@ -265,6 +273,7 @@
     "gate_id": "Treasury Timelock Operation Identity Gate",
     "semantic_evidence": [
       {
+        "kind": "AST_SYMBOL",
         "canonical_signature": "Treasury.scheduleWithdrawal(address,address,uint256,bytes32)",
         "src": "120:10",
         "evidence_kind": "TIMELOCK_SALT_MISMATCH"
@@ -293,6 +302,7 @@
     "gate_id": "AMM Pool Emergency Skew Reset Functional Availability Gate",
     "semantic_evidence": [
       {
+        "kind": "AST_SYMBOL",
         "canonical_signature": "AMMPool.emergencyResetSkew(uint256)",
         "src": "379:10",
         "evidence_kind": "DISABLED_EMERGENCY_CONTROL"
@@ -324,6 +334,7 @@
     "gate_id": "Cross-Chain Chain ID Type Safety & Safe Casting Gate",
     "semantic_evidence": [
       {
+        "kind": "AST_SYMBOL",
         "canonical_signature": "CrossChainMessenger._validateMessage(struct,uint16,uint64)",
         "src": "402:10",
         "evidence_kind": "CHAIN_ID_NAMESPACE_MISMATCH"
@@ -354,6 +365,7 @@
     "gate_id": "Tolerated Compiler Warning Baseline Maintenance Gate",
     "semantic_evidence": [
       {
+        "kind": "AST_SYMBOL",
         "canonical_signature": "PerpEngine.openPosition(struct)",
         "src": "100:10",
         "evidence_kind": "COMPILER_WARNING_BASELINE"

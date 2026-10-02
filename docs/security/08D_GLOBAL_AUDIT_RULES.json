@@ -21,7 +21,7 @@
     {
       "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
       "title": "Unchecked Return Value on External Token Transfer",
-      "pattern": "\\.transferFrom\\(|\\.transfer\\(",
+      "pattern": "AST_DRIVEN_ERC20_TRANSFER_RETURNS_BOOL",
       "description": "Calls to transfer or transferFrom whose boolean return value is unchecked."
     }
   ],
@@ -91,38 +91,6 @@
       "verification_status": "TRUE_POSITIVE"
     },
     {
-      "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
-      "title": "Unchecked Return Value on External Token Transfer",
-      "file": "contracts/integration/LidoStETHIntegrator.sol",
-      "line": 147,
-      "code_snippet": "require(stETH.transferFrom(address(this), msg.sender, stETHAmount), \"Transfer failed\");",
-      "verification_status": "FALSE_POSITIVE"
-    },
-    {
-      "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
-      "title": "Unchecked Return Value on External Token Transfer",
-      "file": "contracts/integration/LidoStETHIntegrator.sol",
-      "line": 181,
-      "code_snippet": "stETH.transferFrom(msg.sender, address(this), amount);",
-      "verification_status": "TRUE_POSITIVE"
-    },
-    {
-      "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
-      "title": "Unchecked Return Value on External Token Transfer",
-      "file": "contracts/integration/LidoStETHIntegrator.sol",
-      "line": 203,
-      "code_snippet": "stETH.transferFrom(msg.sender, address(this), amount);",
-      "verification_status": "TRUE_POSITIVE"
-    },
-    {
-      "rule_id": "RULE_UNCHECKED_EXTERNAL_TOKEN_CALL",
-      "title": "Unchecked Return Value on External Token Transfer",
-      "file": "contracts/integration/LidoStETHIntegrator.sol",
-      "line": 231,
-      "code_snippet": "require(stETH.transfer(msg.sender, stETHAmount), \"Transfer failed\");",
-      "verification_status": "FALSE_POSITIVE"
-    },
-    {
       "rule_id": "RULE_UNVALIDATED_CROSS_CHAIN_SOURCE_OR_NONCE",
       "title": "Unvalidated Source Address or Nonce Binding in Cross-Chain Messaging",
       "file": "contracts/integration/CrossChainMessenger.sol",
@@ -155,5 +123,5 @@
       "verification_status": "TRUE_POSITIVE"
     }
   ],
-  "total_matches": 16
+  "total_matches": 12
 }

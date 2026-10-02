@@ -3,7 +3,7 @@
 scripts/security/08d/build_findings_ledger.py
 Constructs AST-backed 08D_ROOT_FINDINGS.json and 08D_FINDINGS_LEDGER.json.
 Generates code-specific, non-templated rationales detailing exact AST symbols, site semantics, and evidence objects for ALL 623 production diagnostics.
-Adds structured safety_claims[] and evidence_refs[] for UNSUPPORTED_SAFETY_ASSERTIONS validation across ALL classifications.
+Adds typed safety_claims[] and evidence_refs[] objects for UNSUPPORTED_SAFETY_ASSERTIONS validation across ALL classifications.
 Uses AUDIT_SCHEMA_VERSION and PRODUCTION_SOURCE_SHA for revision semantics (P2-4).
 """
 
@@ -30,6 +30,7 @@ ROOT_FINDINGS = [
         "gate_id": "Aave Flash Loan Integrator Price Oracle Integration Gate",
         "semantic_evidence": [
             {
+                "kind": "AST_SYMBOL",
                 "canonical_signature": "AaveFlashLoanIntegrator._getOraclePrice(uint256)",
                 "src": "384:12",
                 "evidence_kind": "HARDCODED_PRICE_STUB"
@@ -51,6 +52,7 @@ ROOT_FINDINGS = [
         "gate_id": "Cross-Chain Message Source Address Authentication Gate",
         "semantic_evidence": [
             {
+                "kind": "AST_SYMBOL",
                 "canonical_signature": "CrossChainMessenger.retryMessage(uint16,bytes,uint64,bytes)",
                 "src": "243:10",
                 "evidence_kind": "UNVALIDATED_SOURCE_ADDRESS"
@@ -72,6 +74,7 @@ ROOT_FINDINGS = [
         "gate_id": "Cross-Chain Transport Nonce Binding & Replay Protection Gate",
         "semantic_evidence": [
             {
+                "kind": "AST_SYMBOL",
                 "canonical_signature": "CrossChainMessenger._validateMessage(struct,uint16,uint64)",
                 "src": "396:10",
                 "evidence_kind": "UNBOUND_TRANSPORT_NONCE"
@@ -93,6 +96,7 @@ ROOT_FINDINGS = [
         "gate_id": "RiskManager Open Interest & Trader Concentration Enforcement Gate",
         "semantic_evidence": [
             {
+                "kind": "AST_SYMBOL",
                 "canonical_signature": "RiskManager._getConcentrationLimit(uint256)",
                 "src": "416:10",
                 "evidence_kind": "HARDCODED_OPEN_INTEREST"
@@ -114,6 +118,7 @@ ROOT_FINDINGS = [
         "gate_id": "Timelock Critical Operation Verification & Governance Delay Gate",
         "semantic_evidence": [
             {
+                "kind": "AST_SYMBOL",
                 "canonical_signature": "PerpDexTimelock._isCriticalOperation(address,bytes)",
                 "src": "228:10",
                 "evidence_kind": "DISABLED_CRITICAL_OP_CHECK"
@@ -135,6 +140,7 @@ ROOT_FINDINGS = [
         "gate_id": "Oracle Aggregator Time-Weighted Average Price Implementation Gate",
         "semantic_evidence": [
             {
+                "kind": "AST_SYMBOL",
                 "canonical_signature": "OracleAggregator.getTWAP(bytes32,uint256)",
                 "src": "342:10",
                 "evidence_kind": "IGNORED_TWAP_PERIOD"
@@ -156,6 +162,7 @@ ROOT_FINDINGS = [
         "gate_id": "AMM Pool Time-Weighted Funding Rate Calculation Gate",
         "semantic_evidence": [
             {
+                "kind": "AST_SYMBOL",
                 "canonical_signature": "AMMPool.getTWAFundingRate(uint256,uint256)",
                 "src": "333:10",
                 "evidence_kind": "IGNORED_TWA_FUNDING_PERIOD"
@@ -177,6 +184,7 @@ ROOT_FINDINGS = [
         "gate_id": "Treasury ETH Transfer Ordering & Reentrancy Guard Gate",
         "semantic_evidence": [
             {
+                "kind": "AST_SYMBOL",
                 "canonical_signature": "Treasury.executeWithdrawal(address,address,uint256)",
                 "src": "163:10",
                 "evidence_kind": "RAW_ETH_TRANSFER_ORDERING"
@@ -198,6 +206,7 @@ ROOT_FINDINGS = [
         "gate_id": "Treasury Timelock Operation Identity Gate",
         "semantic_evidence": [
             {
+                "kind": "AST_SYMBOL",
                 "canonical_signature": "Treasury.scheduleWithdrawal(address,address,uint256,bytes32)",
                 "src": "120:10",
                 "evidence_kind": "TIMELOCK_SALT_MISMATCH"
@@ -219,6 +228,7 @@ ROOT_FINDINGS = [
         "gate_id": "AMM Pool Emergency Skew Reset Functional Availability Gate",
         "semantic_evidence": [
             {
+                "kind": "AST_SYMBOL",
                 "canonical_signature": "AMMPool.emergencyResetSkew(uint256)",
                 "src": "379:10",
                 "evidence_kind": "DISABLED_EMERGENCY_CONTROL"
@@ -240,6 +250,7 @@ ROOT_FINDINGS = [
         "gate_id": "Cross-Chain Chain ID Type Safety & Safe Casting Gate",
         "semantic_evidence": [
             {
+                "kind": "AST_SYMBOL",
                 "canonical_signature": "CrossChainMessenger._validateMessage(struct,uint16,uint64)",
                 "src": "402:10",
                 "evidence_kind": "CHAIN_ID_NAMESPACE_MISMATCH"
@@ -261,6 +272,7 @@ ROOT_FINDINGS = [
         "gate_id": "Tolerated Compiler Warning Baseline Maintenance Gate",
         "semantic_evidence": [
             {
+                "kind": "AST_SYMBOL",
                 "canonical_signature": "PerpEngine.openPosition(struct)",
                 "src": "100:10",
                 "evidence_kind": "COMPILER_WARNING_BASELINE"
@@ -347,10 +359,16 @@ def build_ledgers():
 
         if root_obj["classification"] == "SECURITY_BLOCKER":
             safety_claims.append("SECURITY_BLOCKER_CONFIRMED_VULNERABILITY")
-            evidence_refs.append(f"ROOT_FINDING:{root_id}")
+            evidence_refs.append({
+                "kind": "DIAGNOSTIC",
+                "id": did
+            })
         elif root_obj["classification"] == "CONTEXTUAL_ACCEPTED":
             safety_claims.append("BASELINE_TOLERATED_COMPILER_WARNING")
-            evidence_refs.append(f"WARNING_BASELINE:{did}")
+            evidence_refs.append({
+                "kind": "DIAGNOSTIC",
+                "id": did
+            })
 
         item = {
             "diagnostic_id": did,
